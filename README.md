@@ -1,2 +1,2 @@
-# ksfx
+# KSFX
 KSFX Data Analysis Project
