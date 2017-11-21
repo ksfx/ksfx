@@ -1,0 +1,46 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+    <div class="page-header">
+        <h1>Dashboard</h1>
+    </div>
+
+    <h2>Welcome to KSFX -
+        <t:if test="firstTimeSeriesId">
+            <t:pagelink t:page="viewTimeSeries" context="${firstTimeSeriesId}">Start Browsing</t:pagelink>
+            <t:parameter name="else">
+                <t:pagelink t:page="admin/timeseries">Start with Creating a Time Series</t:pagelink>
+            </t:parameter>
+        </t:if>
+    </h2>
+
+    <div class="row row-offcanvas row-offcanvas-right">
+        <div class="col-xs-12 col-sm-9">
+
+        </div>
+
+        <div class="col-xs-6 col-sm-3 sidebar-offcanvas" id="sidebar" role="navigation">
+            <div class="list-group">
+                <div class="list-group-item">
+                    Series Stats:<br />
+                    Total Series: ${getGenericDataStoreInformation('totalSeriesCount')}<br />
+                    Total Observations: ${getGenericDataStoreInformation('totalObservationsCount')}<br />
+                    <br />
+                </div>
+                <div class="list-group-item">
+                    Memory Stats:<br />
+                    Free Memory: ${freeMemory} MB<br />
+                    Used Memory: ${usedMemory} MB<br />
+                    Total Memory: ${totalMemory} MB<br />
+                    Max Memory: ${maxMemory} MB<br />
+                    <br />
+                </div>
+                <div class="list-group-item">
+                    <t:actionlink t:id="performGc">Perform GC</t:actionlink><br />
+                </div>
+                <div class="list-group-item">
+                    Index Queue Size: ${indexQueueSize}<br />
+                </div>
+            </div>
+        </div>
+    </div>
+</t:layout>

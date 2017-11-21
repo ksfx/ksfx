@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html>
+<html xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd"
+      xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" />
+        <t:pagetitle/>
+    </head>
+    <body>
+
+        <t:security.ifloggedin>
+            <t:twolevelnavigation id="menu"/>
+        </t:security.ifloggedin>
+
+        <div class="container" style="width:100%;height:100%;min-height:100%;padding-top:0px;margin-top:0px">
+       		<div class="row" style="height:100%;min-height:100%;padding-top:0px;margin-top:0px">
+       			<!-- border-right: 1px groove #333; -->
+        		<div class="col-md-4 col-xs-12" style="height:100%;min-height:100%;padding-top:0px;margin-top:0px">
+                    <li class="list-group-item">
+                        <span style="margin-left:0px;margin-right:0px"></span>
+                        <!-- <span class="icon expand-icon glyphicon glyphicon-minus"></span>
+                        <span class="icon node-icon"></span> -->
+                        <t:form t:id="seriesNameSearchForm">
+                        	<div class="input-group">
+                        		<t:textfield class="form-control" t:id="seriesNameSearch" t:mixins="autocomplete" t:maxSuggestions="50" t:minChars="3" t:value="seriesNameSearch" />
+      							<span class="input-group-btn">
+      								<t:if test="searchActive">
+      									<t:actionlink t:id="resetSearch" class="btn btn-default"><span class="glyphicon glyphicon-remove"></span></t:actionlink>
+      									<t:parameter name="else">
+      										<button class="btn btn-default" type="submit"><span class="glyphicon glyphicon-search"></span></button>	
+      									</t:parameter>
+      								</t:if>
+								</span>
+							</div>
+                        </t:form>
+                    </li>
+
+        			<t:outputraw value="browser" />
+
+                    <div style="padding-top:10px">
+                        <t:pagelink page="search" class="glyphicon glyphicon-search"></t:pagelink>
+                    </div>
+        		</div>
+        		<div class="col-md-8 col-xs-12" style="padding-top:0px;margin-top:0px">
+            		<t:breadcrumbs/>
+            		<t:feedback/>
+            		<t:body/>
+            	</div>
+            </div>
+        </div>
+        
+        <!-- Iframe-Modal -->
+	    <div class="modal fade" id="iframeModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+	        <div class="modal-dialog" style="height:80%">
+	            <div class="modal-content" style="height:100%">
+	                <div class="modal-header">
+	                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span></button>
+	                    <h4 class="modal-title" id="myModalLabel">Info</h4>
+	                </div>
+	                    <div class="modal-body" style="height:80%">
+							<iframe src="" style="width:100%;height:100%" frameborder="0"></iframe>
+	                    </div>
+	                    <div class="modal-footer">
+							<button class="btn" data-dismiss="modal">OK</button>
+	                    </div>
+	            </div>
+	        </div>
+	    </div>
+
+        <div id="footer">
+            <div class="container">
+                <p class="text-muted">Version ${version.versionString} &copy; Kejo Starosta</p>
+            </div>
+        </div>
+
+    </body>
+</html>

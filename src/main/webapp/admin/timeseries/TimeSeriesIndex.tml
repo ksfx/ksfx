@@ -1,0 +1,31 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+    <div class="page-header">
+        <h1>Time Series</h1>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="admin/timeseries/managetimeseries" class="glyphicon glyphicon-plus" alt="Add Time Series" title="Add Time Series"></t:pagelink>
+    </div>
+
+	<div class="layout-grid-col-holder">
+
+		<div class="layout-grid-col2">
+
+            <t:grid source="allTimeSeries" row="timeSeries" add="import,edit,delete" exclude="indexable,source,sourceId,approximateSize">
+                <t:parameter name="importCell">
+                    <t:pagelink page="admin/timeseries/importdata" context="timeseries.id" class="glyphicon glyphicon-cloud-upload" alt="Import Data" title="Import Data"></t:pagelink>
+                </t:parameter>
+                <t:parameter name="editCell">
+                    <t:pagelink page="admin/timeseries/managetimeseries" context="timeseries.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+                </t:parameter>
+                <t:parameter name="deleteCell">
+                    <t:actionlink t:id="delete" t:mixins="confirm" t:context="timeSeries.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+                </t:parameter>
+            </t:grid>
+
+		</div>
+
+	</div>
+
+</t:layout>

@@ -1,0 +1,4 @@
+This software (KSFX Data Analysis) is distributed under the
+Apache License, Version 2.0
+
+Author: Kejo Starosta (k#at#ksfx.de)

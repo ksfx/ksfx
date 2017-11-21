@@ -1,0 +1,17 @@
+<t:loginlayout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+    <center><h1>KSFX Data Analysis</h1></center>
+
+    <form class="form-signin" role="form"
+          action="${loginCheckUrl}">
+        <t:if test="failed">
+            <p>${message:error_message}</p>
+        </t:if>
+        <h2 class="form-signin-heading">Please sign in</h2>
+        <input type="text" class="form-control" name="j_username" placeholder="${message:username}" required="true" autofocus="true" />
+        <input type="password" class="form-control" name="j_password" placeholder="${message:password}" required="true" />
+
+        <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+    </form>
+
+</t:loginlayout>

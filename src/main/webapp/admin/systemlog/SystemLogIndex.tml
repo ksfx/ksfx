@@ -1,0 +1,30 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+    <div class="page-header">
+        <h1>System Log</h1>
+    </div>
+
+    <div class="actions">
+        <t:actionlink t:id="clearLogs" t:mixins="confirm">Clear Logs</t:actionlink>
+    </div>
+
+
+
+	<div class="layout-grid-col-holder">
+
+		<div class="layout-grid-col2">
+            <t:form t:id="tagSelector">
+                <t:select t:id="tag" t:model="allPossibleTags" t:value="tag" onchange="this.form.submit();" />
+            </t:form>
+
+            <t:grid t:id="logMessagesGrid" source="logMessages" row="logMessage">
+                <t:parameter name="dateCell">
+                    ${formattedDate}
+                </t:parameter>
+            </t:grid>
+
+		</div>
+
+	</div>
+
+</t:layout>

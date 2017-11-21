@@ -1,0 +1,56 @@
+<div class="navbar navbar-default navbar-static-top" role="navigation"
+     xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <!-- http://stackoverflow.com/questions/21956741/mobile-bootstrap-navbar-not-working -->
+    <!-- http://tapestry.apache.org/javascript-modules.html -->
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <t:if test="firstTimeSeriesId">
+                <t:pagelink t:page="ViewTimeSeries" context="${firstTimeSeriesId}" class="pull-left"><img src="${context:images/ksfx-header.png}" /></t:pagelink>
+                <t:parameter name="else">
+                    <img src="${context:images/ksfx-header.png}" />
+                </t:parameter>
+            </t:if>
+            <t:pagelink t:page="Index" class="navbar-brand">KSFX</t:pagelink>
+        </div>
+        <div class="navbar-collapse collapse" id="navbar-collapse">
+            <ul class="nav navbar-nav">
+                <t:loop source="firstlevelpages" value="page">
+                    <t:if test="!page?.childpages">
+                        <li class="${cssClass}">
+                            <t:pagelink page="prop:page.name">${page.title}</t:pagelink>
+                        </li>
+                        <t:parameter name="else">
+                            <li class="dropdown">
+                                <t:pagelink class="dropdown-toggle" data-toggle="dropdown" page="prop:page.name">
+                                    ${page.title}
+                                    <b class="caret"></b>
+                                </t:pagelink>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <t:pagelink page="prop:page.name">${page.title}</t:pagelink>
+                                    </li>
+                                    <t:loop source="page.childPages" value="page">
+                                        <li>
+                                            <t:pagelink page="prop:page.name">${page.title}</t:pagelink>
+                                        </li>
+                                    </t:loop>
+                                </ul>
+                            </li>
+                        </t:parameter>
+                    </t:if>
+                </t:loop>
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <t:user.userinfo/>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,1 @@
+UPDATE importable_field SET name = 'Observation Time' WHERE name = 'Pricing Time';

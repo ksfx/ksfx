@@ -1,0 +1,69 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Import Data for Time Series</h1>
+    </div>
+
+    <div class="list-group" style="width:50%">
+        <div class="list-group-item">
+            <t:form t:id="uploadForm">
+                <t:errors/>
+                <div class="form-group">
+                         <t:label for="dataImportFile">File</t:label>
+                        <input t:type="upload" t:id="dataImportFile" validate="required" />
+                </div>
+                <div class="form-group">
+                         <t:label for="csvSeparator">Separator *</t:label>
+                        <t:textfield t:id="csvSeparator" validate="required" />
+                </div>
+                <div class="form-group">
+                         <t:label for="csvQuoteChar">Quote Char</t:label>
+                        <t:textfield t:id="csvQuoteChar" />
+                </div>
+                <div class="form-group">
+                         <t:label for="dateFormat" alt="Default: dd.MM.yyyy" title="dd.MM.yyyy">Date Format</t:label>
+                        <t:textfield t:id="dateFormat" />
+                </div>
+                <button type="submit" class="button button-cancel">Import Data</button>
+            </t:form>
+        </div>
+    </div>
+
+        <t:if test="importLog">
+             <h3>Results:</h3>
+             <br class="clear"/>
+             <t:outputraw value="importLog" />
+        </t:if>
+
+        <div id="import-holder">
+        	<div class="import-lines">
+        		<t:if test="importedLines">
+					<t:form t:id="importForm">
+		                <t:errors />
+						<table cellspacing="0">
+						    <tr>
+							    <th class="t-ignore-line">Ignore Line</th>
+							    <t:loop source="dropdowns" formState="ITERATION">
+							        <th>
+								   		<select t:id="importableField" t:type="select" t:model="importableFields"
+								            t:encoder="importableFields" />
+							        </th>
+							    </t:loop>
+						    </tr>
+
+						    <t:loop source="displayLines" value="currentRow" formState="ITERATION">
+						        <tr>
+						            <td>
+						            	<t:checkbox t:value="ignoreLine" />
+						            </td>
+						           <t:outputRaw value="currentRowHtml" />
+						        </tr>
+						    </t:loop>
+						</table>
+						<div class="form-buttons">
+							<button type="submit">Import Data</button>
+						</div>
+					</t:form>
+				</t:if>
+        	</div>
+        </div>
+</t:layout>

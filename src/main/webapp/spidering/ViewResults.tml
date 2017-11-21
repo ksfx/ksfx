@@ -1,0 +1,31 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Results for: ${spideringConfiguration.name}</h1>
+    </div>
+
+    <ul class="nav nav-tabs">
+        <li role="presentation"><t:pagelink page="spidering/viewspiderings" context="spideringConfiguration.id">Spiderings</t:pagelink></li>
+        <li role="presentation" class="active"><t:pagelink page="spidering/viewresults" context="spideringConfiguration.id">Results</t:pagelink></li>
+    </ul>
+
+    <div style="float:right">
+    <t:form>
+    <t:checkbox t:id="filterInvalidResults" onclick="this.form.submit();"/> Filter Invalid
+    </t:form>
+    </div>
+
+    <t:grid source="allResultsForSpideringConfiguration" row="result" exclude="resultHash" add="data">
+        <t:parameter name="firstFoundCell">
+            ${result.firstFound}
+        </t:parameter>
+        <t:parameter name="lastFoundCell">
+            ${result.lastFound}
+        </t:parameter>
+        <t:parameter name="dataCell">
+            <t:outputRaw value="${getFormattedData(result)}"></t:outputRaw>
+        </t:parameter>
+    </t:grid>
+
+    <t:actionlink t:id="clearResults" t:mixins="confirm" class="glyphicon glyphicon-trash" title="Clear results" alt="Clear results"></t:actionlink>
+
+</t:layout>

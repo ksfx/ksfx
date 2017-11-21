@@ -1,0 +1,33 @@
+<t:emptylayout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+	<div style="float:right;">
+	
+	</div>
+	<div style="padding-top:20px">
+	    <h3>${observation.scalarValue}</h3> (${observation.observationTime})
+	</div>
+	<div style="padding-top:20px">
+	    Source Id: ${observation.sourceId}
+	</div>
+	<div style="padding-top:20px">
+	    ${observation.getComplexValueFragmentForName('mainText')}
+	</div>
+	<div style="padding-top:100px">
+		<table>
+	    	<t:loop source="observation.metaData.keySet()" value="currentMetaDataKey">
+	    		<tr>
+	    			<td>${currentMetaDataKey}</td>
+	    			<td>${currentMetaDataValue}</td>
+	    		</tr>
+	    	</t:loop>
+		</table>
+	</div>
+	<div style="padding-top:20px">
+	    <t:pagelink page="observation/genericobservationmanager" context="editingContextParameters">Edit</t:pagelink>
+	</div>
+	<div style="padding-top:20px">
+		<t:form t:id="sendToActivityForm" autofocus="false">
+			<t:select t:id="sendToActivity" t:value="sendToActivity" model="allActivities" encoder="allActivities" />
+			<button type="submit">Send observation to activity</button>
+		</t:form>
+	</div>
+</t:emptylayout>

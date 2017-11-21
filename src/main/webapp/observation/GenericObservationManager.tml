@@ -1,0 +1,36 @@
+<t:emptylayout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+        
+    <div class="list-group" style="width:100%">
+        <div class="list-group-item">
+			<t:form class="box-holder" t:id="observationManagerForm">
+			    <div>
+			        <div class="form-group">
+                    	<t:label for="scalarValue">Scalar Value</t:label>
+			        	<t:textfield t:id="scalarValue" t:value="observation.scalarValue"  />
+			        </div>
+			        <p><b>Complex Value</b></p>
+		            <t:loop formState="iteration" source="observation.complexValue.keySet()" value="complexValueKeyLoop">
+		            	<div class="form-group">
+		                	<t:textfield t:id="complexValueKey" t:value="complexValueKey" placeholder="Key" />
+		                	<t:textfield t:id="complexValueValue" t:value="complexValueValue" placeholder="Value" />
+		                	<t:actionlink t:id="deleteComplexValueFragment">Del</t:actionlink>
+		                </div>
+		            </t:loop>
+		            <t:actionlink t:id="addComplexValueFragment" class="glyphicon glyphicon-plus" title="Add complex value fragment" alt="Add complex value fragment"></t:actionlink>
+			        <p><b>Meta Data</b></p>
+		            <t:loop formState="iteration" source="observation.metaData.keySet()" value="metaDataKeyLoop">
+		            	<div class="form-group">
+		                	<t:textfield t:id="metaDataKey" t:value="metaDataKey" placeholder="Key" />
+		                	<t:textfield t:id="metaDataValue" t:value="metaDataValue" placeholder="Value" />
+		                	<t:actionlink t:id="deleteMetaDataFragment">Del</t:actionlink>
+		                </div>
+		            </t:loop>
+		            <t:actionlink t:id="addMetaDataFragment" class="glyphicon glyphicon-plus" title="Add meta data fragment" alt="Add meta data fragment"></t:actionlink>
+			    </div>
+			    <div class="box-foot form-foot">
+                    <button type="submit">Save</button>
+                </div>
+			</t:form>
+		</div>
+	</div>
+</t:emptylayout>

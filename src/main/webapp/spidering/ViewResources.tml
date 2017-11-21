@@ -1,0 +1,16 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Resources for: ${spidering.spideringConfiguration.name}</h1>
+    </div>
+
+    <t:grid source="allResourcesForSpidering" row="resource" exclude="content" add="parent,view">
+        <t:parameter name="parentCell">
+            ${resource.previousResource?.id}
+        </t:parameter>
+        <t:parameter name="viewCell">
+            <t:actionlink t:id="viewResource" t:context="resource.id" target="_blank" class="glyphicon glyphicon-eye-open"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+    <!-- <t:outputRaw value="${getFormattedData(result)}"></t:outputRaw> -->
+</t:layout>

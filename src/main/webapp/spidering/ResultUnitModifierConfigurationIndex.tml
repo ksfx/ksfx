@@ -1,0 +1,19 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Result Unit Modifiers</h1>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="spidering/manageresultunitmodifierconfiguration" class="glyphicon glyphicon-plus" title="Add Result Unit Modifier Configuration" alt="Add Result Unit Modifier Configuration"></t:pagelink>
+    </div>
+
+    <t:grid source="allResultUnitModifierConfigurations" row="resultUnitModifierConfiguration" add="edit,delete" exclude="id,groovyCode">
+        <t:parameter name="editCell">
+            <t:pagelink page="spidering/manageresultunitmodifierconfiguration" context="resultUnitModifierConfiguration.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:context="resultUnitModifierConfiguration.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+</t:layout>

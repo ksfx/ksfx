@@ -1,0 +1,42 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+    <div class="page-header">
+        <h1>Generic Data Store</h1>
+    </div>
+
+    <ul class="nav nav-tabs">
+        <li role="presentation" class="${persistentTabClass}"><t:actionlink t:id="showPersistentData">Persistent Data</t:actionlink></li>
+        <li role="presentation" class="${nonPersistentTabClass}"><t:actionlink t:id="showNonPersistentData">Non Persistent Data</t:actionlink></li>
+    </ul>
+
+	<div class="layout-grid-col-holder">
+
+		<div class="layout-grid-col2">
+<t:if test="showNonPersistentData">
+    <t:grid source="allNonPersistentGenericDataStoreDatas" row="nonPersisentStoreKey" exclude="empty" add="key,content,delete">
+                <t:parameter name="keyCell">
+                ${nonPersisentStoreKey}
+        </t:parameter>
+        <t:parameter name="contentCell">
+            ${getNonPersistentContent(nonPersisentStoreKey)}
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="deleteNonPersistentGenericDataStore" t:mixins="confirm" t:context="nonPersisentStoreKey" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+    <t:actionlink t:id="clearNonPersistentData" class="glyphicon glyphicon-trash" title="Clear non persistent data" alt="Clear non persistent data"></t:actionlink>
+    <t:parameter name="else">
+        <t:grid source="allPersistentGenericDataStoreDatas" row="genericDataStore" add="delete">
+            <t:parameter name="deleteCell">
+                <t:actionlink t:id="deletePersistentGenericDataStore" t:context="genericDataStore.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+            </t:parameter>
+        </t:grid>
+        <t:actionlink t:id="clearPersistentData" t:mixins="confirm" class="glyphicon glyphicon-trash" title="Clear persistent data" alt="Clear persistent data"></t:actionlink>
+    </t:parameter>
+</t:if>
+
+		</div>
+
+	</div>
+
+</t:layout>

@@ -1,0 +1,8 @@
+<t:container xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    Number of slots: ${executionSlots}
+    <br /><br />
+    Running executions:<br />
+    <t:loop source="executionInformation" value="asset">
+        ${asset.name}<br />
+    </t:loop>
+</t:container>

@@ -1,0 +1,278 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Manage Note</h1>
+    </div>
+
+    <div class="list-group" style="width:100%">
+        <div class="list-group-item">
+            <t:form class="box-holder" t:id="noteForm">
+                <t:errors />
+                <div class="form-group">
+                    <t:label for="name">Name</t:label>
+                    <t:textfield t:id="name" t:value="note.title" t:validate="required"  style="width:50%"/>
+                </div>
+                <div class="form-group">
+                    <t:label for="noteCategory">Category</t:label>
+                    <t:select t:id="noteCategory" t:value="note.noteCategory" model="allnoteCategories" encoder="allnoteCategories"  style="width:50%"/>
+                </div>
+                <div class="form-group">
+                    <t:label for="content">Content</t:label>
+                    <t:textarea t:id="content" style="width:800px;height:600px" t:value="note.content" />
+                </div>
+                <div class="box-foot form-foot">
+                    <button type="submit">Save</button>
+                    <t:pagelink page="admin/note/noteIndex" class="button button-cancel">Cancel</t:pagelink>
+                </div>
+            </t:form>
+            
+            <t:if test="note.id">
+            	<hr />
+                <h4>Attached Files</h4>
+                <div id="noteUploadFormDivLink" style="float:right">
+                	<a onclick="$('#noteUploadFormDiv').toggle();" class="glyphicon glyphicon-plus" title="Add Note Attachment"></a>
+                </div>
+            	<t:grid source="note.noteFiles" row="noteFile" add="delete" exclude="contentType,id">
+            		<t:parameter name="fileNameCell">
+            			<t:actionlink t:id="downloadNoteFile" t:context="noteFile.id">${noteFile.fileName}</t:actionlink>
+            		</t:parameter>
+                    <t:parameter name="commentCell">
+                     <div id="notefilecommentabb${noteFile.id}">
+                     <pre style="border:0;background-color:transparent;white-space:pre-wrap;">
+                     ${getAbbreviatedNoteFileComment()}
+                     </pre>
+                     </div>
+                     <t:if test="commentIsAbbreviated">
+                     <div id="notefilecomment${noteFile.id}" style="display:none">
+                     <pre style="border:0;background-color:transparent;white-space:pre-wrap;">
+                     ${noteFile.comment}
+                     </pre>
+
+                     </div>
+                                                               <span id='opennotefilecomment${noteFile.id}'> <a href="javascript:void(0);" class='glyphicon glyphicon-plus' onclick="document.getElementById('notefilecomment${noteFile.id}').style.display='block';document.getElementById('opennotefilecomment${noteFile.id}').style.display='none';document.getElementById('notefilecommentabb${noteFile.id}').style.display='none';document.getElementById('closenotefilecomment${noteFile.id}').style.display='inline';"></a></span>
+                     <span id='closenotefilecomment${noteFile.id}' style='display:none'> <a href="javascript:void(0);" class='glyphicon glyphicon-minus' onclick="document.getElementById('notefilecomment${noteFile.id}').style.display='none';document.getElementById('opennotefilecomment${noteFile.id}').style.display='inline';document.getElementById('notefilecommentabb${noteFile.id}').style.display='block';document.getElementById('closenotefilecomment${noteFile.id}').style.display='none';"></a></span>
+
+                     </t:if>
+                    
+                    </t:parameter>
+            		<t:parameter name="deleteCell">
+            			<t:actionlink t:id="deleteNoteFile" t:context="noteFile.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+            		</t:parameter>            		
+            	</t:grid>
+            	<div id="noteUploadFormDiv" style="display:none">
+	            	<t:form t:id="noteUploadForm">
+	            		<div class="form-group">
+		                    <t:label for="uploadedFile">Attach New File</t:label>
+		                    <input t:type="upload" t:id="uploadedFile" t:value="uploadedFile" validate="required" style="width:50%"/>
+	                	</div>
+	                	<div class="form-group">
+                    		<t:label for="noteFileComment">Comment</t:label>
+                    		<t:textarea t:id="noteFileComment" style="width:400px;height:300px" t:value="noteFileComment" />
+                		</div>
+	            		<div class="box-foot form-foot">
+							<button type="submit">Upload</button>
+	                	</div>
+	            	</t:form>
+	            </div>
+	            
+            	<hr />
+                <h4>Related Notes</h4>
+                <div id="noteNoteFormDivLink" style="float:right">
+                	<a onclick="$('#noteNoteFormDiv').toggle();" class="glyphicon glyphicon-plus" title="Add Related Note"></a>
+                </div>
+            	<t:grid source="note.noteNotes" row="noteNote" add="name,delete" exclude="id">
+            		<t:parameter name="nameCell">
+            			<t:pagelink page="admin/note/managenote" t:context="noteNote.relatedNote.id">${noteNote.relatedNote.title}</t:pagelink>
+            		</t:parameter>
+            		<t:parameter name="deleteCell">
+            			<t:actionlink t:id="deleteNoteNote" t:context="noteNote.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+            		</t:parameter>            		
+            	</t:grid>
+            	<div id="noteNoteFormDiv" style="display:none">
+	            	<t:form t:id="noteNoteForm">
+	            		<div class="form-group">
+		                    <t:label for="relatedNoteId">Related Note ID</t:label>
+		                    <t:textfield t:id="relatedNoteId" t:value="relatedNoteId" style="width:50%"/>
+	                	</div>
+	            		<div class="box-foot form-foot">
+							<button type="submit">Add Related Note</button>
+	                	</div>
+	            	</t:form>
+	            </div>
+            
+            	<hr />
+            	<h4>Related Activities</h4>
+     			<div id="noteActivityFormDivLink" style="float:right">
+                	<a onclick="$('#noteActivityFormDiv').toggle();" class="glyphicon glyphicon-plus" title="Add Activity"></a>
+                </div>
+        		<t:grid source="note.noteActivities" row="noteActivity" add="name,delete" reorder="name,mainNote,delete" exclude="id">
+        			<t:parameter name="nameCell">
+        				<t:if test="noteActivity.activity">
+        					<t:pagelink page="activity/manageactivity" t:context="noteActivity.activity.id">${noteActivity.activity.name}</t:pagelink>
+        				</t:if>
+        			</t:parameter>
+        			<t:parameter name="mainNoteCell">
+        				<t:actionlink t:id="toggleMainNoteActivity" t:context="noteActivity.id" class="${getMainNoteActivityClass()}"></t:actionlink>
+        			</t:parameter>
+        			<t:parameter name="deleteCell">
+        				<t:actionlink t:id="deleteNoteActivity" t:context="noteActivity.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        			</t:parameter>
+        		</t:grid>
+                <div id="noteActivityFormDiv" style="display:none">
+	        		<t:form t:id="noteActivityForm">
+						<div class="form-group">
+		                    <t:label for="activityId">Activity ID</t:label>
+		                    <t:textfield t:id="activityId" t:value="activityId"  style="width:50%"/>
+	                	</div>
+						<div class="form-group">
+		                    <t:label for="activityMainNote">Main Note</t:label>
+		                    <t:checkbox t:id="activityMainNote" t:value="activityMainNote" title="Main Note" />
+	                	</div>
+	                    <div class="box-foot form-foot">
+							<button type="submit">Add Activity Relation</button>
+	                	</div>
+	            	</t:form>
+            	</div>
+        		
+        		<hr />
+            	<h4>Related Time Series</h4>
+        		<div id="noteTimeSeriesFormDivLink" style="float:right">
+                	<a onclick="$('#noteTimeSeriesFormDiv').toggle();" class="glyphicon glyphicon-plus" title="Add Time Series"></a>
+                </div>
+        		<t:grid source="note.noteTimeSeries" row="noteTimeSeries" add="name,delete" reorder="name,mainNote,delete" exclude="id">
+        			<t:parameter name="nameCell">
+        				<t:if test="noteTimeSeries.timeSeries">
+        					<t:pagelink page="admin/timeseries/managetimeseries" t:context="noteTimeSeries.timeSeries.id">${noteTimeSeries.timeSeries.name}</t:pagelink>
+        				</t:if>
+        			</t:parameter>
+        			<t:parameter name="mainNoteCell">
+        				<t:actionlink t:id="toggleMainNoteTimeSeries" t:context="noteTimeSeries.id" class="${getMainNoteTimeSeriesClass()}"></t:actionlink>
+        			</t:parameter>
+        			<t:parameter name="deleteCell">
+        				<t:actionlink t:id="deleteNoteTimeSeries" t:context="noteTimeSeries.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        			</t:parameter>
+        		</t:grid>
+        		<div id="noteTimeSeriesFormDiv" style="display:none">
+	        		<t:form t:id="noteTimeSeriesForm">
+						<div class="form-group">
+		                    <t:label for="timeSeriesId">Time Series ID</t:label>
+		                    <t:textfield t:id="timeSeriesId" t:value="timeSeriesId" style="width:50%"/>
+	                	</div>
+						<div class="form-group">
+		                    <t:label for="timeSeriesMainNote">Main Note</t:label>
+		                    <t:checkbox t:id="timeSeriesMainNote" t:value="timeSeriesMainNote" title="Main Note" />
+	                	</div>
+	                	<div class="box-foot form-foot">
+							<button type="submit">Add Time Series Relation</button>
+	                	</div>
+	            	</t:form>
+            	</div>
+        		
+        		<hr />
+            	<h4>Related Spidering Configurations</h4>
+        		<div id="noteSpideringConfigurationFormDivLink" style="float:right">
+                	<a onclick="$('#noteSpideringConfigurationFormDiv').toggle();" class="glyphicon glyphicon-plus" title="Add Spidering Configuration"></a>
+                </div>
+            	<t:grid source="note.noteSpideringConfigurations" row="noteSpideringConfiguration" add="name,delete" reorder="name,mainNote,delete" exclude="id">
+        			<t:parameter name="nameCell">
+        				<t:if test="noteSpideringConfiguration.spideringConfiguration">
+        					<t:pagelink page="spidering/managespideringconfiguration" t:context="noteSpideringConfiguration.spideringConfiguration.id">${noteSpideringConfiguration.spideringConfiguration.name}</t:pagelink>
+        				</t:if>
+        			</t:parameter>
+        			<t:parameter name="mainNoteCell">
+        				<t:actionlink t:id="toggleMainNoteSpideringConfiguration" t:context="noteSpideringConfiguration.id" class="${getMainNoteSpideringConfigurationClass()}"></t:actionlink>
+        			</t:parameter>
+        			<t:parameter name="deleteCell">
+        				<t:actionlink t:id="deleteNoteSpideringConfiguration" t:context="noteSpideringConfiguration.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        			</t:parameter>            	
+            	</t:grid>
+        		<div id="noteSpideringConfigurationFormDiv" style="display:none">
+	        		<t:form t:id="noteSpideringConfigurationForm">
+						<div class="form-group">
+		                    <t:label for="spideringConfigurationId">Spidering Configuration ID</t:label>
+		                    <t:textfield t:id="spideringConfigurationId" t:value="spideringConfigurationId"  style="width:50%"/>
+	                	</div>
+						<div class="form-group">
+		                    <t:label for="spideringConfigurationMainNote">Main Note</t:label>
+		                    <t:checkbox t:id="spideringConfigurationMainNote" t:value="spideringConfigurationMainNote" title="Main Note" />
+	                	</div>
+	                	<div class="box-foot form-foot">
+							<button type="submit">Add Spidering Configuration Relation</button>
+	                	</div>
+	            	</t:form>
+	            </div>
+            	
+            	<hr />
+            	<h4>Related Publishing Configurations</h4>
+        		<div id="notePublishingConfigurationFormDivLink" style="float:right">
+                	<a onclick="$('#notePublishingConfigurationFormDiv').toggle();" class="glyphicon glyphicon-plus" title="Add Publishing Configuration"></a>
+                </div>
+            	<t:grid source="note.notePublishingConfigurations" row="notePublishingConfiguration" add="name,delete" reorder="name,mainNote,delete" exclude="id">
+        			<t:parameter name="nameCell">
+        			    <t:if test="notePublishingConfiguration.publishingConfiguration">
+        					<t:pagelink page="publishing/managepublishingconfiguration" t:context="notePublishingConfiguration.publishingConfiguration.id">${notePublishingConfiguration.publishingConfiguration.name}</t:pagelink>
+        				</t:if>
+        			</t:parameter>
+        			<t:parameter name="mainNoteCell">
+        				<t:actionlink t:id="toggleMainNotePublishingConfiguration" t:context="notePublishingConfiguration.id" class="${getMainNotePublishingConfigurationClass()}"></t:actionlink>
+        			</t:parameter>
+        			<t:parameter name="deleteCell">
+        				<t:actionlink t:id="deleteNotePublishingConfiguration" t:context="notePublishingConfiguration.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        			</t:parameter>            	
+            	</t:grid>
+        		<div id="notePublishingConfigurationFormDiv" style="display:none">
+	            	<t:form t:id="notePublishingConfigurationForm">
+						<div class="form-group">
+		                    <t:label for="spideringConfigurationId">Publishing Configuration ID</t:label>
+		                    <t:textfield t:id="publishingConfigurationId" t:value="publishingConfigurationId"  style="width:50%"/>
+	                	</div>
+						<div class="form-group">
+		                    <t:label for="publishingConfigurationMainNote">Main Note</t:label>
+		                    <t:checkbox t:id="publishingConfigurationMainNote" t:value="publishingConfigurationMainNote" title="Main Note" />
+	                	</div>
+	                	<div class="box-foot form-foot">
+							<button type="submit">Add Publishing Configuration Relation</button>
+	                	</div>
+	            	</t:form>
+	            </div>
+	            
+            	<hr />
+            	<h4>Related Resource Loader Plugins</h4>
+        		<div id="noteResourceLoaderPluginConfigurationFormDivLink" style="float:right">
+                	<a onclick="$('#noteResourceLoaderPluginConfigurationFormDiv').toggle();" class="glyphicon glyphicon-plus" title="Add Resource Loader Configuration"></a>
+                </div>
+            	<t:grid source="note.noteResourceLoaderPluginConfigurations" row="noteResourceLoaderPluginConfiguration" add="name,delete" reorder="name,mainNote,delete" exclude="id">
+        			<t:parameter name="nameCell">
+        			    <t:if test="noteResourceLoaderPluginConfiguration.resourceLoaderPluginConfiguration">
+        					<t:pagelink page="spidering/manageresourceloaderpluginconfiguration" t:context="noteResourceLoaderPluginConfiguration.resourceLoaderPluginConfiguration.id">${noteResourceLoaderPluginConfiguration.resourceLoaderPluginConfiguration.name}</t:pagelink>
+        				</t:if>
+        			</t:parameter>
+        			<t:parameter name="mainNoteCell">
+        				<t:actionlink t:id="toggleMainNoteResourceLoaderPluginConfiguration" t:context="noteResourceLoaderPluginConfiguration.id" class="${getMainNoteResourceLoaderPluginConfigurationClass()}"></t:actionlink>
+        			</t:parameter>
+        			<t:parameter name="deleteCell">
+        				<t:actionlink t:id="deleteNoteResourceLoaderPluginConfiguration" t:context="noteResourceLoaderPluginConfiguration.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        			</t:parameter>            	
+            	</t:grid>
+        		<div id="noteResourceLoaderPluginConfigurationFormDiv" style="display:none">
+	            	<t:form t:id="noteResourceLoaderPluginConfigurationForm">
+						<div class="form-group">
+		                    <t:label for="resourceLoaderPluginConfigurationId">Resource Loader Configuration ID</t:label>
+		                    <t:textfield t:id="resourceLoaderPluginConfigurationId" t:value="resourceLoaderPluginConfigurationId"  style="width:50%"/>
+	                	</div>
+						<div class="form-group">
+		                    <t:label for="resourceLoaderPluginConfigurationMainNote">Main Note</t:label>
+		                    <t:checkbox t:id="resourceLoaderPluginConfigurationMainNote" t:value="resourceLoaderPluginConfigurationMainNote" title="Main Note" />
+	                	</div>
+	                	<div class="box-foot form-foot">
+							<button type="submit">Add Resource Loader Configuration Relation</button>
+	                	</div>
+	            	</t:form>
+	            </div>
+            	
+            	<t:parameter name="else">
+            		Save the note to upload files and add relations
+            	</t:parameter>
+            </t:if>
+        </div>
+    </div>
+</t:layout>

@@ -1,0 +1,40 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+    <div class="page-header">
+        <h1>Notes</h1>
+    </div>
+    
+    <div style="float:right">
+        <t:form id="selectCategory"><t:select style="width:150px;display:inline" onchange="this.form.submit()" t:id="noteCategory" t:value="noteCategory" model="allNoteCategories" encoder="allNoteCategories" />&nbsp;&nbsp;<t:pagelink page="admin/note/noteCategoryIndex" class="glyphicon glyphicon-pencil" alt="Edit Note Categories" title="Edit Note Categories"></t:pagelink>
+</t:form>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="admin/note/managenote" class="glyphicon glyphicon-plus" alt="Add Note" title="Add Note"></t:pagelink>
+    </div>
+    
+	<div>&nbsp;</div>
+	<div class="layout-grid-col-holder">
+
+		<div class="layout-grid-col2">
+
+            <t:grid source="allNotes" row="note" add="edit,delete" exclude="content">
+            	<t:parameter name="createdCell">
+            		${note.created}
+            	</t:parameter>
+            	<t:parameter name="lastUpdatedCell">
+            		${note.lastUpdated}
+            	</t:parameter>
+                <t:parameter name="editCell">
+                    <t:pagelink page="admin/note/managenote" context="note.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+                </t:parameter>
+                <t:parameter name="deleteCell">
+                    <t:actionlink t:id="delete" t:mixins="confirm" t:context="note.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+                </t:parameter>
+            </t:grid>
+
+		</div>
+
+	</div>
+
+</t:layout>

@@ -1,0 +1,22 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Resource Loader Plugins</h1>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="spidering/manageresourceLoaderPluginConfiguration" class="glyphicon glyphicon-plus" title="Add Resource Loader Plugin" alt="Add Resource Loader Plugin"></t:pagelink>
+    </div>
+
+    <t:grid source="allResourceLoaderPluginConfigurations" row="resourceLoaderPluginConfiguration" add="info,edit,delete" exclude="id,groovyCode">
+        <t:parameter name="infoCell">
+        	<a href="#" onclick="openIframeModal('${getIframeInfoLink()}');" class="glyphicon glyphicon-info-sign"></a>
+        </t:parameter>
+        <t:parameter name="editCell">
+            <t:pagelink page="spidering/manageresourceLoaderPluginConfiguration" context="resourceLoaderPluginConfiguration.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:context="resourceLoaderPluginConfiguration.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+</t:layout>

@@ -1,0 +1,52 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+    <div class="page-header">
+        <h1>Scheduler</h1>
+    </div>
+
+    <h2>Jobs</h2>
+	<div class="layout-grid-col-holder">
+
+		<div class="layout-grid-col2">
+
+            <t:grid source="currentSchedules" row="job" exclude="empty" add="name,nextFireTime,pause,delete">
+                <t:parameter name="nameCell">
+                    ${job}
+                </t:parameter>
+                <t:parameter name="nextFireTimeCell">
+                    ${nextFireTime}
+                </t:parameter>
+                <t:parameter name="pauseCell">
+                    <t:if test="paused">
+                        <t:actionlink t:id="resumeJob" context="${job}" class="glyphicon glyphicon-play" title="Resume Job" alt="Resume Job"></t:actionlink>
+                        <t:parameter name="else">
+                            <t:actionlink t:id="pauseJob" context="${job}" class="glyphicon glyphicon-pause" title="Pause Job" alt="Pause Job"></t:actionlink>
+                        </t:parameter>
+                    </t:if>
+
+                </t:parameter>
+                <t:parameter name="deleteCell">
+                    <t:actionlink t:id="deleteJob" t:mixins="confirm" context="${job}" class="glyphicon glyphicon-trash" title="Delete Job" alt="Delete Job"></t:actionlink>
+                </t:parameter>
+            </t:grid>
+
+		</div>
+
+	</div>
+
+    <h2>Triggers</h2>
+    <div class="layout-grid-col-holder">
+
+        <div class="layout-grid-col2">
+
+            <t:grid source="currentTriggers" row="trigger" exclude="empty" add="name">
+                <t:parameter name="nameCell">
+                    ${trigger}
+                </t:parameter>
+            </t:grid>
+
+        </div>
+
+    </div>
+
+</t:layout>

@@ -1,0 +1,19 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Result Verifier Configurations</h1>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="spidering/manageresultverifierconfiguration" class="glyphicon glyphicon-plus" title="Add Result Verifier Configuration" alt="Add Result Verifier Configuration"></t:pagelink>
+    </div>
+
+    <t:grid source="allResultVerifierConfigurations" row="resultVerifierConfiguration" add="edit,delete" exclude="id">
+        <t:parameter name="editCell">
+            <t:pagelink page="spidering/manageresultverifierconfiguration" context="resultVerifierConfiguration.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:mixins="confirm" t:context="resultVerifierConfiguration.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+</t:layout>

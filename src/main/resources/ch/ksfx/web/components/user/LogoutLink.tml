@@ -1,0 +1,5 @@
+<t:container xmlns:t="http://tapestry.apache.org/schema/tapestry_5_0_0.xsd">
+	<t:actionlink t:id="logout">
+        <span class="glyphicon glyphicon-log-out"></span>
+	</t:actionlink>
+</t:container>

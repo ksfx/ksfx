@@ -1,0 +1,11 @@
+<t:container xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+	<t:unless test="empty">
+		<div class="feedbacks">
+			<div t:type="loop" t:source="messages" t:value="message"
+				class="feedback ${cssClass}">
+				<span class="feedback-title">${message.message}</span>
+				${message.comment}
+			</div>
+		</div>
+	</t:unless>
+</t:container>

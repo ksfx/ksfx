@@ -1,0 +1,87 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Activities Waiting for Approval</h1>
+    </div>
+
+    <ul class="nav nav-tabs">
+        <li role="presentation" class="active"><t:pagelink page="activity/viewUnapprovedActivityInstances">Activity Instances</t:pagelink></li>
+    </ul>
+
+    <t:grid source="allActivityInstancesForActivity" row="activityInstance" add="name,approval,delete" exclude="id,started,finished,approved">
+        <t:parameter name="nameCell">
+            ${activityInstance.activity.name}
+        </t:parameter>
+        <t:parameter name="approvalCell">
+        	<t:if test="!isActivityInstanceActiveActivityInstance">
+                <t:actionlink t:id="approveActivityInstance" t:context="activityInstance.id" class="glyphicon glyphicon-forward" title="Approve Activity Instance" alt="Approve Activity Instance"></t:actionlink>
+            </t:if>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:context="activityInstance.id"  class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+    <t:actionlink t:id="clearActivityInstances" class="glyphicon glyphicon-trash" title="Clear activity instances" alt="Clear activity instances"></t:actionlink>
+
+    <t:if test="hasActiveActivityInstance">
+        <div id="activeActivity" data-target="activeActivityId">
+
+        </div>
+    </t:if>
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <t:if test="hasActiveActivityInstance">
+	        <div class="modal-dialog">
+	            <div class="modal-content">
+	                <div class="modal-header">
+	                    <t:actionlink t:id="closeParameterWindow" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></t:actionlink>
+	                    <h4 class="modal-title" id="myModalLabel">Run with Parameters</h4>
+	                </div>
+	                    <t:form t:id="approveActivityInstanceForm" context="activeActivityInstanceId">
+	                    <div class="modal-body">
+	                       	<t:if test="booleanApproval">
+					        	<t:actionlink t:id="booleanYes" class="glyphicon glyphicon-hand-right" context="activeActivityInstanceId" title="Yes Boolean" alt="Yes Boolean"></t:actionlink>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					        	<t:actionlink t:id="booleanNo" class="glyphicon glyphicon-thumbs-down" context="activeActivityInstanceId" title="No Boolean" alt="No Boolean"></t:actionlink>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					        	<t:actionlink t:id="booleanUnknown" class="glyphicon glyphicon-question-sign" context="activeActivityInstanceId" title="Unknown Boolean" alt="Unknown Boolean"></t:actionlink>
+	        				</t:if>
+				            <t:if test="tristateApproval">
+					        	<t:actionlink t:id="tristateYes" class="glyphicon glyphicon-hand-right" context="activeActivityInstanceId" title="Yes Tristate" alt="Yes Tristate"></t:actionlink>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					        	<t:actionlink t:id="tristateNeutral" class="glyphicon glyphicon-minus-sign" context="activeActivityInstanceId" title="Neutral Tristate" alt="Neutral Tristate"></t:actionlink>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					        	<t:actionlink t:id="tristateNo" class="glyphicon glyphicon-thumbs-down" context="activeActivityInstanceId" title="No Tristate" alt="No Tristate"></t:actionlink>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					        	<t:actionlink t:id="tristateUnknown" class="glyphicon glyphicon-question-sign" context="activeActivityInstanceId" title="Unknown Tristate" alt="Unknown Tristate"></t:actionlink>
+				            </t:if>
+				            <t:if test="stringApproval">
+								<t:textfield t:id="approvalString" t:value="approvalString" placeholder="Approval String" />
+				            </t:if>
+				            <t:if test="mapApproval">
+					            <div style="float:right;">
+					                <t:actionlink t:id="addActivityInstanceParameter" class="glyphicon glyphicon-plus" context="activeActivityInstanceId" title="Add parameter" alt="Add parameter"></t:actionlink>
+					            </div>
+					            <div style="padding-top:20px">
+					                <t:loop index="parameterIndex" formState="iteration" source="approvalActivityInstanceParameters" value="activityInstanceParameter">
+					                    <t:textfield t:id="activityInstanceParameterdataKey" t:value="activityInstanceParameter.dataKey" placeholder="Key" />
+					                    <t:textfield t:id="activityInstanceParameterdataValue" t:value="activityInstanceParameter.dataValue" placeholder="Value" />
+					                </t:loop>
+					            </div>
+				            </t:if>
+				            <table>
+					            <t:loop source="activeActivityInstance.activityInstanceParameters" value="activityInstanceParameter">
+			                		<tr>
+			                			<td><b>${activityInstanceParameter.dataKey}</b></td>
+			                			<td>${activityInstanceParameter.dataValue}</td>
+			                		</tr>
+			                    </t:loop>
+		                    </table>
+	                    </div>
+	                    <div class="modal-footer">
+	                        <t:actionlink t:id="cancelParameterWindow" class="btn btn-default">Close</t:actionlink>
+	                        <button type="submit" class="btn btn-primary">Run</button>
+	                    </div>
+	                </t:form>
+	            </div>
+	        </div>
+		</t:if>
+    </div>
+
+</t:layout>

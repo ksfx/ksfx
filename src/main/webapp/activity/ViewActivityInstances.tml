@@ -1,0 +1,42 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Activities for: ${activity.name}</h1>
+    </div>
+
+    <!--
+    //TODO start new instance here...
+    <div class="actions">
+        <t:pagelink page="spidering/managespideringconfiguration" class="glyphicon glyphicon-plus" title="Add Spidering Configuration" alt="Add Spidering Configuration"></t:pagelink>
+    </div>
+    -->
+    <ul class="nav nav-tabs">
+        <li role="presentation" class="active"><t:pagelink page="activity/viewActivityInstances" context="activity.id">Activity Instances</t:pagelink></li>
+    </ul>
+
+    <t:grid source="allActivityInstancesForActivity" row="activityInstance" add="resultData,delete" reorder="id,started,finished,approved,resultData,console,delete">
+        <t:parameter name="startedCell">
+            ${activityInstance.started}
+        </t:parameter>
+        <t:parameter name="finishedCell">
+            ${activityInstance.finished}
+            <t:if test="activityInstanceRunning">
+                <i class="fa fa-spinner fa-pulse"></i>&nbsp;&nbsp;&nbsp;&nbsp;<t:actionlink t:id="terminateActivityInstance" t:context="activityInstance.id" class="glyphicon glyphicon-remove-sign" title="Terminate activity" alt="Terminate activity"></t:actionlink>
+            </t:if>
+        </t:parameter>
+        <t:parameter name="resultDataCell">
+            <t:loop source="activityInstance.activityInstancePersistentDatas" value="activityInstancePersistentData">
+                ${activityInstancePersistentData.dataKey}: ${activityInstancePersistentData.dataValue}<br />
+            </t:loop>
+        </t:parameter>
+        <t:parameter name="consoleCell">
+      		<a href="#" onclick="openIframeModal('${getIframeConsoleLink()}');" class="glyphicon glyphicon-console"></a>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:context="activityInstance.id"  class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+    <t:actionlink t:id="clearActivityInstances" class="glyphicon glyphicon-trash" title="Clear activity instances" alt="Clear activity instances"></t:actionlink>
+
+
+</t:layout>

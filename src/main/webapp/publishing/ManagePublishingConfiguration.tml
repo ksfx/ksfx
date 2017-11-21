@@ -1,0 +1,89 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Manage Publishing Configuration</h1>
+    </div>
+
+    <div class="list-group" style="width:850px">
+        <div class="list-group-item">
+            <t:form class="box-holder" t:id="publishingConfigurationForm">
+                <t:errors />
+                <div class="form-group">
+                    <t:label for="name">Name</t:label>
+                    <t:textfield t:id="name" t:value="publishingConfiguration.name" t:validate="required" />
+                </div>
+                <div class="form-group">
+                    <t:label for="uri">URI</t:label>
+                    <t:textfield t:id="uri" t:value="publishingConfiguration.uri" t:validate="required" />
+                </div>
+                <div class="form-group">
+                    <t:label for="publishingCategory">Category</t:label>
+                    <t:select t:id="publishingCategory" t:value="publishingConfiguration.publishingCategory" model="allPublishingCategories" encoder="allPublishingCategories" />
+                </div>
+                <div class="form-group">
+                    <t:label for="embedInLayout">Embed in Layout&nbsp;</t:label>
+                    <t:checkbox t:id="embedInLayout" t:value="publishingConfiguration.embedInLayout" />
+                </div>
+                <div class="form-group">
+                    <t:label for="lockedForEditing">Locked for Editing&nbsp;</t:label>
+                    <t:checkbox t:id="lockedForEditing" t:value="publishingConfiguration.lockedForEditing" />
+                </div>
+                <div class="form-group">
+                    <t:label for="lockedForCacheUpdate">Locked for Cache Update&nbsp;</t:label>
+                    <t:checkbox t:id="lockedForCacheUpdate" t:value="publishingConfiguration.lockedForCacheUpdate" />
+                </div>
+                <div class="form-group">
+                    <t:label for="publishingVisibility">Publishing Visibility&nbsp;</t:label>
+                    <t:select t:id="publishingVisibility" t:model="literal:Intern,Cache for All,Public" t:value="publishingConfiguration.publishingVisibility"/>
+                </div>
+                <div class="form-group">
+                    <t:label for="groovyCode">Strategy</t:label>
+                    <t:textarea t:id="groovyCode" t:value="publishingConfiguration.publishingStrategy" t:validate="required" style="width:800px;height:600px" />
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-default">Save</button>
+                    <t:pagelink page="publishing/index" class="button button-cancel">Cancel</t:pagelink>
+                </div>
+            </t:form>
+            
+       		<t:if test="publishingConfiguration.id">
+            	<h3>Publishing Resources</h3>
+            	<div class="actions">
+					<t:pagelink page="publishing/managepublishingresource" context="[publishingConfiguration.id,'new']" class="glyphicon glyphicon-plus" title="Add Publishing Resource" alt="Add Publishing Resource"></t:pagelink>
+    			</div>
+            	<t:grid source="allPublishingResources" row="publishingResource" add="edit,delete" exclude="id,publishingStrategy,contentType,embedInLayout" reorder="title,uri,edit,delete">
+        			<t:parameter name="editCell">
+        				<t:pagelink page="publishing/managepublishingresource" context="publishingResource.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        			</t:parameter>
+        			<t:parameter name="deleteCell">
+        				<t:actionlink t:id="deletePublishingResource" t:context="publishingResource.id"  class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        			</t:parameter>
+        		</t:grid>
+        		
+        		<h3>Shared Data of this Publication</h3>
+            	<t:grid source="allPublishingSharedDatas" row="publishingSharedData" add="delete" exclude="id" reorder="dataKey,textData,contentType,delete">
+                    <t:parameter name="textDataCell">
+                        <div id="publishingSharedDataabb${publishingSharedData.id}">
+                            <pre style="border:0;background-color:transparent;white-space:pre-wrap;">
+                                ${getAbbreviatedTextData()}
+                            </pre>
+                        </div>
+                        <t:if test="textDataIsAbbreviated">
+                            <div id="publishingSharedData${publishingSharedData.id}" style="display:none">
+                                <pre style="border:0;background-color:transparent;white-space:pre-wrap;">
+                                    ${publishingSharedData.textData}
+                                </pre>
+
+                            </div>
+                            <span id='openpublishingSharedData${publishingSharedData.id}'> <a href="javascript:void(0);" class='glyphicon glyphicon-plus' onclick="document.getElementById('publishingSharedData${publishingSharedData.id}').style.display='block';document.getElementById('openpublishingSharedData${publishingSharedData.id}').style.display='none';document.getElementById('publishingSharedDataabb${publishingSharedData.id}').style.display='none';document.getElementById('closepublishingSharedData${publishingSharedData.id}').style.display='inline';"></a></span>
+                            <span id='closepublishingSharedData${publishingSharedData.id}' style='display:none'> <a href="javascript:void(0);" class='glyphicon glyphicon-minus' onclick="document.getElementById('publishingSharedData${publishingSharedData.id}').style.display='none';document.getElementById('openpublishingSharedData${publishingSharedData.id}').style.display='inline';document.getElementById('publishingSharedDataabb${publishingSharedData.id}').style.display='block';document.getElementById('closepublishingSharedData${publishingSharedData.id}').style.display='none';"></a></span>
+
+                        </t:if>
+                    </t:parameter>
+                    <t:parameter name="deleteCell">
+        				<t:actionlink t:id="deletePublishingSharedData" t:context="publishingSharedData.id"  class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        			</t:parameter>
+        		</t:grid>
+            </t:if>
+        </div>
+    </div>
+</t:layout>

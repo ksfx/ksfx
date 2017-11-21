@@ -1,0 +1,188 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Manage Spidering Configuration</h1>
+    </div>
+
+    <div class="list-group" style="width:80%">
+        <div class="list-group-item">
+            <t:form t:id="spideringConfigurationForm" class="form-horizontal" role="form">
+                <t:errors />
+
+                <div class="form-group">
+                    <t:label for="name">Name</t:label>
+                    <t:textfield t:id="name" t:value="spideringConfiguration.name" t:validate="required" />
+                </div>
+
+                <div class="form-group">
+                    <t:label for="cronSchedule">Cron Schedule</t:label>
+                    <t:textfield t:id="cronSchedule" t:value="spideringConfiguration.cronSchedule" />
+                </div>
+
+                <div class="form-group">
+                    <t:label for="checkDuplicatesGlobally">Check Duplicates Globally</t:label>
+                    <t:checkbox t:id="checkDuplicatesGlobally" t:value="spideringConfiguration.checkDuplicatesGlobally" />
+                </div>
+
+                <t:if test="spideringConfiguration.id">
+
+                    <t:actionlink t:id="addResourceConfiguration">Add Resource Configuration</t:actionlink>
+                    <t:loop index="resourceConfigurationIndex" formState="iteration" source="spideringConfiguration.resourceConfigurations" value="resourceConfiguration">
+                            <div class="list-group-item">
+                                <div style="padding-left:${configurationDepth}px">
+                                    <t:if test="resourceConfiguration.id">
+                                    
+                                        <div style="width:100%">
+                                            <t:checkbox t:id="baseLevel" t:value="resourceConfiguration.baseLevel" /> Is base level
+                                        </div>
+                                        <div>
+                                           
+                                        </div>
+                                  
+                                        <div style="width:335px">
+                                        	Resource Loader Plugin <t:select t:id="resourceLoaderPluginConfiguration" t:value="resourceConfiguration.resourceLoaderPluginConfiguration" model="allResourceLoaderPluginConfigurations" encoder="allResourceLoaderPluginConfigurations" />
+                                        </div>
+                                        
+                                        <div style="float:right">
+                                            <t:actionlink t:id="addurlfragment" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" alt="Add url fragment" title="Add url fragment"></t:actionlink>
+                                        </div>
+                                        <div>
+                                            URL Fragments
+                                        </div>
+                                        <t:loop source="resourceConfiguration.urlFragments" formState="iteration" value="urlFragment" index="urlFragmentIndex">
+                                            <div class="form-group">
+                                                <div class="col-md-3" style="width: 100%">
+                                                    <div class="col-md-1" style="width: 150px">
+                                                        <t:select t:id="urlFragmentFinder" t:value="urlFragment.urlFragmentFinder" model="allUrlFragmentFinders" encoder="allUrlFragmentFinders" t:validate="required" />
+                                                    </div>
+                                                    <div class="col-md-1" style="width: 200px">
+                                                        <t:textfield t:id="fragmentQuery" t:value="urlFragment.fragmentQuery" t:validate="required" />
+                                                    </div>
+                                                    <div class="col-md-1" style="width: 50px">
+                                                        <t:actionlink t:id="removeUrlFragment" context="urlFragment.id" class="glyphicon glyphicon-minus" title="Remove url fragment" alt="Remove url fragment"></t:actionlink>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t:loop>
+                                        <div style="float:right">
+                                            <t:actionlink t:id="addResultUnitConfiguration" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" alt="Add result unit configuration" title="Add result unit configuration"></t:actionlink>
+                                        </div>
+                                        <div>
+                                            Result Units
+                                        </div>
+                                        <t:loop source="resourceConfiguration.resultUnitConfigurations" formState="iteration" value="resultUnitConfiguration" index="resultUnitConfigurationIndex">
+                                            <div class="form-group">
+                                                <div class="col-md-6" style="width: 100%">
+                                                    <div class="col-md-1" style="width: 150px">
+                                                        <t:select t:id="resultUnitFinder" t:value="resultUnitConfiguration.resultUnitFinder" model="allResultUnitFinders" encoder="allResultUnitFinders" t:validate="required" />
+                                                    </div>
+                                                    <div class="col-md-1" style="width: 150px">
+                                                        <t:select t:id="resultUnitType" t:value="resultUnitConfiguration.resultUnitType" model="allResultUnitTypes" encoder="allResultUnitTypes" t:validate="required" />
+                                                    </div>
+                                                    <div class="col-md-1" style="width: 200px">
+                                                        <t:textfield t:id="finderQuery" t:value="resultUnitConfiguration.finderQuery" t:validate="required" />
+                                                    </div>
+                                                    <div class="col-md-1" style="width: 50px">
+                                                        <t:checkbox t:id="siteIdentifier" t:value="resultUnitConfiguration.siteIdentifier" title="Site Identifier" /> ID
+                                                    </div>
+                                                    <div class="col-md-1" style="width: 100px">
+                                                        <t:checkbox t:id="lockedForUpdates" t:value="resultUnitConfiguration.lockedForUpdates" title="Locked for updates" /> Updates locked
+                                                    </div>
+                                                    <div class="col-md-1" style="width: 50px">
+                                                        <t:actionlink t:id="addResultUnitModifierConfiguration" context="resultUnitConfiguration.id" class="glyphicon glyphicon-plus" title="Add modifier" alt="Add modifier"></t:actionlink>
+                                                        <t:actionlink t:id="removeResultUnitConfiguration" context="resultUnitConfiguration.id" class="glyphicon glyphicon-minus" title="Remove result unit configuration" alt="Remove result unit configuration"></t:actionlink>
+                                                    </div>
+                                                </div>
+                                                <t:if test="resultUnitConfiguration.resultUnitConfigurationModifiers">
+                                                    <t:loop source="resultUnitConfiguration.resultUnitConfigurationModifiers" formState="iteration" value="resultUnitConfigurationModifiers">
+                                                        <div class="col-md-2" style="width:100%;padding-left:50px">
+                                                            <div class="col-md-1"  style="width: 200px">
+                                                                <t:select t:id="resultUnitModifierConfiguration" t:value="resultUnitConfigurationModifiers.resultUnitModifierConfiguration" model="allResultUnitModifierConfigurations" encoder="allResultUnitModifierConfigurations" t:validate="required" />
+                                                            </div>
+                                                            <div class="col-md-1">
+                                                                <t:actionlink t:id="removeResultUnitModifierConfiguration" context="resultUnitConfigurationModifiers.id" class="glyphicon glyphicon-minus" title="Remove modifier" alt="Remove modifier"></t:actionlink>
+                                                            </div>
+                                                        </div>
+                                                    </t:loop>
+                                                </t:if>
+                                            </div>
+                                        </t:loop>
+                                        <t:if test="!resourceConfiguration.paging">
+                                            <div style="float:right">
+                                                <t:actionlink t:id="addPaging" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" title="Add paging" alt="Add paging"></t:actionlink>
+                                            </div>
+                                        </t:if>
+                                        <div>
+                                            Pagings
+                                        </div>
+                                        <t:if test="resourceConfiguration.paging">
+                                            <div style="width:335px">
+                                                Resource Loader Plugin (Paging) <t:select t:id="pagingResourceLoaderPluginConfiguration" t:value="resourceConfiguration.pagingResourceLoaderPluginConfiguration" model="allResourceLoaderPluginConfigurations" encoder="allResourceLoaderPluginConfigurations" />
+                                            </div>
+                                            <div style="float:right">
+                                                <t:actionlink t:id="addPagingUrlfragment" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" alt="Add url fragment" title="Add url fragment"></t:actionlink>
+                                            </div>
+                                            <t:loop source="resourceConfiguration.pagingUrlFragments" formState="iteration" value="pagingUrlFragment">
+                                                <div class="form-group">
+                                                    <div class="col-md-3" style="width: 100%">
+                                                        <div class="col-md-1" style="width: 150px">
+                                                            <t:select t:id="pagingUrlFragmentFinder" t:value="pagingUrlFragment.urlFragmentFinder" model="allUrlFragmentFinders" encoder="allUrlFragmentFinders" t:validate="required" />
+                                                        </div>
+                                                        <div class="col-md-1" style="width: 200px">
+                                                            <t:textfield t:id="pagingFragmentQuery" t:value="pagingUrlFragment.fragmentQuery" t:validate="required" />
+                                                        </div>
+                                                        <div class="col-md-1" style="width: 50px">
+                                                            <t:actionlink t:id="removePagingUrlFragment" context="pagingUrlFragment.id" class="glyphicon glyphicon-minus" title="Remove url fragment" alt="Remove url fragment"></t:actionlink>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </t:loop>
+                                            <t:actionlink t:id="removePaging" context="resourceConfiguration.id" class="glyphicon glyphicon-minus" title="Remove paging" alt="Remove paging"></t:actionlink>
+                                        </t:if>
+                                    </t:if>
+                                    <div style="padding-top:50px">
+                                        <t:actionlink t:id="removeResourceConfiguration" context="resourceConfiguration.id" class="glyphicon glyphicon-minus" title="Remove resource configuration" alt="Remove resource configuration"></t:actionlink>
+                                    </div>
+                            </div>
+                        </div>
+                    </t:loop>
+                    <div class="list-group-item">
+                        <div>
+                            <div>
+                                Result Verifier
+                            </div>
+                            <div class="form-group">
+                                <div class="col-md-1" style="width: 100%">
+                                    <div class="col-md-1" style="width: 200px">
+                                        <t:select t:id="resultVerifierConfiguration" t:value="spideringConfiguration.resultVerifierConfiguration" model="allResultVerifierConfigurations" encoder="allResultVerifierConfigurations" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="float:right">
+                            <t:actionlink t:id="addSpideringPostActivity" class="glyphicon glyphicon-plus" alt="Add spidering post activity" title="Add spidering post activity"></t:actionlink>
+                        </div>
+                        <div>
+                            Post Spidering Activities
+                        </div>
+                        <t:loop source="spideringConfiguration.spideringPostActivities" formState="iteration" value="spideringPostActivity">
+                            <div class="form-group">
+                                <div class="col-md-2" style="width: 100%">
+                                    <div class="col-md-1" style="width: 150px">
+                                        <t:select t:id="spideringPostActivityActivity" t:value="spideringPostActivity.activity" model="allActivities" encoder="allActivities" t:validate="required" />
+                                    </div>
+                                    <div class="col-md-1" style="width: 50px">
+                                        <t:actionlink t:id="removeSpideringPostActivity" context="spideringPostActivity.id" class="glyphicon glyphicon-minus" title="Remove spidering post activity" alt="Remove spidering post activity"></t:actionlink>
+                                    </div>
+                                </div>
+                            </div>
+                        </t:loop>
+                    </div>
+
+                </t:if>
+
+                <button type="submit" class="btn btn-default">Save</button>
+                <t:pagelink page="spidering/spideringconfigurationindex" class="button button-cancel">Cancel</t:pagelink>
+            </t:form>
+        </div>
+    </div>
+</t:layout>

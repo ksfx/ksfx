@@ -1,0 +1,38 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Information Retrieval</h1>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="spidering/managespideringconfiguration" class="glyphicon glyphicon-plus" title="Add Spidering Configuration" alt="Add Spidering Configuration"></t:pagelink>
+    </div>
+
+    <t:grid source="allSpideringConfigurations" row="spideringConfiguration" exclude="id,cronScheduleEnabled" add="info,run,edit,schedule,delete">
+        <t:parameter name="nameCell">
+            <t:pagelink page="spidering/viewspiderings" context="spideringConfiguration.id">${spideringConfiguration.name}</t:pagelink>
+        </t:parameter>
+        <t:parameter name="infoCell">
+        	<a href="#" onclick="openIframeModal('${getIframeInfoLink()}');" class="glyphicon glyphicon-info-sign"></a>
+        </t:parameter>
+        <t:parameter name="runCell">
+            <t:actionlink t:id="runSpidering" t:context="spideringconfiguration.id" class="glyphicon glyphicon-play" title="Run" alt="Run"></t:actionlink>
+        </t:parameter>
+        <t:parameter name="editCell">
+            <t:pagelink page="spidering/managespideringconfiguration" context="spideringconfiguration.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="scheduleCell">
+            <t:if test="scheduled">
+                <t:actionlink t:id="deleteSchedule" t:context="spideringconfiguration.id"  class="glyphicon glyphicon-stop" alt="Delete schedule" title="Delete schedule"></t:actionlink>
+                <t:parameter name="else">
+                    <t:if test="spideringconfiguration.cronSchedule">
+                        <t:actionlink t:id="schedule" t:context="spideringconfiguration.id"  class="glyphicon glyphicon-time" alt="Schedule" title="Schedule"></t:actionlink>
+                    </t:if>
+                </t:parameter>
+            </t:if>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:mixins="confirm" t:context="spideringconfiguration.id"  class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+</t:layout>

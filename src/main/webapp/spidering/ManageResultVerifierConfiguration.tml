@@ -1,0 +1,26 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Manage Result Verifier Configuration</h1>
+    </div>
+
+    <div class="list-group" style="width:50%">
+        <div class="list-group-item">
+            <t:form class="box-holder" t:id="resultVerifierConfigurationForm">
+                <t:errors />
+                <div class="form-group">
+                    <t:label for="name">Name</t:label>
+                    <t:textfield t:id="name" t:value="resultVerifierConfiguration.name" t:validate="required" />
+                </div>
+                <div class="form-group">
+                    <t:label for="groovyCode">Groovy Code</t:label>
+                    <t:textarea t:id="groovyCode" t:value="resultVerifierConfiguration.groovyCode" t:validate="required" style="width:800px;height:600px" />
+                </div>
+                <div class="box-foot form-foot">
+                    <button type="submit">Save</button>
+                    <t:pagelink page="spidering/resultVerifierConfigurationIndex" class="button button-cancel">Cancel</t:pagelink>
+                </div>
+            </t:form>
+        </div>
+    </div>
+
+</t:layout>

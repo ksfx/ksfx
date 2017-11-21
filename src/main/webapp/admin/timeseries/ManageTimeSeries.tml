@@ -1,0 +1,46 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Manage Time Series</h1>
+    </div>
+
+    <div class="list-group" style="width:50%">
+        <div class="list-group-item">
+            <t:form class="box-holder" t:id="timeseriesForm">
+                <t:errors />
+                <div class="form-group">
+                    <t:label for="name">Name</t:label>
+                    <t:textfield t:id="name" t:value="timeseries.name" t:validate="required" />
+                </div>
+                <div class="form-group">
+                    <t:label for="locator">Locator</t:label>
+                    <t:textfield t:id="locator" t:value="timeseries.locator" t:validate="required" />
+                </div>
+                <div class="form-group">
+                    <t:label for="source">Source</t:label>
+                    <t:textfield t:id="source" t:value="timeseries.source" />
+                </div>
+                <div class="form-group">
+                    <t:label for="sourceId">Source Id</t:label>
+                    <t:textfield t:id="sourceId" t:value="timeseries.sourceId" />
+                </div>
+                <div class="form-group">
+                    <t:label for="approximateSize">Approximate Size</t:label>
+                    <t:textfield t:id="approximateSize" t:value="timeseries.approximateSize" />
+                </div>
+                <div class="form-group">
+                    <t:label for="timeseriestype">Type</t:label>
+                    <t:select t:id="timeseriestype" t:value="timeseries.timeseriestype" model="alltimeseriestypes" encoder="alltimeseriestypes" t:validate="required" />
+                </div>
+                <div class="form-group">
+                    <t:label for="indexable">Indexable</t:label>
+                	<t:checkbox t:id="indexable" t:value="timeseries.indexable" title="Indexable" />
+                </div>
+                <div class="box-foot form-foot">
+                    <button type="submit">Save</button>
+                    <t:pagelink page="admin/timeseries/timeseriesIndex" class="button button-cancel">Cancel</t:pagelink>
+                </div>
+            </t:form>
+        </div>
+    </div>
+
+</t:layout>

@@ -1,0 +1,156 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Asset ${asset.name}</h1>
+    </div>
+
+    <!-- <t:actionlink t:id="createBuyOrder">BUY</t:actionlink> -->
+    <!-- <h1>Performance</h1> -->
+    <div class="list-group" style="width:50%">
+        <div class="list-group-item">
+            <div class="box-head">
+                <h2>Graph Parameters</h2>
+            </div>
+
+            <t:form t:id="timeRangeForm">
+                <t:errors />
+
+                <div class="form-group">
+                    <t:label for="timeRange">Time Range</t:label>
+                    <t:select t:value="assetPricingTimeRange" t:validate="required" t:id="timeRange" t:model="allAssetPricingTimeRanges" t:encoder="allAssetPricingTimeRanges" />
+                </div>
+                <div class="form-group">
+                    <t:label for="showBollingerTime">Bollinger Time</t:label>
+                    <div class="checkbox">
+                        <label>
+                            <t:checkbox value="showBollingerTime" t:id="showBollingerTime" /> Show
+                        </label>
+                    </div>
+                     <t:textfield t:value="bollingerTimeSeconds" t:id="bollingerTimeSeconds" />
+                </div>
+                <div class="form-group">
+                    <t:label for="showBollingerTick">Bollinger Tick</t:label>
+                    <t:checkbox value="showBollingerTick" t:id="showBollingerTick" /> <t:textfield t:value="bollingerTickTicks" t:id="bollingerTickTicks" />
+                </div>
+                <div class="form-group">
+                    <t:label for="showBollingerTimeframe">Bollinger Timeframe</t:label>
+                    <div class="checkbox">
+                        <label>
+                            <t:checkbox value="showBollingerTimeframe" t:id="showBollingerTimeframe" /> Show
+                        </label>
+                    </div>
+                    Count of frames <t:textfield t:value="bollingerTimeframeNumber" t:id="bollingerTimeframeNumber" />
+                    Frame length (s) <t:textfield t:value="bollingerTimeframeSeconds" t:id="bollingerTimeframeSeconds" />
+                </div>
+                <div class="form-group">
+                    <t:label for="showAdditionalMovingAverage">Additional Moving Average</t:label>
+                    <div class="checkbox">
+                        <label>
+                            <t:checkbox value="showAdditionalMovingAverage" t:id="showAdditionalMovingAverage" /> Show
+                        </label>
+                    </div>
+                    Frame length (s) <t:textfield t:value="additionalMovingAverageSeconds" t:id="additionalMovingAverageSeconds" />
+                </div>
+                <div class="form-group">
+                    <t:label for="showFastEma">Fast Exponential Moving Average</t:label>
+                    <div class="checkbox">
+                        <label>
+                            <t:checkbox value="showFastEma" t:id="showFastEma" /> Show
+                        </label>
+                    </div>
+                    Count of frames <t:textfield t:value="fastEmaTimeframesBack" t:id="fastEmaTimeframesBack" />
+                    Frame length (s) <t:textfield t:value="fastEmaTimeframeSeconds" t:id="fastEmaTimeframeSeconds" />
+                    <div class="checkbox">
+                        <label>
+                            <t:checkbox value="fastEmaAddCurrentPrice" t:id="fastEmaAddCurrentPrice" /> Add last price
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <t:label for="showMiddleEma">Middle Exponential Moving Average</t:label>
+                    <div class="checkbox">
+                        <label>
+                            <t:checkbox value="showMiddleEma" t:id="showMiddleEma" /> Show
+                        </label>
+                    </div>
+                    Count of frames <t:textfield t:value="middleEmaTimeframesBack" t:id="middleEmaTimeframesBack" />
+                    Frame length (s) <t:textfield t:value="middleEmaTimeframeSeconds" t:id="middleEmaTimeframeSeconds" />
+                    <div class="checkbox">
+                        <label>
+                            <t:checkbox value="middleEmaAddCurrentPrice" t:id="middleEmaAddCurrentPrice" /> Add last price
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <t:label for="showSlowEma">Slow Exponential Moving Average</t:label>
+                    <div class="checkbox">
+                        <label>
+                            <t:checkbox value="showSlowEma" t:id="showSlowEma" /> Show
+                        </label>
+                    </div>
+                    Count of frames <t:textfield t:value="slowEmaTimeframesBack" t:id="slowEmaTimeframesBack" />
+                    Frame length (s) <t:textfield t:value="slowEmaTimeframeSeconds" t:id="slowEmaTimeframeSeconds" />
+                    <div class="checkbox">
+                        <label>
+                            <t:checkbox value="slowEmaAddCurrentPrice" t:id="slowEmaAddCurrentPrice" /> Add last price
+                        </label>
+                    </div>
+                </div>
+                <div class="box-foot form-foot">
+                    <button type="submit" class="btn btn-default">Show graph!</button>
+                </div>
+            </t:form>
+        </div>
+    </div>
+
+    <a href="${hugeGraphLink}" target="_blank">
+        <img src="${graphLink}" alt="Performance" />
+    </a>
+
+    <h1>Prices</h1>
+    <t:grid t:id="assetPricesGrid" source="assetPrices" row="assetPrice" inPlace="true" rowsPerPage="5">
+        <t:parameter name="pricingTimeCell">
+            ${assetPrice.pricingTime}
+        </t:parameter>
+    </t:grid>
+
+    <h1>Trades</h1>
+    <t:grid t:id="trades" source="asset.trades" row="trade" rowsPerPage="5" inPlace="true" add="openingDate,openingPrice,tradingType,closePosition">
+        <t:parameter name="openingDateCell">
+            ${openingMarketOrder.executionDate}
+        </t:parameter>
+        <t:parameter name="openingPriceCell">
+            ${openingPrice}
+        </t:parameter>
+        <t:parameter name="profitLossCell">
+            ${trade.profitLoss}
+        </t:parameter>
+        <t:parameter name="tradingTimeCell">
+            ${tradingTime}
+        </t:parameter>
+        <t:parameter name="tradingTypeCell">
+            ${tradingType}
+        </t:parameter>
+        <t:parameter name="closePositionCell">
+            <t:if test="trade.open">
+                <t:pagelink page="manualMarketOrder" context="trade.id">Create New Order for Trade</t:pagelink>
+            </t:if>
+        </t:parameter>
+    </t:grid>
+
+    <h1>Decision History</h1>
+    <t:grid t:id="decisionHistoryGrid" inPlace="true" source="decisions" row="decision" add="reasons,decisionTradePersistentData" exclude="reasonMarkup,formattedTradePersistentDatas" rowsPerPage="5">
+        <t:parameter name="reasonsCell">
+            <t:outputraw value="decision.reasonMarkup" />
+        </t:parameter>
+        <t:parameter name="decisionDateCell">
+            ${decision.decisionDate}
+        </t:parameter>
+        <t:parameter name="decisionTradePersistentDataCell">
+            <t:outputraw value="decision.formattedTradePersistentDatas" />
+        </t:parameter>
+    </t:grid>
+
+    <script type="text/javascript">
+        //window.setTimeout("location.reload(true);",300000);
+    </script>
+</t:layout>

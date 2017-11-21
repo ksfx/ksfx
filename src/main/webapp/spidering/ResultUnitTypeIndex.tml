@@ -1,0 +1,19 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Result Units</h1>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="spidering/manageresultunittype" class="glyphicon glyphicon-plus" title="Add Result Unit Type" alt="Add Result Unit Type"></t:pagelink>
+    </div>
+
+    <t:grid source="allResultUnitTypes" row="resultUnitType" add="edit,delete" exclude="id">
+        <t:parameter name="editCell">
+            <t:pagelink page="spidering/manageresultunittype" context="resultUnitType.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:mixins="confirm" t:context="resultUnitType.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+</t:layout>

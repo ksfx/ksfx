@@ -1,0 +1,88 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+    <div class="page-header">
+        <h1>Activities</h1>
+    </div>
+
+    <div>
+        <t:form id="selectCategory" style="width:250px;float:right"><t:select onchange="this.form.submit()" t:id="activityCategory" t:value="activityCategory" model="allActivityCategories" encoder="allActivityCategories" /></t:form>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="activity/manageactivity" class="glyphicon glyphicon-plus" title="Add Activity" alt="Add Activity"></t:pagelink>
+    </div>
+
+    <div>&nbsp;</div>
+    <div class="layout-grid-col-holder">
+
+    <div class="layout-grid-col2">
+    <t:grid source="allActivities" row="activity" exclude="id,cronScheduleEnabled,groovyCode" add="info,run,runWithParameters,edit,schedule,delete">
+        <t:parameter name="nameCell">
+            <t:pagelink page="activity/viewactivityinstances" context="activity.id">${activity.name}</t:pagelink>
+        </t:parameter>
+        <t:parameter name="infoCell">
+        	<a href="#" onclick="openIframeModal('${getIframeInfoLink()}');" class="glyphicon glyphicon-info-sign"></a>
+        </t:parameter>
+        <t:parameter name="runCell">
+            <t:actionlink t:id="runActivity" t:context="activity.id" class="glyphicon glyphicon-play" title="Run" alt="Run"></t:actionlink>
+        </t:parameter>
+        <t:parameter name="runWithParametersCell">
+            <t:if test="!isActivityActivityActive">
+                <t:actionlink t:id="runActivityWithParameters" t:context="activity.id" class="glyphicon glyphicon-forward" title="Run with parameters" alt="Run with parameters"></t:actionlink>
+            </t:if>
+        </t:parameter>
+        <t:parameter name="editCell">
+            <t:pagelink page="activity/manageactivity" context="activity.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="scheduleCell">
+            <t:if test="scheduled">
+                <t:actionlink t:id="deleteSchedule" t:context="activity.id"  class="glyphicon glyphicon-stop" alt="Delete schedule" title="Delete schedule"></t:actionlink>
+                <t:parameter name="else">
+                    <t:if test="activity.cronSchedule">
+                        <t:actionlink t:id="schedule" t:context="activity.id"  class="glyphicon glyphicon-time" alt="Schedule" title="Schedule"></t:actionlink>
+                    </t:if>
+                </t:parameter>
+            </t:if>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:mixins="confirm" t:context="activity.id"  class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+    </div>
+    </div>
+
+    <t:if test="hasActiveActivity">
+        <div id="activeActivity" data-target="activeActivityId">
+
+        </div>
+    </t:if>
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <t:actionlink t:id="closeParameterWindow" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></t:actionlink>
+                    <h4 class="modal-title" id="myModalLabel">Run with Parameters</h4>
+                </div>
+                <t:form t:id="activityRunForm" context="activeActivityId">
+                    <div class="modal-body">
+                        <div style="float:right;">
+                            <t:actionlink t:id="addActivityInstanceParameter" class="glyphicon glyphicon-plus" context="activeActivityId" title="Add parameter" alt="Add parameter"></t:actionlink>
+                        </div>
+                        <div style="padding-top:20px">
+                            <t:loop index="parameterIndex" formState="iteration" source="activityInstanceParameters" value="activityInstanceParameter">
+                                <t:textfield t:id="activityInstanceParameterdataKey" t:value="activityInstanceParameter.dataKey" placeholder="Key" />
+                                <t:textfield t:id="activityInstanceParameterdataValue" t:value="activityInstanceParameter.dataValue" placeholder="Value" />
+                            </t:loop>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <t:actionlink t:id="cancelParameterWindow" class="btn btn-default">Close</t:actionlink>
+                        <button type="submit" class="btn btn-primary">Run</button>
+                    </div>
+                </t:form>
+            </div>
+        </div>
+    </div>
+</t:layout>

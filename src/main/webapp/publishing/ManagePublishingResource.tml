@@ -1,0 +1,36 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Manage Publishing Resource</h1>
+        <h2>For Publishing Configuration: ${publishingResource.publishingConfiguration.name}</h2>
+    </div>
+
+    <div class="list-group" style="width:50%">
+        <div class="list-group-item">
+            <t:form class="box-holder" t:id="publishingResourceForm">
+                <t:errors />
+                <div class="form-group">
+                    <t:label for="title">Title</t:label>
+                    <t:textfield t:id="title" t:value="publishingResource.title" t:validate="required" />
+                </div>
+                <div class="form-group">
+                    <t:label for="uri">URI</t:label>
+                    <t:textfield t:id="uri" t:value="publishingResource.uri" t:validate="required" />
+                </div>
+                <div class="form-group">
+                    <t:label for="embedInLayout">Embed in Layout&nbsp;</t:label>
+                    <t:checkbox t:id="embedInLayout" t:value="publishingResource.embedInLayout" />
+                </div>
+                <div class="form-group">
+                    <t:label for="publishingStrategy">Strategy</t:label>
+                    <t:textarea t:id="publishingStrategy" style="width:800px;height:600px" t:value="publishingResource.publishingStrategy" />
+                </div>
+                <div class="box-foot form-foot">
+                    <button type="submit">Save</button>
+                    <t:pagelink page="publishing/managepublishingconfiguration" context="publishingResource.publishingConfiguration.id" class="button button-cancel">Cancel</t:pagelink>
+                </div>
+            </t:form>
+        </div>
+    </div>
+
+</t:layout>
+

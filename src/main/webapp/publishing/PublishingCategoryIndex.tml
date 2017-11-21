@@ -1,0 +1,19 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Report Categories</h1>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="publishing/managepublishingcategory" class="glyphicon glyphicon-plus" title="Add Publishing Category" alt="Add Publishing Category"></t:pagelink>
+    </div>
+
+    <t:grid source="allPublishingCategories" row="publishingCategory" add="edit,delete" exclude="id">
+        <t:parameter name="editCell">
+            <t:pagelink page="publishing/managepublishingcategory" context="publishingCategory.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:mixins="confirm" t:context="publishingCategory.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+</t:layout>

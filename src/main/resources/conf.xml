@@ -1,0 +1,16 @@
+<configuration>
+        <database>
+                <driver>com.mysql.jdbc.Driver</driver>
+                <databaseURL>
+                   jdbc:mysql://localhost:3306/ksfx?autoReconnect=true&amp;useUnicode=true&amp;characterEncoding=UTF-8
+                </databaseURL>
+                <username></username>
+                <password></password>
+        </database>
+        <mail>
+        <smtphost></smtphost>
+        <username></username>
+        <password></password>
+    </mail>
+    <instanceName>TESTING</instanceName>
+</configuration>

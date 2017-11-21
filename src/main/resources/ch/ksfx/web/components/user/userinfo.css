@@ -1,0 +1,7 @@
+div.userinfo {
+    padding: 15px;
+}
+
+div.userinfo span.user {
+    font-weight: bold;
+}

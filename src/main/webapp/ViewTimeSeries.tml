@@ -1,0 +1,172 @@
+<t:seriesbrowserlayout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Time series ${timeSeries?.name}</h1>
+    </div>
+    
+    <div class="actions">
+    	<a href="#" onclick="openIframeModal('${getIframeInfoLink()}');" class="glyphicon glyphicon-info-sign"></a>
+	</div>
+
+    <t:if test="isdoubleseries">
+    <div class="list-group" style="width:100%">
+        <div class="list-group-item">
+            <div class="box-head">
+                <h2>Graph Parameters</h2>
+            </div>
+            <t:form t:id="timeRangeForm">
+                <t:errors />
+
+                <div class="form-group">
+                    <t:label for="timeRange">Time Range</t:label>
+                    <t:select t:value="assetPricingTimeRange" t:validate="required" t:id="timeRange" t:model="allAssetPricingTimeRanges" t:encoder="allAssetPricingTimeRanges" />
+                </div>
+                <div id="extendedGraph" style="display:none">
+	                <div class="form-group">
+	                    <t:label for="showBollingerTime">Bollinger Time</t:label>
+	                    <div class="checkbox">
+	                        <label>
+	                            <t:checkbox value="showBollingerTime" t:id="showBollingerTime" /> Show
+	                        </label>
+	                    </div>
+	                     <t:textfield t:value="bollingerTimeSeconds" t:id="bollingerTimeSeconds" />
+	                </div>
+	                <div class="form-group">
+	                    <t:label for="showBollingerTick">Bollinger Tick</t:label>
+	                    <div class="checkbox">
+	                    	<label>
+	                			<t:checkbox value="showBollingerTick" t:id="showBollingerTick" /> Show 
+	                		</label>
+	                	</div>
+	                    <t:textfield t:value="bollingerTickTicks" t:id="bollingerTickTicks" />
+	                </div>
+	                <div class="form-group">
+	                    <t:label for="showBollingerTimeframe">Bollinger Timeframe</t:label>
+	                    <div class="checkbox">
+	                        <label>
+	                            <t:checkbox value="showBollingerTimeframe" t:id="showBollingerTimeframe" /> Show
+	                        </label>
+	                    </div>
+	                    Count of frames <t:textfield t:value="bollingerTimeframeNumber" t:id="bollingerTimeframeNumber" />
+	                    Frame length (s) <t:textfield t:value="bollingerTimeframeSeconds" t:id="bollingerTimeframeSeconds" />
+	                </div>
+	                <div class="form-group">
+	                    <t:label for="showAdditionalMovingAverage">Additional Moving Average</t:label>
+	                    <div class="checkbox">
+	                        <label>
+	                            <t:checkbox value="showAdditionalMovingAverage" t:id="showAdditionalMovingAverage" /> Show
+	                        </label>
+	                    </div>
+	                    Frame length (s) <t:textfield t:value="additionalMovingAverageSeconds" t:id="additionalMovingAverageSeconds" />
+	                </div>
+	                <div class="form-group">
+	                    <t:label for="showFastEma">Fast Exponential Moving Average</t:label>
+	                    <div class="checkbox">
+	                        <label>
+	                            <t:checkbox value="showFastEma" t:id="showFastEma" /> Show
+	                        </label>
+	                    </div>
+	                    Count of frames <t:textfield t:value="fastEmaTimeframesBack" t:id="fastEmaTimeframesBack" />
+	                    Frame length (s) <t:textfield t:value="fastEmaTimeframeSeconds" t:id="fastEmaTimeframeSeconds" />
+	                    <div class="checkbox">
+	                        <label>
+	                            <t:checkbox value="fastEmaAddCurrentPrice" t:id="fastEmaAddCurrentPrice" /> Add last price
+	                        </label>
+	                    </div>
+	                </div>
+	                <div class="form-group">
+	                    <t:label for="showMiddleEma">Middle Exponential Moving Average</t:label>
+	                    <div class="checkbox">
+	                        <label>
+	                            <t:checkbox value="showMiddleEma" t:id="showMiddleEma" /> Show
+	                        </label>
+	                    </div>
+	                    Count of frames <t:textfield t:value="middleEmaTimeframesBack" t:id="middleEmaTimeframesBack" />
+	                    Frame length (s) <t:textfield t:value="middleEmaTimeframeSeconds" t:id="middleEmaTimeframeSeconds" />
+	                    <div class="checkbox">
+	                        <label>
+	                            <t:checkbox value="middleEmaAddCurrentPrice" t:id="middleEmaAddCurrentPrice" /> Add last price
+	                        </label>
+	                    </div>
+	                </div>
+	                <div class="form-group">
+	                    <t:label for="showSlowEma">Slow Exponential Moving Average</t:label>
+	                    <div class="checkbox">
+	                        <label>
+	                            <t:checkbox value="showSlowEma" t:id="showSlowEma" /> Show
+	                        </label>
+	                    </div>
+	                    Count of frames <t:textfield t:value="slowEmaTimeframesBack" t:id="slowEmaTimeframesBack" />
+	                    Frame length (s) <t:textfield t:value="slowEmaTimeframeSeconds" t:id="slowEmaTimeframeSeconds" />
+	                    <div class="checkbox">
+	                        <label>
+	                            <t:checkbox value="slowEmaAddCurrentPrice" t:id="slowEmaAddCurrentPrice" /> Add last price
+	                        </label>
+	                    </div>
+	                </div>
+                </div>
+                <div class="box-foot form-foot">
+                    <button type="submit" class="btn btn-default">Show graph!</button>
+                    <div id="extendedGraphLink" style="float:right">
+                		<a href="#" onclick="$('#extendedGraph').toggle();$('#extendedGraphLink').toggle();" class="glyphicon glyphicon-plus" title="More options"></a>
+                	</div>
+                </div>
+            </t:form>
+        </div>
+    </div>
+
+    <a href="${hugeGraphLink}" target="_blank">
+        <img src="${graphLink}" alt="Performance" />
+    </a>
+    </t:if>
+
+    <h1>Observations</h1>
+    <p>Estimated Size: ${timeSeries.approximateSize}</p>
+    <t:grid t:id="observationsGrid" exclude="timeSeriesId,sourceId" add="delete" reorder="observationTime,scalarValue,delete" source="observationDataSource" row="observation">
+        <t:parameter name="observationTimeCell">
+            <t:output format="literal:yyyy-MM-dd HH:mm:ss" value="observation.observationTime"/>
+        </t:parameter>
+        <t:parameter name="scalarValueCell">
+            <t:if test="observation.observationTime">
+                <t:if test="!isCurrentObservationActiveObservation">
+                    <t:actionlink t:id="openValue" t:context="[observation.sourceId,observation.observationTime.time]">${observation.scalarValue}</t:actionlink>
+                    <t:parameter name="else">
+                        ${observation.scalarValue}
+                    </t:parameter>
+                </t:if>
+            </t:if>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+         	<t:if test="observation.observationTime">
+        		<t:actionlink t:id="deleteObservation" t:context="[observation.sourceId,observation.observationTime.time]" class="glyphicon glyphicon-trash" alt="Delete observation" title="Delete observation"></t:actionlink>
+        	</t:if>
+        </t:parameter>
+    </t:grid>
+
+    <t:actionlink t:id="deleteAllObservations" class="glyphicon glyphicon-trash" alt="Delete all observations" title="Delete all observations"></t:actionlink>
+
+    <!-- Modal -->
+    <t:if test="hasActiveObservation">
+        <div id="activeObservation" data-target="activeObservationId">
+
+        </div>
+    </t:if>
+
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="height:80%">
+            <div class="modal-content" style="height:100%">
+                <t:if test="activeObservation">
+                    <div class="modal-header">
+                        <t:actionlink t:id="closeParameterWindow" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></t:actionlink>
+                        <h4 class="modal-title" id="myModalLabel">Observation</h4>
+                    </div>
+                    <div class="modal-body" style="height:80%">
+                        <iframe src="${iframeLink}" style="width:100%;height:100%" frameborder="0"></iframe>
+                    </div>
+                    <div class="modal-footer">
+                        <t:actionlink t:id="cancelParameterWindow" class="btn btn-default">Close</t:actionlink>
+                    </div>
+                </t:if>
+            </div>
+        </div>
+    </div>
+</t:seriesbrowserlayout>

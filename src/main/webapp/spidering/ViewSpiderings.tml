@@ -1,0 +1,46 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Spiderings for: ${spideringConfiguration.name}</h1>
+    </div>
+
+    <!--
+    //TODO start new spidering here...
+    <div class="actions">
+        <t:pagelink page="spidering/managespideringconfiguration" class="glyphicon glyphicon-plus" title="Add Spidering Configuration" alt="Add Spidering Configuration"></t:pagelink>
+    </div>
+    -->
+    <ul class="nav nav-tabs">
+        <li role="presentation" class="active"><t:pagelink page="spidering/viewspiderings" context="spideringConfiguration.id">Spiderings</t:pagelink></li>
+        <li role="presentation"><t:pagelink page="spidering/viewresults" context="spideringConfiguration.id">Results</t:pagelink></li>
+    </ul>
+
+    <t:grid source="allSpideringsForConfiguration" row="spidering" add="resourcesCount,parsing,delete">
+        <t:parameter name="startedCell">
+            ${spidering.started}
+        </t:parameter>
+        <t:parameter name="finishedCell">
+            ${spidering.finished}
+            <t:if test="spideringRunning">
+                <i class="fa fa-spinner fa-pulse"></i>&nbsp;&nbsp;&nbsp;&nbsp;<t:actionlink t:id="terminateSpidering" t:context="spidering.id" class="glyphicon glyphicon-remove-sign" title="Terminate spidering" alt="Terminate spidering"></t:actionlink>
+            </t:if>
+        </t:parameter>
+        <t:parameter name="resourcesCountCell">
+            <t:pagelink page="spidering/viewresources" context="spidering.id">${getResourcesCount(spidering.id)}</t:pagelink>
+        </t:parameter>
+        <t:parameter name="parsingCell">
+            <t:if test="spidering.finished">
+                <t:if test="parsingRunning">
+
+                    <i class="fa fa-spinner fa-pulse"></i>&nbsp;&nbsp;&nbsp;&nbsp;<t:actionlink t:id="terminateParsing" t:context="spidering.id" class="glyphicon glyphicon-remove-sign" title="Terminate parsing" alt="Terminate parsing"></t:actionlink>
+                    <t:parameter name="else">
+                        <t:actionlink t:id="runParsing" t:context="spidering.id" class="glyphicon glyphicon-play" title="Parsing" alt="Parsing"></t:actionlink>
+                    </t:parameter>
+                </t:if>
+            </t:if>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:mixins="confirm" t:context="spidering.id"  class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+</t:layout>

@@ -1,0 +1,40 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Report Configurations</h1>
+    </div>
+
+    <div>
+        <t:form id="selectCategory" style="width:250px;float:right"><t:select onchange="this.form.submit()" t:id="publishingCategory" t:value="publishingCategory" model="allPublishingCategories" encoder="allPublishingCategories" /></t:form>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="publishing/managepublishingconfiguration" class="glyphicon glyphicon-plus" title="Add Report Configuration" alt="Add Report Configuration"></t:pagelink>
+    </div>
+
+    <div>&nbsp;</div>
+
+    <t:grid source="allPublishingConfigurations" row="publishingConfiguration" add="info,generateReport,generateReportFromCache,purgeCache,edit,delete" exclude="id,publishingStrategy,contentType,lockedForCacheUpdate,lockedForEditing,embedInLayout,publishingVisibility" reorder="name,uri,info,generateReport,generateReportFromCache,purgeCache,console,edit,delete">
+        <t:parameter name="infoCell">
+        	<a href="#" onclick="openIframeModal('${getIframeInfoLink()}');" class="glyphicon glyphicon-info-sign"></a>
+        </t:parameter>
+        <t:parameter name="generateReportFromCacheCell">
+            <t:pagelink t:page="publishing/publicationviewer" context="[1,publishingConfiguration.id]" class="glyphicon glyphicon-cloud-download" alt="Show Publication" title="Show Publication"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="purgeCacheCell">
+            <t:actionlink t:id="purgePublishingCache" t:context="publishingConfiguration.id" class="glyphicon glyphicon-erase" alt="Purge Publishing Cache" title="Purge Publishing Cache"></t:actionlink>
+        </t:parameter>
+        <t:parameter name="generateReportCell">
+            <t:pagelink t:page="publishing/publicationviewer" context="[0,publishingConfiguration.id]" class="glyphicon glyphicon-cloud-download" alt="Show Publication" title="Show Publication"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="consoleCell">
+      		<a href="#" onclick="openIframeModal('${getIframeConsoleLink()}');" class="glyphicon glyphicon-console"></a>
+        </t:parameter>
+        <t:parameter name="editCell">
+            <t:pagelink page="publishing/managepublishingconfiguration" context="publishingConfiguration.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="deletePublishingConfiguration" t:mixins="confirm" t:context="publishingConfiguration.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+</t:layout>

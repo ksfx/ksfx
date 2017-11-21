@@ -1,0 +1,6 @@
+<div class="userinfo" xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <t:if test="currentUser">
+        ${message:logged_in_as} <span class="user">${currentUser.username}</span>
+        &nbsp;<t:user.logoutlink />
+    </t:if>
+</div>

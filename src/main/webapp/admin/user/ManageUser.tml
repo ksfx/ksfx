@@ -1,0 +1,25 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Change Admin Password</h1>
+    </div>
+
+    <div class="list-group" style="width:50%">
+        <div class="list-group-item">
+            <t:form class="box-holder" t:id="userForm" autocomplete="off">
+                <t:errors />
+                <div class="form-group">
+                    <t:label for="password">Password</t:label>
+                    <t:passwordfield t:id="password" t:value="password" autocomplete="off" />
+                </div>
+                <div class="form-group">
+                    <t:label for="passwordConfirm">Confirm Password</t:label>
+                    <t:passwordfield t:id="passwordConfirm" t:value="passwordConfirm" autocomplete="off" />
+                </div>
+                <div class="box-foot form-foot">
+                    <button type="submit">Save</button>
+                </div>
+            </t:form>
+        </div>
+    </div>
+
+</t:layout>

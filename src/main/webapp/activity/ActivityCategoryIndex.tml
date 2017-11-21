@@ -1,0 +1,19 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Activity Categories</h1>
+    </div>
+
+    <div class="actions">
+        <t:pagelink page="activity/manageactivitycategory" class="glyphicon glyphicon-plus" title="Add Activity Category" alt="Add Activity Category"></t:pagelink>
+    </div>
+
+    <t:grid source="allActivityCategories" row="activityCategory" add="edit,delete" exclude="id">
+        <t:parameter name="editCell">
+            <t:pagelink page="activity/manageactivitycategory" context="activityCategory.id" class="glyphicon glyphicon-pencil" alt="Edit" title="Edit"></t:pagelink>
+        </t:parameter>
+        <t:parameter name="deleteCell">
+            <t:actionlink t:id="delete" t:context="activityCategory.id" class="glyphicon glyphicon-trash" alt="Delete" title="Delete"></t:actionlink>
+        </t:parameter>
+    </t:grid>
+
+</t:layout>

@@ -1,0 +1,133 @@
+<t:seriesbrowserlayout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <!-- http://getbootstrap.com/examples/offcanvas/ -->
+
+    <div class="page-header">
+        <h1>Search</h1>
+    </div>
+
+    <!--
+   	<ul class="nav nav-tabs">
+        <li role="presentation"><t:pagelink page="index">Dashboard</t:pagelink></li>
+        <li role="presentation" class="active"><t:pagelink page="search">Search</t:pagelink></li>
+    </ul>
+    -->
+    
+    <div class="list-group" style="width:100%">
+        <div class="list-group-item">
+            <t:form class="box-holder" t:id="search">
+                <t:errors />
+                <div class="form-group">
+                    <t:label for="allQuery">Query</t:label>
+    				<t:textfield t:id="allQuery" t:value="allQuery" style="width:50%"></t:textfield>
+    			</div>
+                <div class="form-group">
+                    <t:label for="scalarValueQuery">Scalar Value</t:label>
+    				<t:textfield t:id="scalarValueQuery" t:value="scalarValueQuery" style="width:50%"></t:textfield>
+    			</div>
+    			<div class="form-group">
+                    <t:label for="seriesId">Time Series ID</t:label>
+    				<t:textfield t:id="seriesId" t:value="seriesId" style="width:50%"></t:textfield>
+    			</div>
+    			<div class="form-group">
+    				<t:label for="dateFrom">Time Range</t:label>
+    				<div style="width: 25%;"><t:DateField t:id="dateFrom" t:format="yyyy-MM-dd" placeholder="From Date"/></div>
+ 					<div style="width: 25%;"><t:DateField t:id="dateTo" t:format="yyyy-MM-dd"  placeholder="To Date"/></div>
+    			</div>
+    			<!--
+    			<div class="container-fluid">
+    				<div class="row">
+    					<div class="col-md-1"  style="width: 25%;"><t:DateField t:id="dateFrom" t:format="yyyy-MM-dd" placeholder="From Date"/></div>
+    					<div class="col-md-2"  style="width: 25%;"><t:DateField t:id="dateTo" t:format="yyyy-MM-dd"  placeholder="To Date"/></div>
+    				</div>
+    			</div>
+    			-->
+				<p><b>Complex Value</b></p>
+				<div class="container-fluid">
+	            <t:loop formState="iteration" source="complexValueQuery.keySet()" value="complexValueKeyLoop">
+	            	<div class="row">
+	                	<div class="col-md-1" style="width: 40%;"><t:textfield t:id="complexValueKey" t:value="complexValueKey" placeholder="Key" /></div>
+	                	<div class="col-md-2" style="width: 40%;"><t:textfield t:id="complexValueValue" t:value="complexValueValue" placeholder="Value" /></div>
+                        <div class="col-md-3" style="width: 40px;"><t:actionlink t:id="deleteComplexValueFragment" context="complexValueKeyLoop"  class="glyphicon glyphicon-minus"></t:actionlink></div>
+	                </div>
+	            </t:loop>
+	            </div>
+	            <t:actionlink t:id="addComplexValueFragment" class="glyphicon glyphicon-plus" title="Add complex value fragment" alt="Add complex value fragment"></t:actionlink>
+		        <p><b>Meta Data</b></p>
+		        <div class="container-fluid">
+	            <t:loop formState="iteration" source="metaDataQuery.keySet()" value="metaDataKeyLoop">
+	            	<div class="row">
+	                	<div class="col-md-1" style="width: 40%;"><t:textfield t:id="metaDataKey" t:value="metaDataKey" placeholder="Key" /></div>
+	                	<div class="col-md-2" style="width: 40%;"><t:textfield t:id="metaDataValue" t:value="metaDataValue" placeholder="Value" /></div>
+                        <div class="col-md-3" style="width: 40px;"><t:actionlink t:id="deleteMetaDataFragment" context="metaDataKeyLoop" class="glyphicon glyphicon-minus"></t:actionlink></div>
+	                </div>
+	            </t:loop>
+	            </div>
+	            <t:actionlink t:id="addMetaDataFragment" class="glyphicon glyphicon-plus" title="Add meta data fragment" alt="Add meta data fragment"></t:actionlink>
+    			<div class="box-foot form-foot">
+                    <button type="submit">Search</button>
+                    <t:if test="searchRunning">
+                    	<t:actionlink t:id="cancelSearch" class="button button-cancel">Reset Search</t:actionlink>
+                    </t:if>
+                </div>
+			</t:form>
+		</div>
+	</div>
+	
+	<t:if test="!searchRunning">
+	    <t:grid source="allTimeSeries" row="timeSeries" exclude="indexable">
+	        <t:parameter name="nameCell">
+	            <t:pagelink page="viewTimeSeries" context="timeSeries.id">${timeSeries.name}</t:pagelink>
+	        </t:parameter>
+	    </t:grid>
+	    <t:parameter name="else">
+	    	<t:grid source="observationGridDataSource" row="observation" exclude="sourceId">
+	    		<t:parameter name="timeSeriesIdCell">
+	    			${observation.timeSeriesId}
+	    		</t:parameter>
+	    		<t:parameter name="observationTimeCell">
+            		<t:output format="literal:yyyy-MM-dd HH:mm:ss" value="observation.observationTime"/>
+        		</t:parameter>
+        		<t:parameter name="scalarValueCell">
+            		<t:if test="!isObservationActiveObservation">
+                		<t:actionlink t:id="openNews" t:context="[observation.timeSeriesId,observation.sourceId,observation.observationTime.time]">${observation.scalarValue}</t:actionlink>
+                		<t:parameter name="else">
+                    		${observation.scalarValue}
+                		</t:parameter>
+            		</t:if>
+        		</t:parameter>
+        		<!--
+	    		<t:parameter name="editCell">
+	    			<t:pagelink page="observation/genericobservationmanager" context="editingContextParameters">Edit</t:pagelink>
+	    		</t:parameter>
+	    		-->
+	    	</t:grid>
+	    </t:parameter>
+    </t:if>
+    
+    <t:if test="hasActiveObservation">
+        <div id="activeObservation" data-target="activeObservationId">
+
+        </div>
+    </t:if>
+    
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="height:80%">
+            <div class="modal-content" style="height:100%">
+                <t:if test="activeObservation">
+                    <div class="modal-header">
+                        <t:actionlink t:id="closeParameterWindow" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></t:actionlink>
+                        <h4 class="modal-title" id="myModalLabel">News</h4>
+                    </div>
+                    <div class="modal-body" style="height:80%">
+                    	<iframe src="${iframeLink}" style="width:100%;height:100%" frameborder="0"></iframe> 
+                    </div>
+                    <div class="modal-footer">
+                        <t:actionlink t:id="cancelParameterWindow" class="btn btn-default">Close</t:actionlink>
+                    </div>
+                </t:if>
+            </div>
+        </div>
+    </div>
+
+</t:seriesbrowserlayout>

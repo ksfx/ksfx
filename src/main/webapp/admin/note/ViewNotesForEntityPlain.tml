@@ -1,0 +1,38 @@
+<t:emptylayout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+    <div class="page-header">
+        <h1>Notes for: ${name}</h1>
+    </div>
+
+	<div class="layout-grid-col-holder">
+
+		<div class="layout-grid-col2">
+			<div class="actions">
+        		<a target="_parent" href="${getCreateNewNoteLink()}" class="glyphicon glyphicon-plus" alt="Add Note For Entity" title="Add Note For Entity"></a>
+    		</div>
+    		<t:if test="mainNotes">
+	    		<t:loop source="mainNotes" value="note">
+	    			<h3>${note.title}</h3>
+	    			<div><pre><t:outputraw value="note.content" /></pre></div>
+	    			<t:pagelink target="_parent" page="admin/note/managenote" context="note.id" class="glyphicon glyphicon-eye-open" alt="View Note" title="View Note"></t:pagelink>
+	    			<hr />
+	    		</t:loop>
+    		<t:parameter name="else">
+    			No notes available!
+    		</t:parameter>
+    		</t:if>
+    		
+    		<t:if test="notes">
+	    		<h2>Further Related Notes</h2>
+	            <t:grid source="notes" row="note" exclude="content,created,lastUpdated,id">
+	            	<t:parameter name="titleCell">
+	            		<t:pagelink target="_parent" page="admin/note/managenote" context="note.id">${note.title}</t:pagelink>
+	            	</t:parameter>
+	            </t:grid>
+            </t:if>
+
+		</div>
+
+	</div>
+
+</t:emptylayout>

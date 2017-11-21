@@ -1,0 +1,18 @@
+<t:emptylayout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+
+	<!--
+    <div class="page-header">
+        <h1>Notes for: ${name}</h1>
+    </div>
+    -->
+
+	<div class="layout-grid-col-holder">
+
+		<div class="layout-grid-col2">
+			<div><pre><t:outputraw value="console" /></pre></div>
+            <t:actionlink t:id="clearConsole" context="[entityId,entityType]" class="glyphicon glyphicon-erase" alt="Clear Console" title="Clear Console"></t:actionlink>
+		</div>
+
+	</div>
+
+</t:emptylayout>

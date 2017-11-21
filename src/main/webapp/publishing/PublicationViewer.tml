@@ -1,0 +1,9 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>${pageHeaderTitle}</h1>
+    </div>
+
+    <div>
+		<t:outputraw value="layoutEmbeddedData" />
+    </div>
+</t:layout>
