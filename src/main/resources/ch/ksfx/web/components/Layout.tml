@@ -5,6 +5,8 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <meta name="author" content="Kejo Starosta" />
+        <meta name="description" content="KSFX Data Analysis: Information Retrieval, Sentiment Analysis, Regression and Correlation Analysis." />
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" />
         <t:pagetitle/>
     </head>
@@ -54,7 +56,7 @@
 
         <div id="footer">
             <div class="container">
-                <p class="text-muted">Version ${version.versionString} &copy; Kejo Starosta</p>
+                <p class="text-muted"><a target="_blank" href="http://www.github.com/ksfx" style="color:inherit">Version ${version.versionString}</a> &copy; Kejo Starosta</p>
             </div>
         </div>
 

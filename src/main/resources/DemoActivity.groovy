@@ -32,8 +32,8 @@ class DemoActivity implements ActivityExecution
 
     public List<ActivityInstancePersistentData> executeActivity(List<ActivityInstanceParameter> activityInstanceParameters)
     {
-        Map<String, String> persistentData = new HashMap<String, String>();
-        
+        List<ActivityInstancePersistentData> persistentData = new ArrayList<ActivityInstancePersistentData>();
+
         Console.write("Hello World Activity");
 
         return persistentData;

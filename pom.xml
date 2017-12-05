@@ -7,6 +7,11 @@
     <name>KSFX</name>
     <dependencies>
 		<dependency>
+		    <groupId>com.google.guava</groupId>
+		    <artifactId>guava</artifactId>
+		    <version>23.0</version>
+		</dependency>
+		<dependency>
     		<groupId>xml-apis</groupId>
     		<artifactId>xml-apis</artifactId>
     		<version>1.4.01</version>
@@ -90,7 +95,7 @@
 		<dependency>
 		    <groupId>com.datastax.cassandra</groupId>
 		    <artifactId>cassandra-driver-core</artifactId>
-		    <version>3.0.2</version>
+		    <version>3.3.2</version>
 		</dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
