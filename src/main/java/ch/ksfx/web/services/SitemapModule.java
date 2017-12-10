@@ -31,7 +31,7 @@ public class SitemapModule
 {
     public static Sitemap buildSitemap(List<PageProvider> pageProviders)
     {
-        return new SitemapImpl("Ksfx", pageProviders);
+        return new SitemapImpl("KSFX - Data Analysis Platform", pageProviders);
     }
 
     public static void contributeSitemap(OrderedConfiguration<PageProvider> configuration,
