@@ -23,7 +23,6 @@ import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.RequestEntity;
 import org.apache.commons.httpclient.params.HttpClientParams;
 import org.apache.commons.httpclient.params.HttpMethodParams;
-
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -57,6 +56,11 @@ public class HttpClientHelper
         httpClient.getParams().setParameter(HttpClientParams.ALLOW_CIRCULAR_REDIRECTS, true);
         this.headers = headers;
         this.retryCount = retryCount;
+    }
+
+    public HttpClient getHttpClient()
+    {
+        return httpClient;
     }
 
     /**

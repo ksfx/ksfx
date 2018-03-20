@@ -1,0 +1,21 @@
+<t:layout xmlns:t="http://tapestry.apache.org/schema/tapestry_5_1_0.xsd">
+    <div class="page-header">
+        <h1>Login Page Information</h1>
+    </div>
+
+    <div class="list-group" style="width:50%">
+        <div class="list-group-item">
+            <t:form class="box-holder" t:id="loginPageInformationForm" autocomplete="off">
+                <t:errors />
+                <div class="form-group">
+                    <t:label for="loginPageInformation">Information</t:label>
+                    <t:textarea t:id="loginPageInformation" t:value="loginPageInformation" style="width:800px;height:600px" />
+                </div>
+                <div class="box-foot form-foot">
+                    <button type="submit">Save</button>
+                </div>
+            </t:form>
+        </div>
+    </div>
+
+</t:layout>

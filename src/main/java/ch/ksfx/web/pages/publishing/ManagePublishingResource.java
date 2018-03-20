@@ -24,13 +24,13 @@ import ch.ksfx.model.publishing.PublishingResource;
 import ch.ksfx.util.StacktraceUtil;
 import groovy.lang.GroovyClassLoader;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.tapestry5.annotations.InjectComponent;
 import org.apache.tapestry5.annotations.Property;
 import org.apache.tapestry5.corelib.components.Form;
 import org.apache.tapestry5.ioc.ObjectLocator;
 import org.apache.tapestry5.ioc.annotations.Inject;
 import org.springframework.security.access.annotation.Secured;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;

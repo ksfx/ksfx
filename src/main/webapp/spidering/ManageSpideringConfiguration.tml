@@ -22,6 +22,11 @@
                     <t:label for="checkDuplicatesGlobally">Check Duplicates Globally</t:label>
                     <t:checkbox t:id="checkDuplicatesGlobally" t:value="spideringConfiguration.checkDuplicatesGlobally" />
                 </div>
+                
+                <div class="form-group">
+                    <t:label for="debugSpidering">Debug Spidering</t:label>
+                    <t:checkbox t:id="debugSpidering" t:value="spideringConfiguration.debugSpidering" />
+                </div>
 
                 <t:if test="spideringConfiguration.id">
 

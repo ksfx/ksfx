@@ -16,9 +16,11 @@
  */
 
 package ch.ksfx.web.services.scheduler;
+
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.spidering.SpideringConfiguration;
-import org.quartz.*;
+import org.quartz.SchedulerException;
+
 import java.util.Date;
 import java.util.List;
 

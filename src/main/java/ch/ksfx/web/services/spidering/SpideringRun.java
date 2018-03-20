@@ -115,11 +115,13 @@ public class SpideringRun implements Runnable
 								
                         resourceDAO.saveOrUpdate(resource);
                     } else {
-                        System.out.println("Calculating resources");
+                    	debugSpidering("Calculating resources");
+                        
                         List<Resource> previousResources = resourceDAO.getResourcesForSpideringAndDepth(spidering, resourceConfiguration.getDepth() - 1);
 
                         for (Resource previousResource : previousResources) {
-                            System.out.println("Previous Resource " + previousResource.getUrl());
+                            debugSpidering("Previous Resource " + previousResource.getUrl());
+                        	
                             //Depth, Parts
                             Map<Integer, List<String>> urlParts = new HashMap<Integer, List<String>>();
                             Integer depth = 0;
@@ -144,7 +146,8 @@ public class SpideringRun implements Runnable
 
                                     while (matcher.find()) {
                                         urlParts.get(depth).add(matcher.group(matcher.groupCount()));
-                                        System.out.println("Regex URL finder: " + matcher.group(matcher.groupCount()));
+                                        
+                                        debugSpidering("Regex URL finder: " + matcher.group(matcher.groupCount()));
 
                                         if (!isRunning) {
                                             break;
@@ -191,7 +194,7 @@ public class SpideringRun implements Runnable
                                     break;
                                 }
                                 
-                                System.out.println("---> SpideringRun loading url: " + url);
+                                debugSpidering("---> SpideringRun loading url: " + url);
 
                                 Resource resource = new Resource();
                                 resource.setUrl(url);
@@ -203,25 +206,28 @@ public class SpideringRun implements Runnable
                                 //resources.add(resource);
 
 								if (resourceConfiguration.getResourceLoaderPluginConfiguration() != null) {
+									debugSpidering("---> SpideringRun loading url webbefore: " + url + " with: " + resourceConfiguration.getResourceLoaderPluginConfiguration().getName());
 									ResourceLoaderPlugin rlp = resourceLoaderPluginDAO.getResourceLoaderPlugin(resourceConfiguration.getResourceLoaderPluginConfiguration());
 									rlp.loadResource(resource);
+									debugSpidering("---> SpideringRun loading url webafter: " + url + " with: " + resourceConfiguration.getResourceLoaderPluginConfiguration().getName());
 								} else {
-									System.out.println("---> SpideringRun loading url webbefore: " + url);
+									debugSpidering("---> SpideringRun loading url webbefore: " + url);
 									webEngine.loadResource(resource);	
-									System.out.println("---> SpideringRun loading url webafter: " + url);
+									debugSpidering("---> SpideringRun loading url webafter: " + url);
 								}
-								
-								System.out.println("---> SpideringRun loading url savebefore: " + url);
+
+								debugSpidering("---> SpideringRun loading url savebefore: " + url);
                                 resourceDAO.saveOrUpdate(resource);
-								System.out.println("---> SpideringRun loading url saveafter: " + url);
+								debugSpidering("---> SpideringRun loading url saveafter: " + url);
 		
                                 if (resourceConfiguration.getPaging()) {
-                                	System.out.println("---> SpideringRun loading url pagingbefore: " + url);
+                                	debugSpidering("---> SpideringRun loading url pagingbefore: " + url);
                                     retrievePagingResources(resourceConfiguration, resource);
                                 }
                                 
-                                System.out.println("---> SpideringRun loading url finished: " + url);
-                                System.out.println("----------------------------------------------------------------------------------------");
+                                debugSpidering("---> SpideringRun loading url finished: " + url);
+                                debugSpidering("----------------------------------------------------------------------------------------");
+                                debugSpidering("----------------------------------------------------------------------------------------");
                             }
                         }
                     }
@@ -235,7 +241,6 @@ public class SpideringRun implements Runnable
 
             parsingRunner.runParsing(spidering);
         } catch (Throwable e) {
-        	e.printStackTrace();
             systemLogger.logMessage("FATAL_SPIDERING", "Error while spidering", e);
             logger.error("Error while spidering",e);
 
@@ -244,6 +249,13 @@ public class SpideringRun implements Runnable
 
             RunningSpideringCache.runningSpiderings.remove(spidering.getId());
         }
+    }
+    
+    private void debugSpidering(String debugMessage)
+    {
+    	if (spidering.getSpideringConfiguration().getDebugSpidering()) {
+    		systemLogger.logMessage("DEBUG_SPIDERING", debugMessage);
+    	}
     }
 
     private void retrievePagingResources(ResourceConfiguration resourceConfiguration, Resource startResource) {
@@ -276,7 +288,7 @@ public class SpideringRun implements Runnable
 
                     while (matcher.find()) {
                         urlParts.get(depth).add(matcher.group(matcher.groupCount()));
-                        System.out.println("Regex URL finder: " + matcher.group(matcher.groupCount()));
+                        debugSpidering("Regex URL finder (Paging resources): " + matcher.group(matcher.groupCount()));
 
                         if (!isRunning) {
                             break;
@@ -312,7 +324,7 @@ public class SpideringRun implements Runnable
             List<Integer> depths = new ArrayList(urlParts.keySet());
             Collections.sort(depths);
 
-            System.out.println("Paging URLs size " + calculatedSize);
+            debugSpidering("Paging URLs size " + calculatedSize);
 
             for (Integer i = 0; i < calculatedSize; i++) {
                 String url = "";

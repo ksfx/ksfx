@@ -172,6 +172,11 @@ public class WebEngine
         	httpMethod.releaseConnection();	
         }
     }
+    
+    public HttpClientHelper getHttpClientHelper()
+    {
+    	return httpClientHelper;
+    }
 
 
     //TODO Make plugin resources available

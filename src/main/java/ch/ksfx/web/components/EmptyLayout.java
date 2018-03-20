@@ -22,11 +22,8 @@ import ch.ksfx.web.services.version.Version;
 import org.apache.tapestry5.annotations.Environmental;
 import org.apache.tapestry5.annotations.Import;
 import org.apache.tapestry5.annotations.InjectComponent;
-import org.apache.tapestry5.annotations.Property;
 import org.apache.tapestry5.ioc.annotations.Inject;
 import org.apache.tapestry5.services.javascript.JavaScriptSupport;
-
-import java.util.List;
 
 
 @Import(/*stack = {InternalConstants.CORE_STACK_NAME },*/ module = { "bootstrap/modal" }, stylesheet = {"context:styles/main_tb.css"})

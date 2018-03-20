@@ -21,13 +21,10 @@ import ch.ksfx.dao.GenericDataStoreDAO;
 import ch.ksfx.dao.TimeSeriesDAO;
 import ch.ksfx.model.GenericDataStore;
 import ch.ksfx.model.TimeSeries;
-import ch.ksfx.model.user.User;
 import ch.ksfx.web.services.lucene.IndexService;
 import org.apache.tapestry5.annotations.Property;
 import org.apache.tapestry5.ioc.annotations.Inject;
 import org.springframework.security.access.annotation.Secured;
-import org.springframework.security.authentication.dao.SaltSource;
-import org.springframework.security.authentication.encoding.PasswordEncoder;
 
 import java.util.List;
 

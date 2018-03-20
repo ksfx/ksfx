@@ -18,9 +18,9 @@
 package ch.ksfx.web.services.dbmigration.impl;
 
 import ch.ksfx.web.services.dbmigration.DbMigration;
+import com.carbonfive.db.migration.DataSourceMigrationManager;
 import io.ebean.Ebean;
 import io.ebean.Transaction;
-import com.carbonfive.db.migration.DataSourceMigrationManager;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;

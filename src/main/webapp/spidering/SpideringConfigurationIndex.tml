@@ -7,7 +7,7 @@
         <t:pagelink page="spidering/managespideringconfiguration" class="glyphicon glyphicon-plus" title="Add Spidering Configuration" alt="Add Spidering Configuration"></t:pagelink>
     </div>
 
-    <t:grid source="allSpideringConfigurations" row="spideringConfiguration" exclude="id,cronScheduleEnabled" add="info,run,edit,schedule,delete">
+    <t:grid source="allSpideringConfigurations" row="spideringConfiguration" exclude="id,cronScheduleEnabled,debugSpidering" add="info,run,edit,schedule,delete">
         <t:parameter name="nameCell">
             <t:pagelink page="spidering/viewspiderings" context="spideringConfiguration.id">${spideringConfiguration.name}</t:pagelink>
         </t:parameter>

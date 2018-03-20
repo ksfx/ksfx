@@ -70,12 +70,11 @@ public class SitemapModule
         adminPage.addChildPage(new Page("admin/timeseries/timeSeriesIndex", "Time Series"));
         adminPage.addChildPage(new Page("admin/category/categoryIndex", "Categories"));
         adminPage.addChildPage(new Page("admin/datastore/dataStoreIndex", "Generic Data Store"));
-        //adminPage.addChildPage(new Page("admin/decisionstrategy/decisionStrategyIndex", "Decision Strategies"));
         adminPage.addChildPage(new Page("admin/note/noteIndex", "Notes"));
         adminPage.addChildPage(new Page("admin/systemlog/systemLogIndex", "System Logs"));
-        //adminPage.addChildPage(new Page("admin/codeexecuter/codeExecuterIndex", "Code Executer"));
         adminPage.addChildPage(new Page("admin/scheduler/schedulerIndex", "Scheduler"));
         adminPage.addChildPage(new Page("admin/user/manageuser", "Change Admin Password"));
+        adminPage.addChildPage(new Page("admin/loginpageinformation/manageloginpageinformation", "Login Page Information"));
 
         pageProvider.addFirstLevelPage(spideringPage);
         pageProvider.addFirstLevelPage(adminPage);

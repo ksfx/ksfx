@@ -33,7 +33,6 @@ import org.jfree.chart.axis.DateTickMarkPosition;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.time.SimpleTimePeriod;
 import org.jfree.data.time.TimePeriodValues;
 import org.jfree.data.time.TimePeriodValuesCollection;

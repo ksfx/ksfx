@@ -36,6 +36,7 @@ public class SpideringConfiguration
     private String cronSchedule;
     private boolean checkDuplicatesGlobally = false;
     private boolean cronScheduleEnabled = false;
+    private boolean debugSpidering = false;
     private List<ResourceConfiguration> resourceConfigurations;
     private List<Spidering> spiderings;
     private ResultVerifierConfiguration resultVerifierConfiguration;
@@ -93,6 +94,18 @@ public class SpideringConfiguration
     public void setCheckDuplicatesGlobally(boolean checkDuplicatesGlobally)
     {
         this.checkDuplicatesGlobally = checkDuplicatesGlobally;
+    }
+    
+    @XmlTransient
+    @JsonIgnore
+    public boolean getDebugSpidering()
+    {
+        return debugSpidering;
+    }
+
+    public void setDebugSpidering(boolean debugSpidering)
+    {
+        this.debugSpidering = debugSpidering;
     }
 
     @XmlTransient

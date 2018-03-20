@@ -17,6 +17,8 @@
 
 package ch.ksfx.web.pages;
 
+import ch.ksfx.dao.GenericDataStoreDAO;
+import ch.ksfx.model.GenericDataStore;
 import org.apache.tapestry5.annotations.Import;
 import org.apache.tapestry5.ioc.annotations.Inject;
 import org.apache.tapestry5.ioc.annotations.Value;
@@ -31,7 +33,13 @@ public class Login
     private String checkUrl;
     @Inject
     private Request request;
+
+    @Inject
+    private GenericDataStoreDAO genericDataStoreDAO;
+
     private boolean failed = false;
+
+    public static final String LOGIN_PAGE_INFORMATION_KEY = "LOGIN_PAGE_INFORMATION";
 
     public Object onActivate()
     {
@@ -53,5 +61,16 @@ public class Login
         if (extra.equals("failed")) {
             failed = true;
         }
+    }
+
+    public String getLoginPageInformation()
+    {
+        GenericDataStore genericDataStore = genericDataStoreDAO.getGenericDataStoreForKey(LOGIN_PAGE_INFORMATION_KEY);
+
+        if (genericDataStore == null) {
+            return null;
+        }
+
+        return genericDataStore.getDataValue();
     }
 }

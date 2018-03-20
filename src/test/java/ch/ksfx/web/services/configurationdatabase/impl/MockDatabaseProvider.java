@@ -23,7 +23,6 @@ import ch.ksfx.web.services.systemenvironment.SystemEnvironment;
 import io.ebean.Ebean;
 import io.ebean.EbeanServerFactory;
 import io.ebean.SqlUpdate;
-import io.ebean.annotation.Sql;
 import io.ebean.annotation.TxIsolation;
 import io.ebean.config.ServerConfig;
 import io.ebean.config.UnderscoreNamingConvention;
