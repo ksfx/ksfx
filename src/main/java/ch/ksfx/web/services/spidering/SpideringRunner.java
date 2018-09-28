@@ -42,7 +42,7 @@ public class SpideringRunner
         this.parsingRunner = parsingRunner;
         this.objectLocatorService = objectLocatorService;
 
-        this.threadPoolExecutor = new ThreadPoolExecutor(2, 5, 100, TimeUnit.SECONDS, queue);
+        this.threadPoolExecutor = new ThreadPoolExecutor(10, 100, 100, TimeUnit.SECONDS, queue);
     }
 
     public boolean isSpideringRunning(Spidering spidering)
