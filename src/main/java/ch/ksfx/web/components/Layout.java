@@ -23,12 +23,21 @@ import org.apache.tapestry5.annotations.Environmental;
 import org.apache.tapestry5.annotations.Import;
 import org.apache.tapestry5.annotations.InjectComponent;
 import org.apache.tapestry5.ioc.annotations.Inject;
+import org.apache.tapestry5.ioc.annotations.Value;
+import org.apache.tapestry5.services.Request;
 import org.apache.tapestry5.services.javascript.JavaScriptSupport;
 
 
 @Import(module = { "bootstrap/modal" }, stylesheet = {"context:styles/main_tb.css"}, library = "context:scripts/layout.js")
 public class Layout
 {
+    @Inject
+    @Value("${spring-security.check.url}")
+    private String checkUrl;
+
+    @Inject
+    private Request request;
+
     @Inject
     private Version version;
     
@@ -54,6 +63,11 @@ public class Layout
     public Feedback getFeedback()
     {
         return feedback;
+    }
+
+    public String getLoginCheckUrl()
+    {
+        return request.getContextPath() + checkUrl;
     }
 
     private void setupRender() 

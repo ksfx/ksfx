@@ -18,12 +18,35 @@
                 <div class="navbar navbar-default navbar-static-top" role="navigation">
                     <div class="container">
                         <div class="navbar-header">
+                        	<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse">
+                				<span class="sr-only">Toggle navigation</span>
+                				<span class="icon-bar"></span>
+                				<span class="icon-bar"></span>
+                				<span class="icon-bar"></span>
+            				</button>
                             <span class="pull-left"><img src="${context:images/ksfx-header.png}" /></span> <span class="navbar-brand">KSFX Data Analysis</span>
                         </div>
                         <div class="navbar-collapse collapse" id="navbar-collapse">
                             <ul class="nav navbar-nav">
 
                             </ul>
+                            
+                                                              <form id="signin" class="navbar-form navbar-right" role="form" action="${loginCheckUrl}">
+                                                    <div class="input-group">
+                                                        <span class="input-group-addon"><i class="glyphicon glyphicon-user"></i></span>
+                                                        <input id="email" type="text" class="form-control" name="j_username" value="" placeholder="Username" />
+                                                    </div>
+
+                                                    <div class="input-group">
+                                                        <span class="input-group-addon"><i class="glyphicon glyphicon-lock"></i></span>
+                                                        <input id="password" type="password" class="form-control" name="j_password" value="" placeholder="Password" />
+                                                    </div>
+
+                                                    <button type="submit" class="btn btn-primary">Login</button>
+                                               </form>
+
+
+
                         </div>
                     </div>
                 </div>

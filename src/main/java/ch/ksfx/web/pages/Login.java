@@ -25,15 +25,8 @@ import org.apache.tapestry5.ioc.annotations.Value;
 import org.apache.tapestry5.services.Request;
 
 
-@Import(stylesheet = {"context:styles/signin_tb.css"})
 public class Login
 {
-    @Inject
-    @Value("${spring-security.check.url}")
-    private String checkUrl;
-    @Inject
-    private Request request;
-
     @Inject
     private GenericDataStoreDAO genericDataStoreDAO;
 
@@ -49,11 +42,6 @@ public class Login
     public boolean isFailed()
     {
         return failed;
-    }
-
-    public String getLoginCheckUrl()
-    {
-        return request.getContextPath() + checkUrl;
     }
 
     void onActivate(String extra)

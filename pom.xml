@@ -261,11 +261,11 @@
     		<artifactId>language-detector</artifactId>
     		<version>0.5</version>
 		</dependency>
-		<dependency>
-    		<groupId>net.sourceforge.htmlunit</groupId>
-    		<artifactId>htmlunit</artifactId>
-    		<version>2.23</version>
-		</dependency>
+        <dependency>
+            <groupId>net.sourceforge.htmlunit</groupId>
+            <artifactId>htmlunit</artifactId>
+            <version>2.23</version>
+        </dependency>
         <dependency>
             <groupId>io.ebean</groupId>
             <artifactId>ebean</artifactId>
@@ -384,7 +384,7 @@
                 <version>2.20.1</version>
                 <configuration>
                     <systemPropertyVariables>
-                        <testDatabaseConnectionString>jdbc:mysql://localhost:3306/ksfx_test?autoReconnect=true&amp;useUnicode=true&amp;characterEncoding=UTF-8</testDatabaseConnectionString>
+                        <testDatabaseConnectionString>jdbc:mysql://localhost:3306/ksfx_test?autoReconnect=true&amp;nserverTimezone=UTC&amp;useUnicode=true&amp;characterEncoding=UTF-8&amp;useTimezone=false</testDatabaseConnectionString>
                         <testDatabaseName>ksfx_test</testDatabaseName>
                         <testDatabaseRecreate>true</testDatabaseRecreate>
                         <testDatabaseDefaultUser>root</testDatabaseDefaultUser> <!-- override with -DtestDatabaseUser=user -->
@@ -395,7 +395,7 @@
         </plugins>
     </build>
     <properties>
-        <mysql-connector-release-version>5.1.9</mysql-connector-release-version>
+        <mysql-connector-release-version>8.0.16</mysql-connector-release-version>
         <cobertura-plugin-version>2.1</cobertura-plugin-version>
         <tapestry-release-version>5.4.3</tapestry-release-version>
         <spring-security-version>3.0.2.RELEASE</spring-security-version>
