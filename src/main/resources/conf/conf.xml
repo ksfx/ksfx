@@ -1,0 +1,16 @@
+<configuration>
+    <database>
+        <driver>org.postgresql.Driver</driver>
+        <databaseURL>
+            jdbc:postgresql://localhost:5432/xbook?currentSchema=public
+        </databaseURL>
+        <username>postgres</username>
+        <password></password>
+    </database>
+    <mail>
+        <smtphost></smtphost>
+        <username></username>
+        <password></password>
+    </mail>
+    <instanceName>TESTING</instanceName>
+</configuration>
