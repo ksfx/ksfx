@@ -15,47 +15,43 @@
  * limitations under the License.
  */
 
-package ch.ksfx.dao.user;
+package ch.ksfx.dao.ebean.spidering;
 
-import ch.ksfx.model.user.User;
+import ch.ksfx.dao.spidering.ResultUnitDAO;
+import ch.ksfx.model.spidering.ResultUnit;
 import io.ebean.Ebean;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public class EbeanUserDAO implements UserDAO
+public class EbeanResultUnitDAO implements ResultUnitDAO
 {
     @Override
-    public User getUser(Long id)
+    public void saveOrUpdate(ResultUnit resultUnit)
     {
-        return Ebean.find(User.class, id);
-    }
-
-    @Override
-    public User getUserByName(String name) {
-        return Ebean.find(User.class).where().eq("username", name).findUnique();
-    }
-
-    @Override
-    public List<User> getAllUsers()
-    {
-        return Ebean.find(User.class).findList();
-    }
-
-    @Override
-    public void save(User user)
-    {
-        if (user.getId() != null) {
-            Ebean.update(user);
+        if (resultUnit.getId() != null) {
+            Ebean.update(resultUnit);
         } else {
-            Ebean.save(user);
+            Ebean.save(resultUnit);
         }
     }
 
     @Override
-    public void delete(User user)
+    public List<ResultUnit> getAllResultUnits()
     {
-        Ebean.delete(user);
+        return Ebean.find(ResultUnit.class).findList();
+    }
+
+    @Override
+    public ResultUnit getResultUnitForId(Long resultUnitId)
+    {
+        return Ebean.find(ResultUnit.class, resultUnitId);
+    }
+
+    @Override
+    public void deleteResultUnit(ResultUnit resultUnit)
+    {
+        Ebean.delete(resultUnit);
     }
 }

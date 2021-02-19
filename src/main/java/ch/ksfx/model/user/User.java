@@ -22,8 +22,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.persistence.*;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
+//import javax.validation.constraints.NotNull;
+//import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -39,8 +39,8 @@ public class User implements UserDetails
     private String firstName;
     private String lastName;
 
-    @NotNull
-    @Size(min=4, max=30, message = "Username size should be in the range [5...30]")
+//    @NotNull
+//    @Size(min=4, max=30, message = "Username size should be in the range [5...30]")
     private String username;
     private String password;
     private String email;

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Information Retrieval</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<h1>KSFX - Information Retrieval</h1>
+
+<form action="#" th:action="@{/informationretrieval/spideringconfigurationedit}" th:object="${spideringConfiguration}" method="post">
+    <p>Id: <input type="hidden" th:field="*{id}" /></p>
+    <p>Name: <input type="text" th:field="*{name}" /></p>
+
+    <th:block th:each="resourceConfiguration,resourceConfigurationStatus : ${spideringConfiguration.resourceConfigurations}">
+        <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].id}" />
+
+        <th:block th:each="urlFragment,urlFragmentStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments}">
+            <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].id}" />
+            <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].urlFragmentFinder.id}">
+                <option th:each="urlFragmentFinder : ${allUrlFragmentFinders}"
+                        th:value="${urlFragmentFinder.id}"
+                        th:text="${urlFragmentFinder.name}">
+                    Address
+                </option>
+            </select>
+            <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].fragmentQuery}" />
+        </th:block>
+    </th:block>
+
+    <p><input type="submit" value="Submit" /> <input type="reset" value="Reset" /></p>
+</form>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>
