@@ -22,9 +22,16 @@ import ch.ksfx.model.PublishingCategory;
 import ch.ksfx.model.PublishingConfiguration;
 import ch.ksfx.model.note.NotePublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingConfigurationCacheData;
+import ch.ksfx.model.spidering.SpideringConfiguration;
 import io.ebean.Ebean;
+import io.ebean.ExpressionList;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -50,6 +57,39 @@ public class EbeanPublishingConfigurationDAO implements PublishingConfigurationD
         } else {
             return Ebean.find(PublishingConfiguration.class).where().eq("publishingCategory",publishingCategory).findList();
         }
+    }
+
+    public Page<PublishingConfiguration> getPublishingConfigutationsForPageableAndPublishingCategory(Pageable pageable, PublishingCategory publishingCategory)
+    {
+        ExpressionList expressionList = Ebean.find(PublishingConfiguration.class).where();
+
+        if (publishingCategory != null) {
+            expressionList.eq("publishingCategory", publishingCategory);
+        }
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+
+        if (!pageable.getSort().isUnsorted()) {
+            Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+            while (orderIterator.hasNext()) {
+                Sort.Order order = orderIterator.next();
+
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                    }
+
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                    }
+                }
+            }
+        }
+
+        Page<PublishingConfiguration> page = new PageImpl<PublishingConfiguration>(expressionList.findList(), pageable, Ebean.find(PublishingConfiguration.class).findCount());
+
+        return page;
     }
 
     @Override

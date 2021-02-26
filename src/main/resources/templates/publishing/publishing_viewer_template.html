@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
 <head th:replace="layout :: site-head">
-    <title>Welcome to KSFX</title>
+    <title>KSFX - Information Retrieval</title>
 </head>
 <body>
-    <header th:replace="layout :: site-header"/>
-    <h1>Welcome to KSFX</h1>
+<header th:replace="layout :: site-header"/>
+<h1 th:inline="text">KSFX - [[${pageHeaderTitle}]]</h1>
 
-    <footer th:replace="layout :: site-footer" />
+<div th:utext="${content}">
+</div>
+
+<footer th:replace="layout :: site-footer" />
 </body>
 </html>

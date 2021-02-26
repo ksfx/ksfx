@@ -20,6 +20,9 @@ package ch.ksfx.dao;
 import ch.ksfx.model.PublishingCategory;
 import ch.ksfx.model.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingConfigurationCacheData;
+import ch.ksfx.model.spidering.SpideringConfiguration;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -29,6 +32,7 @@ public interface PublishingConfigurationDAO
     public PublishingConfiguration getPublishingConfigurationForId(Long publishingConfigurationId);
     public List<PublishingConfiguration> getAllPublishingConfigurations();
     public List<PublishingConfiguration> getPublishingConfigurationsForPublishingCategory(PublishingCategory publishingCategory);
+    public Page<PublishingConfiguration> getPublishingConfigutationsForPageableAndPublishingCategory(Pageable pageable, PublishingCategory publishingCategory);
     public void saveOrUpdatePublishingConfiguration(PublishingConfiguration publishingConfiguration);
     public void deletePublishingConfiguration(PublishingConfiguration publishingConfiguration);
     public PublishingCategory getPublishingCategoryForId(Long publishingCategoryId);

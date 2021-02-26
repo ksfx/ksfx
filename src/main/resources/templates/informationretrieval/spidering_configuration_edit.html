@@ -7,29 +7,250 @@
 <header th:replace="layout :: site-header"/>
 <h1>KSFX - Information Retrieval</h1>
 
-<form action="#" th:action="@{/informationretrieval/spideringconfigurationedit}" th:object="${spideringConfiguration}" method="post">
-    <p>Id: <input type="hidden" th:field="*{id}" /></p>
-    <p>Name: <input type="text" th:field="*{name}" /></p>
+<div class="list-group" style="width:80%">
+    <div class="list-group-item">
+        <form action="#" th:action="@{/informationretrieval/spideringconfigurationedit}" th:object="${spideringConfiguration}" method="post">
+            <input type="hidden" th:field="*{id}" />
+            <div class="form-group">
+                <label class="control-label" for="name">Name</label><br />
+                <input type="text" th:field="*{name}" />
+            </div>
+            <div class="form-group">
+                <label class="control-label" for="cronSchedule">Cron Schedule</label><br />
+                <input type="text" th:field="*{cronSchedule}" />
+            </div>
+            <div class="form-group">
+                <label class="control-label" for="checkDuplicatesGlobally">Check Duplicates Globally</label>
+                <input type="checkbox" name="checkDuplicatesGlobally" th:field="*{checkDuplicatesGlobally}" />
+            </div>
+            <div class="form-group">
+                <label class="control-label" for="debugSpidering">Debug Spidering</label>
+                <input type="checkbox" name="debugSpidering" th:field="*{debugSpidering}" />
+            </div>
 
-    <th:block th:each="resourceConfiguration,resourceConfigurationStatus : ${spideringConfiguration.resourceConfigurations}">
-        <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].id}" />
+            <!-- <t:if test="spideringConfiguration.id"> -->
+            <!-- <t:actionlink t:id="addResourceConfiguration">Add Resource Configuration</t:actionlink> -->
 
-        <th:block th:each="urlFragment,urlFragmentStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments}">
-            <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].id}" />
-            <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].urlFragmentFinder.id}">
-                <option th:each="urlFragmentFinder : ${allUrlFragmentFinders}"
-                        th:value="${urlFragmentFinder.id}"
-                        th:text="${urlFragmentFinder.name}">
-                    Address
-                </option>
-            </select>
-            <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].fragmentQuery}" />
-        </th:block>
-    </th:block>
+            <th:block th:each="resourceConfiguration,resourceConfigurationStatus : ${spideringConfiguration.resourceConfigurations}">
+                <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].id}" />
+                <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].spideringConfiguration.id}" />
 
-    <p><input type="submit" value="Submit" /> <input type="reset" value="Reset" /></p>
-</form>
+                <div class="list-group-item">
+                    <div th:style="${'padding-left:' + (resourceConfigurationStatus.index * 100) + 'px'}">
+                        <div style="width:100%">
+                            <input type="checkbox" name="baseLevel" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].baseLevel}" /> Is base level
+                        </div>
 
+                        <div style="width:335px">
+                            Resource Loader Plugin
+                            <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resourceLoaderPluginConfiguration.id}">
+                                <option th:value="0" text=""></option>
+                                <option th:each="resourceLoaderPluginConfiguration : ${allResourceLoeaderPluginConfigurations}"
+                                        th:value="${resourceLoaderPluginConfiguration.id}"
+                                        th:text="${resourceLoaderPluginConfiguration.name}">
+                                    Resource Loader Plugin Configuration
+                                </option>
+                            </select>
+                        </div>
+
+                        <!--
+                        <div style="float:right">
+                            <t:actionlink t:id="addurlfragment" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" alt="Add url fragment" title="Add url fragment"></t:actionlink>
+                        </div>
+                        -->
+                        <div>
+                            URL Fragments
+                        </div>
+                        <th:block th:each="urlFragment,urlFragmentStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments}">
+                            <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].id}" />
+                            <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].resourceConfiguration.id}" />
+                            <div class="form-group">
+                                <div class="row" style="width: 450px">
+                                    <div class="col" style="width: 150px">
+                                        <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].urlFragmentFinder.id}">
+                                            <option th:each="urlFragmentFinder : ${allUrlFragmentFinders}"
+                                                    th:value="${urlFragmentFinder.id}"
+                                                    th:text="${urlFragmentFinder.name}">
+                                                Url Fragment Finder
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col" style="width: 200px">
+                                        <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].fragmentQuery}" />
+                                    </div>
+                                    <div class="col" style="width: 50px">
+                                        &nbsp;
+                                        <!-- <t:actionlink t:id="removeUrlFragment" context="urlFragment.id" class="glyphicon glyphicon-minus" title="Remove url fragment" alt="Remove url fragment"></t:actionlink> -->
+                                    </div>
+                                </div>
+                            </div>
+                        </th:block>
+                        <div style="float:right">
+                            <!-- <t:actionlink t:id="addResultUnitConfiguration" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" alt="Add result unit configuration" title="Add result unit configuration"></t:actionlink> -->
+                        </div>
+                        <div>
+                            Result Units
+                        </div>
+                        <th:block th:each="resultUnitConfiguration,resultUnitConfigurationStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations}">
+                            <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].id}" />
+                            <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resourceConfiguration.id}" />
+                            <div class="row">
+                                    <!-- allResultUnitFinders -->
+                                <div class="col">
+                                    <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitFinder.id}">
+                                        <option th:each="resultUnitFinder : ${allResultUnitFinders}"
+                                                th:value="${resultUnitFinder.id}"
+                                                th:text="${resultUnitFinder.name}">
+                                            Result Unit Finder
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col">
+                                    <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitType.id}">
+                                        <option th:each="resultUnitType : ${allResultUnitTypes}"
+                                                th:value="${resultUnitType.id}"
+                                                th:text="${resultUnitType.name}">
+                                            Result Unit Type
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col">
+                                    <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].finderQuery}" />
+                                </div>
+                                <div class="col">
+                                    <input type="checkbox" name="siteIdentifierId" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].siteIdentifier}" /> ID
+                                </div>
+                                <div class="col">
+                                    <input type="checkbox" name="lockedForUpdates" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].lockedForUpdates}" /> Updates locked
+                                </div>
+                                <div class="col">
+                                    <!-- <t:actionlink t:id="addResultUnitModifierConfiguration" context="resultUnitConfiguration.id" class="glyphicon glyphicon-plus" title="Add modifier" alt="Add modifier"></t:actionlink> -->
+                                    <!-- <t:actionlink t:id="removeResultUnitConfiguration" context="resultUnitConfiguration.id" class="glyphicon glyphicon-minus" title="Remove result unit configuration" alt="Remove result unit configuration"></t:actionlink> -->
+                                </div>
+                            </div>
+                            <!-- <t:if test="resultUnitConfiguration.resultUnitConfigurationModifiers"> -->
+                            <th:block th:each="resultUnitConfigurationModifier,resultUnitConfigurationModifierStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitConfigurationModifiers}">
+                                <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitConfigurationModifiers[__${resultUnitConfigurationModifierStatus.index}__].id}" />
+                                <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitConfigurationModifiers[__${resultUnitConfigurationModifierStatus.index}__].resultUnitConfiguration.id}" />
+                                <div class="row">
+                                    <div class="col">
+                                        <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitConfigurationModifiers[__${resultUnitConfigurationModifierStatus.index}__].resultUnitModifierConfiguration.id}">
+                                            <option th:each="resultUnitModifierConfiguration : ${allResultUnitModifierConfigurations}"
+                                                    th:value="${resultUnitModifierConfiguration.id}"
+                                                    th:text="${resultUnitModifierConfiguration.name}">
+                                                Result Unit Modifier Configuration
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col">
+                                        <!-- <t:actionlink t:id="removeResultUnitModifierConfiguration" context="resultUnitConfigurationModifiers.id" class="glyphicon glyphicon-minus" title="Remove modifier" alt="Remove modifier"></t:actionlink> -->
+                                    </div>
+                                </div>
+                            </th:block>
+                            <!-- </t:if> -->
+                        </th:block>
+
+                        <!-- <t:if test="!resourceConfiguration.paging">
+                            <div style="float:right">
+                                <t:actionlink t:id="addPaging" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" title="Add paging" alt="Add paging"></t:actionlink>
+                            </div>
+                        </t:if> -->
+                        <div th:if="${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].paging}">
+                        <div>
+                            Pagings
+                        </div>
+                        <div style="width:335px">
+                            Resource Loader Plugin (Paging)
+                            <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingResourceLoaderPluginConfiguration.id}">
+                                <option th:value="0" text=""></option>
+                                <option th:each="resourceLoaderPluginConfiguration : ${allResourceLoeaderPluginConfigurations}"
+                                        th:value="${resourceLoaderPluginConfiguration.id}"
+                                        th:text="${resourceLoaderPluginConfiguration.name}">
+                                    Resource Loader Plugin Configuration (Paging)
+                                </option>
+                            </select>
+                        </div>
+                        <!-- <div style="float:right">
+                            <t:actionlink t:id="addPagingUrlfragment" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" alt="Add url fragment" title="Add url fragment"></t:actionlink>
+                        </div> -->
+                        <th:block th:each="pagingUrlFragment,pagingUrlFragmentStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments}">
+                            <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].id}" />
+                            <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].resourceConfiguration.id}" />
+                            <div class="row">
+                                <div class="col">
+                                    <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].urlFragmentFinder.id}">
+                                        <option th:each="urlFragmentFinder : ${allUrlFragmentFinders}"
+                                                th:value="${urlFragmentFinder.id}"
+                                                th:text="${urlFragmentFinder.name}">
+                                            Url Fragment Finder (Paging)
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col">
+                                    <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].fragmentQuery}" />
+                                </div>
+                                <div class="col">
+                                    <!-- <t:actionlink t:id="removePagingUrlFragment" context="pagingUrlFragment.id" class="glyphicon glyphicon-minus" title="Remove url fragment" alt="Remove url fragment"></t:actionlink> -->
+                                </div>
+                            </div>
+                        </th:block>
+                        <!-- <t:actionlink t:id="removePaging" context="resourceConfiguration.id" class="glyphicon glyphicon-minus" title="Remove paging" alt="Remove paging"></t:actionlink> -->
+
+                        </div>
+
+                        <div style="padding-top:50px">
+                            <!-- <t:actionlink t:id="removeResourceConfiguration" context="resourceConfiguration.id" class="glyphicon glyphicon-minus" title="Remove resource configuration" alt="Remove resource configuration"></t:actionlink> -->
+                        </div>
+                    </div>
+                </div>
+            </th:block>
+            <div class="list-group-item">
+                <div>
+                    <div>
+                        Result Verifier
+                    </div>
+                    <div class="form-group">
+                        <select th:field="*{resultVerifierConfiguration.id}">
+                            <option th:each="resultVerifierConfiguration : ${allResultVerifierConfigurations}"
+                                    th:value="${resultVerifierConfiguration.id}"
+                                    th:text="${resultVerifierConfiguration.name}">
+                                Result Verifier Configuration
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div style="float:right">
+                    <!-- <t:actionlink t:id="addSpideringPostActivity" class="glyphicon glyphicon-plus" alt="Add spidering post activity" title="Add spidering post activity"></t:actionlink> -->
+                </div>
+                <div>
+                    Post Spidering Activities
+                </div>
+                <div>
+                    <th:block th:each="spideringPostActivity,spideringPostActivityStatus : ${spideringConfiguration.spideringPostActivities}">
+                        <input type="hidden" th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].id}" />
+                        <input type="hidden" th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].spideringConfiguration.id}" />
+                        <select th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].activity.id}">
+                            <option th:each="activity : ${allActivities}"
+                                    th:value="${activity.id}"
+                                    th:text="${activity.name}">
+                                Post Spidering Activity
+                            </option>
+                        </select>
+                    </th:block>
+                </div>
+
+                <div><input type="submit" value="Submit" /> <input type="reset" value="Reset" /></div>
+            </div>
+
+
+        </form>
+    </div>
+</div>
+<br />
+<br />
+<br />
+<br />
+<br />
 <footer th:replace="layout :: site-footer" />
 </body>
 </html>

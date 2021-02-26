@@ -59,20 +59,19 @@ public class EbeanSpideringConfigurationDAO implements SpideringConfigurationDAO
         expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
         expressionList.setMaxRows(pageable.getPageSize());
 
-        System.out.println(pageable.getSort() + " - " + pageable.getSort().getClass());
-
         if (!pageable.getSort().isUnsorted()) {
             Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
             while (orderIterator.hasNext()) {
                 Sort.Order order = orderIterator.next();
-                System.out.println(order.getProperty());
 
-                if (order.isAscending()) {
-                    expressionList.order().asc(order.getProperty());
-                }
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                    }
 
-                if (order.isDescending()) {
-                    expressionList.order().desc(order.getProperty());
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                    }
                 }
             }
         }

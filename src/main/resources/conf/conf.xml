@@ -2,7 +2,7 @@
     <database>
         <driver>org.postgresql.Driver</driver>
         <databaseURL>
-            jdbc:postgresql://localhost:5432/xbook?currentSchema=public
+            jdbc:postgresql://localhost:5432/ksfx?currentSchema=public
         </databaseURL>
         <username>postgres</username>
         <password></password>

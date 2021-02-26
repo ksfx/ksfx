@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<!--
+page (Pageable):                the current page
+headers     (List<String>):     available headers
+sortables   (List<String>):     headers that can be sorted
+path (String):                  path to the page with sortable header
+-->
+<tableheader th:fragment="tableheader" th:remove="tag">
+    <tr>
+        <th:block th:each="header,headerStatus : ${headers}">
+            <th:block th:if="${#lists.contains(sortables, header)}">
+                <block th:if="${names != null && headers.size == names.size}">
+                    <th th:inline="text">[[${names[__${headerStatus.index}__]}]] <a th:href="${path} + @{/(sort=(*{page?.sort?.getOrderFor(header)?.ascending} ?  ${header} + ',desc' : ${header} + ',asc'))}">s</a></th>
+                </block>
+                <block th:unless="${names != null}">
+                    <th th:inline="text">[[${header}]] <a th:href="${path} + @{/(sort=(*{page?.sort?.getOrderFor(header)?.ascending} ?  ${header} + ',desc' : ${header} + ',asc'))}">s</a></th>
+                </block>
+            </th:block>
+            <th:block th:unless="${#lists.contains(sortables, header)}">
+                <block th:if="${names != null && headers.size == names.size}">
+                    <th th:inline="text">[[${names[__${headerStatus.index}__]}]]</th>
+                </block>
+                <block th:unless="${names != null}">
+                    <th th:inline="text">[[${header}]]</th>
+                </block>
+            </th:block>
+        </th:block>
+    </tr>
+</tableheader>
+</body>
+</html>
