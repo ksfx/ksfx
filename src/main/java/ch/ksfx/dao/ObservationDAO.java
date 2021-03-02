@@ -18,21 +18,26 @@
 package ch.ksfx.dao;
 
 import ch.ksfx.model.Observation;
+import ch.ksfx.model.PublishingCategory;
+import ch.ksfx.model.PublishingConfiguration;
 import ch.ksfx.model.TimeSeries;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Date;
 import java.util.List;
 
 public interface ObservationDAO
 {
-	public Observation getFirstObservationForTimeSeriesId(Integer timeSeriesId);
-    public Observation getLastObservationForTimeSeriesId(Integer timeSeriesId);
+//	public Observation getFirstObservationForTimeSeriesId(Integer timeSeriesId);
+//    public Observation getLastObservationForTimeSeriesId(Integer timeSeriesId);
     public void saveObservation(Observation observation);
     public Observation getObservationForTimeSeriesIdObservationTimeAndSourceId(Integer timeSeriesId, Date observationTime, String sourceId);
-    public List<Observation> getObservations();
-    public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate);
-    public void deleteObservation(Observation observation);
-    public void deleteAllObservationsForTimeSeries(TimeSeries timeSeries);
-    public List<Observation> queryObservationsSparse(Integer timeSeriesId, Date startDate, Date endDate);
-    public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate, Integer limit);
+//    public List<Observation> getObservations();
+//    public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate);
+    public Page<Observation> getObservationsForPageableAndTimeSSeriesId(Pageable pageable, Integer timeSeriesId);
+//    public void deleteObservation(Observation observation);
+//    public void deleteAllObservationsForTimeSeries(TimeSeries timeSeries);
+//    public List<Observation> queryObservationsSparse(Integer timeSeriesId, Date startDate, Date endDate);
+//    public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate, Integer limit);
 }

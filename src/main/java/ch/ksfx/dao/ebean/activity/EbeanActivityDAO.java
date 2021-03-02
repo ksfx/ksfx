@@ -18,11 +18,18 @@
 package ch.ksfx.dao.ebean.activity;
 
 import ch.ksfx.dao.activity.ActivityDAO;
+import ch.ksfx.model.PublishingConfiguration;
 import ch.ksfx.model.activity.*;
 import ch.ksfx.model.note.NoteActivity;
 import io.ebean.Ebean;
+import io.ebean.ExpressionList;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -72,6 +79,40 @@ public class EbeanActivityDAO implements ActivityDAO
         } else {
             return Ebean.find(Activity.class).where().eq("activityCategory", activityCategory).findList();
         }
+    }
+
+    @Override
+    public Page<Activity> getActivitiesForPageableAndActivityCategory(Pageable pageable, ActivityCategory activityCategory)
+    {
+        ExpressionList expressionList = Ebean.find(Activity.class).where();
+
+        if (activityCategory != null) {
+            expressionList.eq("activityCategory", activityCategory);
+        }
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+
+        if (!pageable.getSort().isUnsorted()) {
+            Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+            while (orderIterator.hasNext()) {
+                Sort.Order order = orderIterator.next();
+
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                    }
+
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                    }
+                }
+            }
+        }
+
+        Page<Activity> page = new PageImpl<Activity>(expressionList.findList(), pageable, Ebean.find(Activity.class).findCount());
+
+        return page;
     }
 
     @Override

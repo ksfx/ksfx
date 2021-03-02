@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Information Retrieval</title>
+</head>
+<body>
+<div style="float:right;">
+
+</div>
+<div style="padding-top:20px">
+    <h3 th:inline="text">${observation.scalarValue}</h3> (${observation.observationTime})
+</div>
+<div style="padding-top:20px" th:inline="text">
+    Source Id: ${observation.sourceId}
+</div>
+<div style="padding-top:20px" th:inline="text">
+    [[${observation.getComplexValueFragmentForName('mainText')}]]
+</div>
+<div style="padding-top:100px">
+    <table>
+        <tr th:each="metadata : ${observation.metaData}">
+            <td th:text="${metadata.key}">name</td>
+            <td th:text="${metadata.value}">value</td>
+        </tr>
+    </table>
+</div>
+<!--
+<div style="padding-top:20px">
+    <t:pagelink page="observation/genericobservationmanager" context="editingContextParameters">Edit</t:pagelink>
+</div>
+<div style="padding-top:20px">
+    <t:form t:id="sendToActivityForm" autofocus="false">
+        <t:select t:id="sendToActivity" t:value="sendToActivity" model="allActivities" encoder="allActivities" />
+        <button type="submit">Send observation to activity</button>
+    </t:form>
+</div>
+-->
+</body>
+</html>

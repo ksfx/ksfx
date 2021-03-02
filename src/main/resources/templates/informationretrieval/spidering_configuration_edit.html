@@ -6,7 +6,7 @@
 <body>
 <header th:replace="layout :: site-header"/>
 <h1>KSFX - Information Retrieval</h1>
-
+<div class="container">
 <div class="list-group" style="width:80%">
     <div class="list-group-item">
         <form action="#" th:action="@{/informationretrieval/spideringconfigurationedit}" th:object="${spideringConfiguration}" method="post">
@@ -245,6 +245,7 @@
 
         </form>
     </div>
+</div>
 </div>
 <br />
 <br />

@@ -23,6 +23,7 @@ import ch.ksfx.model.Category;
 import ch.ksfx.model.TimeSeries;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +36,7 @@ public class SeriesBrowser
 {
 	private TimeSeriesDAO timeSeriesDAO;
 	private CategoryDAO categoryDAO;
+
 	private Map<String,NavigationTreeNode> rootNodes;
 	
 	String snip =
@@ -153,7 +155,7 @@ public class SeriesBrowser
 	public String getMarkupForNode(List<String> nodes, List<String> filteredSeriesNames)
 	{
 		if (rootNodes == null) {
-		rebuildNavigationTree();
+			rebuildNavigationTree();
 		}
 
 		List<String> openedNodes = new ArrayList<String>();
@@ -165,15 +167,15 @@ public class SeriesBrowser
 			NavigationTreeNode rootNtn = rootNodes.get(key);
 
 			if (nodes != null && nodes.contains(rootNtn.getLocator())) {
-				markup.append(snip.replaceAll("#MARGIN#", (new Integer(depth * margin)).toString()).replaceAll("#NAME#", "<a href='" + "#" + /*componentResources.createEventLink("closeNode", rootNtn.getName()).toURI() + */ "'><span class=\"glyphicon glyphicon-folder-open\"></span>&nbsp;&nbsp;" + rootNtn.getName() + "</a> " + getCategoryTitleMarkupForLocator(rootNtn.getLocator())));
+				markup.append(snip.replaceAll("#MARGIN#", (new Integer(depth * margin)).toString()).replaceAll("#NAME#", "<a href='" + UriComponentsBuilder.fromPath("/dataexplorer/closenode/").pathSegment(rootNtn.getName()).build() + "'><span class=\"fa fa-folder-open\"></span>&nbsp;&nbsp;" + rootNtn.getName() + "</a> " + getCategoryTitleMarkupForLocator(rootNtn.getLocator())));
 				
 				for (TimeSeries ts : rootNtn.getSeries()) {
 					if (filteredSeriesNames == null || filteredSeriesNames.isEmpty() || filteredSeriesNames.contains(ts.getName())) {
-						markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * (StringUtils.countMatches(rootNtn.getLocator(),"-") + 1))).toString()).replaceAll("#NAME#", "<a href='" + "#" + /*pageRenderLinkSource.createPageRenderLinkWithContext("viewTimeSeries",ts.getId()).toURI() + */ "'><span class=\"glyphicon glyphicon-th-list\"></span>&nbsp;" + ts.getName() + "</a>"));
+						markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * (StringUtils.countMatches(rootNtn.getLocator(),"-") + 1))).toString()).replaceAll("#NAME#", "<a href='" + "#" + /*pageRenderLinkSource.createPageRenderLinkWithContext("viewTimeSeries",ts.getId()).toURI() + */ "'><span class=\"fa fa-th-list\"></span>&nbsp;" + ts.getName() + "</a>"));
 					}
 				}
 			} else {
-				markup.append(snip.replaceAll("#MARGIN#", (new Integer(depth * margin)).toString()).replaceAll("#NAME#", "<a href='" + "#" + /*componentResources.createEventLink("openNode", rootNtn.getName()).toURI() + */ "'><span class=\"glyphicon glyphicon-folder-close\"></span>&nbsp;&nbsp;" + rootNtn.getName() + "</a> " + getCategoryTitleMarkupForLocator(rootNtn.getLocator())));
+				markup.append(snip.replaceAll("#MARGIN#", (new Integer(depth * margin)).toString()).replaceAll("#NAME#", "<a href='" + UriComponentsBuilder.fromPath("/dataexplorer/opennode/").pathSegment(rootNtn.getName()).build() + "'><span class=\"fa fa-folder\"></span>&nbsp;&nbsp;" + rootNtn.getName() + "</a> " + getCategoryTitleMarkupForLocator(rootNtn.getLocator())));
 			}
 
 			if (nodes != null) {
@@ -212,17 +214,17 @@ public class SeriesBrowser
 			
 			if (nodes.contains(child.getLocator())) {
 				markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * StringUtils.countMatches(child.getLocator(),"-"))).toString())
-						.replaceAll("#NAME#", Matcher.quoteReplacement("<a href='" + "#" + /*componentResources.createEventLink("closeNode", child.getLocator()).toURI() + */"'><span class=\"glyphicon glyphicon-folder-open\"></span>&nbsp;&nbsp;" + child.getName() + "</a> " + getCategoryTitleMarkupForLocator(child.getLocator()))));
+						.replaceAll("#NAME#", Matcher.quoteReplacement("<a href='" + UriComponentsBuilder.fromPath("/dataexplorer/closenode/").pathSegment(child.getLocator()).build() + "'><span class=\"fa fa-folder-open\"></span>&nbsp;&nbsp;" + child.getName() + "</a> " + getCategoryTitleMarkupForLocator(child.getLocator()))));
 				for (TimeSeries ts : child.getSeries()) {
 					if (filteredSeriesNames == null || filteredSeriesNames.isEmpty() || filteredSeriesNames.contains(ts.getName())) {
-						markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * (StringUtils.countMatches(child.getLocator(),"-") + 1))).toString()).replaceAll("#NAME#", "<a href='" + "#" + /*pageRenderLinkSource.createPageRenderLinkWithContext("viewTimeSeries",ts.getId()).toURI() +*/ "'><span class=\"glyphicon glyphicon-th-list\"></span>&nbsp;" + ts.getName() + "</a>"));
+						markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * (StringUtils.countMatches(child.getLocator(),"-") + 1))).toString()).replaceAll("#NAME#", "<a href='" + "#" + /*pageRenderLinkSource.createPageRenderLinkWithContext("viewTimeSeries",ts.getId()).toURI() +*/ "'><span class=\"fa fa-th-list\"></span>&nbsp;" + ts.getName() + "</a>"));
 					}
 				}
 				
 				openNode(child, markup, nodes, filteredSeriesNames, openedNodes);
 			} else {
 				markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * StringUtils.countMatches(child.getLocator(),"-"))).toString())
-						.replaceAll("#NAME#", Matcher.quoteReplacement("<a href='" + "#" + /*componentResources.createEventLink("openNode", child.getLocator()).toURI() +*/ "'><span class=\"glyphicon glyphicon-folder-close\"></span>&nbsp;&nbsp;" + child.getName() + "</a> " + getCategoryTitleMarkupForLocator(child.getLocator()))));
+						.replaceAll("#NAME#", Matcher.quoteReplacement("<a href='" + UriComponentsBuilder.fromPath("/dataexplorer/opennode/").pathSegment(child.getLocator()).build() + "'><span class=\"fa fa-folder\"></span>&nbsp;&nbsp;" + child.getName() + "</a> " + getCategoryTitleMarkupForLocator(child.getLocator()))));
 			}
 		}
 	}

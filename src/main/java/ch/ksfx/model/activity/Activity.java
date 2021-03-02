@@ -18,6 +18,9 @@
 package ch.ksfx.model.activity;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import java.util.List;
 
 /**
@@ -28,11 +31,16 @@ import java.util.List;
 public class Activity
 {
     private Long id;
+
+    @NotNull
+    @Size(min=2, max=30)
+    @NotEmpty
     private String name;
     private ActivityCategory activityCategory;
     private String cronSchedule;
     private boolean cronScheduleEnabled = false;
     private String groovyCode;
+
     @Deprecated
     private boolean requiresApproval = false;
     private List<RequiredActivity> requiredActivities;

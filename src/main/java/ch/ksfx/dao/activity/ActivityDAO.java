@@ -18,7 +18,11 @@
 
 package ch.ksfx.dao.activity;
 
+import ch.ksfx.model.PublishingCategory;
+import ch.ksfx.model.PublishingConfiguration;
 import ch.ksfx.model.activity.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -31,6 +35,7 @@ public interface ActivityDAO
     public void saveOrUpdateActivityCategory(ActivityCategory activityCategory);
     public List<Activity> getAllActivities();
     public List<Activity> getAllActivitiesForActivityCategory(ActivityCategory activityCategory);
+    public Page<Activity> getActivitiesForPageableAndActivityCategory(Pageable pageable, ActivityCategory activityCategory);
     public Activity getActivityForId(Long activityId);
     public void deleteActivity(Activity activity);
     public List<Activity> getScheduledActivities();

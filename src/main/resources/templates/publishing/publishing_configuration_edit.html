@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Activities</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<h1>KSFX - Edit Publishing Configuration</h1>
+
+<div class="container">
+    <div class="list-group">
+        <div class="list-group-item">
+            <form id="activityForm" action="#" th:action="@{/publishing/publishingconfigurationedit}" th:object="${publishingConfiguration}" method="post">
+                <input type="hidden" th:field="*{id}" />
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
+                    <input type="text" class="form-control" id="name" th:field="*{name}" />
+                </div>
+                <div class="form-group">
+                    <label for="uri">URI</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('uri')}" th:errors="*{uri}">URI not valid</div>
+                    <input type="text" class="form-control" id="uri" th:field="*{uri}" />
+                </div>
+                <div class="form-group">
+                    <label for="publishingCategory">Category</label>
+                    <select class="form-control" id="publishingCategory" th:field="*{publishingCategory.id}">
+                        <option th:value="0" text=""></option>
+                        <option th:each="publishingCategory : ${allPublishingCategories}"
+                                th:value="${publishingCategory.id}"
+                                th:text="${publishingCategory.name}">
+                            Publishing Categories
+                        </option>
+                    </select>
+                </div>
+                <div class="form-check">
+                    <div class="text-danger" th:if="${#fields.hasErrors('embedInLayout')}" th:errors="*{embedInLayout}">Embed in Layout not valid</div>
+                    <input type="checkbox" class="form-check-input" id="embedInLayout" th:field="*{embedInLayout}" />
+                    <label for="embedInLayout" class="form-check-label">Embed in Layout</label>
+                </div>
+                <div class="form-check">
+                    <div class="text-danger" th:if="${#fields.hasErrors('lockedForEditing')}" th:errors="*{lockedForEditing}">Locked for Editing not valid</div>
+                    <input type="checkbox" class="form-check-input" id="lockedForEditing" th:field="*{lockedForEditing}" />
+                    <label for="lockedForEditing" class="form-check-label">Locked for Editing</label>
+                </div>
+                <div class="form-check">
+                    <div class="text-danger" th:if="${#fields.hasErrors('lockedForCacheUpdate')}" th:errors="*{lockedForCacheUpdate}">Locked for Cache Update not valid</div>
+                    <input type="checkbox" class="form-check-input" id="lockedForCacheUpdate" th:field="*{lockedForCacheUpdate}" />
+                    <label for="lockedForCacheUpdate" class="form-check-label">Locked for Cache Update</label>
+                </div>
+                <div class="form-group">
+                    <label for="publishingVisibility">Category</label>
+                    <select class="form-control" id="publishingVisibility" th:field="*{publishingVisibility}">
+                        <option value="Intern" text="">Intern</option>
+                        <option value="Cache for All" text="">Cache for All</option>
+                        <option value="Public" text="">Public</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="publishingStrategy">Publishing Strategy</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('publishingStrategy')}" th:errors="*{publishingStrategy}">Groovy code not valid</div>
+                    <textarea class="form-control" id="publishingStrategy" th:field="*{publishingStrategy}" style="height:600px" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <a th:href="@{/activity/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+            </form>
+            <br/><br/><br/>
+            <h3>Publishing Resources</h3>
+            <div style="float:right"><a th:href="@{/publishing/publishingresourceedit/}" class="fa fa-plus fa-2x" title="Add Publishing Resource" alt="Add Publishing Resource"></a>&nbsp;&nbsp;&nbsp;</div>
+            <table class="table table-striped table-responsive-md">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Edit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="publishingResource : ${publishingResources}">
+                        <td th:text="${publishingResource.id}"></td>
+                        <td th:text="${publishingResource.title}"></td>
+                        <td><a th:href="@{/publishing/publishingresourceedit/{id}(id=${publishingResource.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
+                    </tr>
+                </tbody>
+            </table>
+            <br /><br />
+            <h3>Shared Data of this Publication</h3>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>
