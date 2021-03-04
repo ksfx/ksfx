@@ -17,8 +17,10 @@
 
 package ch.ksfx.dao.publishing;
 
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingSharedData;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -31,6 +33,7 @@ public interface PublishingSharedDataDAO
 	public PublishingSharedData getPublishingSharedDataForDataKeyAndPublishingConfiguration(String dataKey, PublishingConfiguration publishingConfiguration);
 	public void deletePublishingSharedData(PublishingSharedData publishingSharedData);
 	public List<PublishingSharedData> getAllPublishingSharedDatasForPublishingConfiguration(PublishingConfiguration publishingConfiguration);
+	public Page<PublishingSharedData> getPublishingSharedDataForPageableAndPublishingConfiguration(Pageable pageable, PublishingConfiguration publishingConfiguration);
 }
  
 

@@ -18,8 +18,6 @@
 
 package ch.ksfx.dao.activity;
 
-import ch.ksfx.model.PublishingCategory;
-import ch.ksfx.model.PublishingConfiguration;
 import ch.ksfx.model.activity.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

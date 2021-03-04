@@ -21,10 +21,11 @@ import ch.ksfx.model.logger.LogMessage;
 import ch.ksfx.util.StacktraceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import java.util.Date;
 
-
+@Service
 public class SystemLogger
 {
     private AsynchronousLogWriter asynchronousLogWriter;

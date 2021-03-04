@@ -18,7 +18,6 @@
 package ch.ksfx.dao.ebean.activity;
 
 import ch.ksfx.dao.activity.ActivityDAO;
-import ch.ksfx.model.PublishingConfiguration;
 import ch.ksfx.model.activity.*;
 import ch.ksfx.model.note.NoteActivity;
 import io.ebean.Ebean;

@@ -15,36 +15,12 @@
  * limitations under the License.
  */
 
-package ch.ksfx.model;
+package ch.ksfx.model.publishing;
 
-import javax.persistence.*;
+import ch.ksfx.util.GenericResponse;
 
 
-@Entity
-@Table(name = "publishing_category")
-public class PublishingCategory
+public interface PublishingStrategy
 {
-    private Long id;
-    private String name;
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    public Long getId()
-    {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName()
-    {
-        return name;
-    }
-
-    public void setName(String name)
-    {
-        this.name = name;
-    }
+    public GenericResponse getPublishingData();
 }

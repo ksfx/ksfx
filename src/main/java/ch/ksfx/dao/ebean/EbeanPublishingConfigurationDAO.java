@@ -18,11 +18,10 @@
 package ch.ksfx.dao.ebean;
 
 import ch.ksfx.dao.PublishingConfigurationDAO;
-import ch.ksfx.model.PublishingCategory;
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingCategory;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.note.NotePublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingConfigurationCacheData;
-import ch.ksfx.model.spidering.SpideringConfiguration;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
 import org.springframework.data.domain.Page;

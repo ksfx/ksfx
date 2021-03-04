@@ -17,7 +17,7 @@
 
 package ch.ksfx.dao.publishing;
 
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingResource;
 import ch.ksfx.model.publishing.PublishingResourceCacheData;
 

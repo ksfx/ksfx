@@ -17,7 +17,7 @@
 
 package ch.ksfx.model.note;
 
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 
 import javax.persistence.*;
 

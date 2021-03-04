@@ -2,9 +2,9 @@ package ch.ksfx.controller.publishing;
 
 import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
-import ch.ksfx.model.PublishingConfiguration;
-import ch.ksfx.model.activity.Activity;
-import ch.ksfx.model.spidering.SpideringConfiguration;
+import ch.ksfx.dao.publishing.PublishingSharedDataDAO;
+import ch.ksfx.model.publishing.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingResource;
 import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.util.StacktraceUtil;
 import groovy.lang.GroovyClassLoader;
@@ -24,11 +24,15 @@ public class PublishingController
 {
     private PublishingConfigurationDAO publishingConfigurationDAO;
     private PublishingResourceDAO publishingResourceDAO;
+    private PublishingSharedDataDAO publishingSharedDataDAO;
+    private ServiceProvider serviceProvider;
 
-    public PublishingController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO)
+    public PublishingController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO, PublishingSharedDataDAO publishingSharedDataDAO, ServiceProvider serviceProvider)
     {
         this.publishingConfigurationDAO = publishingConfigurationDAO;
         this.publishingResourceDAO = publishingResourceDAO;
+        this.publishingSharedDataDAO = publishingSharedDataDAO;
+        this.serviceProvider = serviceProvider;
     }
 
     @GetMapping("/")
@@ -42,7 +46,7 @@ public class PublishingController
     }
 
     @GetMapping({"/publishingconfigurationedit", "/publishingconfigurationedit/{id}"})
-    public String publishingConfigurationEdit(@PathVariable(value = "id", required = false) Long publishingConfigurationId, Model model)
+    public String publishingConfigurationEdit(@PathVariable(value = "id", required = false) Long publishingConfigurationId, Model model, Pageable pageable)
     {
         PublishingConfiguration publishingConfiguration = new PublishingConfiguration();
 
@@ -54,6 +58,7 @@ public class PublishingController
 
         if (publishingConfiguration.getId() != null) {
             model.addAttribute("publishingResources", publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(publishingConfiguration));
+            model.addAttribute("publishingSharedDataPage", publishingSharedDataDAO.getPublishingSharedDataForPageableAndPublishingConfiguration(pageable,publishingConfiguration));
         }
 
         model.addAttribute("publishingConfiguration", publishingConfiguration);
@@ -62,15 +67,26 @@ public class PublishingController
     }
 
     @PostMapping({"/publishingconfigurationedit", "/publishingconfigurationedit/{id}"})
-    public String publishingConfigurationSubmit(@PathVariable(value = "id", required = false) Long publishingConfigurationId, @Valid @ModelAttribute PublishingConfiguration publishingConfiguration, BindingResult bindingResult, Model model)
+    public String publishingConfigurationSubmit(@PathVariable(value = "id", required = false) Long publishingConfigurationId, @Valid @ModelAttribute PublishingConfiguration publishingConfiguration, BindingResult bindingResult, Model model, Pageable pageable)
     {
         validatePublishingConfiguration(publishingConfiguration, bindingResult);
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("allPublishingCategories", publishingConfigurationDAO.getAllPublishingCategories());
 
+            if (publishingConfiguration.getId() != null) {
+                model.addAttribute("publishingResources", publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(publishingConfiguration));
+                model.addAttribute("publishingSharedDataPage", publishingSharedDataDAO.getPublishingSharedDataForPageableAndPublishingConfiguration(pageable,publishingConfiguration));
+            }
+
             return "publishing/publishing_configuration_edit";
         }
+
+        if (publishingConfiguration.getPublishingCategory().getId() == 0) {
+            publishingConfiguration.setPublishingCategory(null);
+        }
+
+        publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
 
         return "redirect:/publishing/publishingconfigurationedit/" + publishingConfiguration.getId();
     }
@@ -92,8 +108,64 @@ public class PublishingController
             Class clazz = groovyClassLoader.parseClass(publishingConfiguration.getPublishingStrategy());
 
             Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
+            cons.newInstance(serviceProvider);
         } catch (Exception e) {
             bindingResult.rejectValue("publishingStrategy", "publishingConfiguration.publishingStrategy", e.getMessage() + StacktraceUtil.getStackTrace(e));
+        }
+    }
+
+    @GetMapping({"/publishingresourceedit", "/publishingresourceedit/{id}"})
+    public String publishingResourceEdit(@PathVariable(value = "id", required = false) Long publishingResourceId, Model model, Pageable pageable)
+    {
+        PublishingResource publishingResource = new PublishingResource();
+
+        if (publishingResourceId != null) {
+            publishingResource = publishingResourceDAO.getPublishingResourceForId(publishingResourceId);
+        }
+
+        if (publishingResource.getPublishingConfiguration() != null) {
+            PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingResource.getPublishingConfiguration().getId());
+            model.addAttribute("publishingConfiguration", publishingConfiguration);
+        }
+
+        model.addAttribute("publishingResource", publishingResource);
+
+        return "publishing/publishing_resource_edit";
+    }
+
+    @PostMapping({"/publishingresourceedit", "/publishingresourceedit/{id}"})
+    public String publishingResourceSubmit(@PathVariable(value = "id", required = false) Long publishingResourceId, @Valid @ModelAttribute PublishingResource publishingResource, BindingResult bindingResult, Model model)
+    {
+        validatePublishingResource(publishingResource, bindingResult);
+
+        if (bindingResult.hasErrors()) {
+            if (publishingResource.getPublishingConfiguration() != null) {
+                PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingResource.getPublishingConfiguration().getId());
+                model.addAttribute("publishingConfiguration", publishingConfiguration);
+            }
+
+            return "publishing/publishing_resource_edit";
+        }
+
+        return "redirect:/publishing/publishingresourceedit/" + publishingResource.getId();
+    }
+
+    public void validatePublishingResource(PublishingResource publishingResource, BindingResult bindingResult)
+    {
+        PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingResource.getPublishingConfiguration().getId());
+
+        if (publishingConfiguration.getLockedForEditing() == true) {
+            bindingResult.rejectValue("title","publishingResource.title","This publishing configuration is locked, please unlock it first!");
+        }
+
+        try {
+            GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
+            Class clazz = groovyClassLoader.parseClass(publishingResource.getPublishingStrategy());
+
+            Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
+            cons.newInstance(serviceProvider);
+        } catch (Exception e) {
+            bindingResult.rejectValue("publishingStrategy", "publishingResource.publishingStrategy", e.getMessage() + StacktraceUtil.getStackTrace(e));
         }
     }
 }

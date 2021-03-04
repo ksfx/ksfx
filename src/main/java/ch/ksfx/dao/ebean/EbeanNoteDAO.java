@@ -18,7 +18,7 @@
 package ch.ksfx.dao.ebean;
 
 import ch.ksfx.dao.NoteDAO;
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.TimeSeries;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.note.*;

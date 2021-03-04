@@ -20,7 +20,6 @@ package ch.ksfx.dao.cassandra;
 import ch.ksfx.dao.ObservationDAO;
 import ch.ksfx.dao.TimeSeriesDAO;
 import ch.ksfx.model.Observation;
-import ch.ksfx.model.PublishingConfiguration;
 import ch.ksfx.model.TimeSeries;
 //import ch.ksfx.web.services.lucene.DeleteSeriesObservationsEvent;
 //import ch.ksfx.web.services.lucene.IndexEvent;
@@ -35,18 +34,14 @@ import ch.ksfx.model.TimeSeries;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.*;
 import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder;
-import com.datastax.oss.driver.api.core.session.Session;
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
 import com.datastax.oss.driver.api.querybuilder.select.Select;
-import com.datastax.oss.driver.shaded.guava.common.collect.Ordering;
-import org.apache.commons.lang.time.DateUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
-import java.net.SocketOptions;
 import java.util.*;
 
 @Repository

@@ -2,7 +2,7 @@ package ch.ksfx.controller.publishing;
 
 import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingConfigurationCacheData;
 import ch.ksfx.model.publishing.PublishingResource;
 import ch.ksfx.model.publishing.PublishingResourceCacheData;
@@ -13,7 +13,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
 
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;

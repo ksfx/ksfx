@@ -21,7 +21,7 @@ import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.ebean.EbeanPublishingConfigurationDAO;
 import ch.ksfx.dao.ebean.publishing.EbeanPublishingSharedDataDAO;
 import ch.ksfx.dao.publishing.PublishingSharedDataDAO;
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingSharedData;
 
 

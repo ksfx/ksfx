@@ -18,7 +18,7 @@
 package ch.ksfx.dao.ebean.publishing;
 
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingResource;
 import ch.ksfx.model.publishing.PublishingResourceCacheData;
 import io.ebean.Ebean;

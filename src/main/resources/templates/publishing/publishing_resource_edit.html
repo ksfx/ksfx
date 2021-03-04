@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit Publishing Resource</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<h1>KSFX - Edit Publishing Resource</h1>
+
+<div class="container">
+    <div th:if="${publishingConfiguration}">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/publishing/}">Publishing</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/publishing/publishingconfigurationedit/{id}(id=${publishingConfiguration.id})}" th:inline="text">[[${publishingConfiguration.name}]]</a></li>
+                <li class="breadcrumb-item active" aria-current="page"><span th:inline="text">[[${publishingResource.title}]]</span></li>
+            </ol>
+        </nav>
+    </div>
+    <div class="list-group">
+        <div class="list-group-item">
+            <form id="publishingResourceForm" action="#" th:action="@{/publishing/publishingresourceedit}" th:object="${publishingResource}" method="post">
+                <input type="hidden" th:field="*{id}" />
+                <input type="hidden" th:field="*{publishingConfiguration.id}" />
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">Title not valid</div>
+                    <input type="text" class="form-control" id="title" th:field="*{title}" />
+                </div>
+                <div class="form-group">
+                    <label for="uri">URI</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('uri')}" th:errors="*{uri}">URI not valid</div>
+                    <input type="text" class="form-control" id="uri" th:field="*{uri}" />
+                </div>
+                <div class="form-check">
+                    <div class="text-danger" th:if="${#fields.hasErrors('embedInLayout')}" th:errors="*{embedInLayout}">Embed in Layout not valid</div>
+                    <input type="checkbox" class="form-check-input" id="embedInLayout" th:field="*{embedInLayout}" />
+                    <label for="embedInLayout" class="form-check-label">Embed in Layout</label>
+                </div>
+                <div class="form-group">
+                    <label for="publishingStrategy">Strategy</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('publishingStrategy')}" th:errors="*{publishingStrategy}">Groovy code not valid</div>
+                    <textarea class="form-control" id="publishingStrategy" th:field="*{publishingStrategy}" style="height:600px" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <a th:href="@{/publishing/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

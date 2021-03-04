@@ -14,18 +14,15 @@ path (String):      path to the page with pagination
         </li>
         <li class="page-item" th:if="${page.hasPrevious()}">
             <a th:href="${path} + @{/(page=${page.number-1},size=${page.size},sort=${page.sort?.toString()?.replaceAll(': ',',')})}" class="page-link">Previous</a>
-            <!-- <a th:href="@{/web/admin/document(${queryStringKey}=${query},page=${page.number-1},size=${page.size})}" class="page-link">Previous</a> -->
         </li>
         <th:block th:each="i: ${#numbers.sequence(((page.number - 4 < 0) ? 0 : page.number - 4), ((page.number + 4 + ((page.number < 4) ? (4 - page.number) : 0) > page.totalPages) ? (page.totalPages - 1) : page.number + 4 + ((page.number < 4) ? (4 - page.number) : 0)))}">
             <li th:if="${page.number == i}" class="page-item active"><span class="page-link" th:inline="text">[[${i}+1]]</span></li>
             <li th:unless="${page.number == i}" class="page-item">
                 <a th:href="${path} + @{/(page=${i},size=${page.size},sort=${page.sort?.toString()?.replaceAll(': ',',')})}" class="page-link" th:inline="text">[[${i}+1]]</a>
-                <!-- <a th:href="@{/web/admin/document(${queryStringKey}=${query},page=${i},size=${page.size})}" class="page-link">[[${i}+1]]</a> -->
             </li>
         </th:block>
         <li th:if="${page.hasNext()}" class="page-item">
             <a th:href="${path} + @{/(page=${page.number+1},size=${page.size},sort=${page.sort?.toString()?.replaceAll(': ',',')})}" class="page-link">Next</a>
-            <!-- <a th:href="@{/web/admin/document(${queryStringKey}=${query},page=${page.number+1},size=${page.size})}" class="page-link">Next</a> -->
         </li>
         <li th:if="${!page.hasNext()}" class="page-item disabled">
             <span class="page-link">Next</span>

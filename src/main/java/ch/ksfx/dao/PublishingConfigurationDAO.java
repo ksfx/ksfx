@@ -17,10 +17,9 @@
 
 package ch.ksfx.dao;
 
-import ch.ksfx.model.PublishingCategory;
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingCategory;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingConfigurationCacheData;
-import ch.ksfx.model.spidering.SpideringConfiguration;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

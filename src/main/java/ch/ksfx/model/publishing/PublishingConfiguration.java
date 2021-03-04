@@ -15,9 +15,7 @@
  * limitations under the License.
  */
 
-package ch.ksfx.model;
-
-import ch.ksfx.model.publishing.PublishingConfigurationCacheData;
+package ch.ksfx.model.publishing;
 
 import javax.persistence.*;
 import java.util.List;

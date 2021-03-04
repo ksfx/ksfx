@@ -18,11 +18,17 @@
 package ch.ksfx.dao.ebean.publishing;
 
 import ch.ksfx.dao.publishing.PublishingSharedDataDAO;
-import ch.ksfx.model.PublishingConfiguration;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingSharedData;
 import io.ebean.Ebean;
+import io.ebean.ExpressionList;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -66,6 +72,40 @@ public class EbeanPublishingSharedDataDAO implements PublishingSharedDataDAO
 	public List<PublishingSharedData> getAllPublishingSharedDatasForPublishingConfiguration(PublishingConfiguration publishingConfiguration)
 	{
 		return Ebean.find(PublishingSharedData.class).where().eq("publishingConfiguration", publishingConfiguration).findList();
+	}
+
+	@Override
+	public Page<PublishingSharedData> getPublishingSharedDataForPageableAndPublishingConfiguration(Pageable pageable, PublishingConfiguration publishingConfiguration)
+	{
+		ExpressionList expressionList = Ebean.find(PublishingSharedData.class).where();
+
+		if (publishingConfiguration != null) {
+			expressionList.eq("publishingConfiguration", publishingConfiguration);
+		}
+
+		expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+		expressionList.setMaxRows(pageable.getPageSize());
+
+		if (!pageable.getSort().isUnsorted()) {
+			Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+			while (orderIterator.hasNext()) {
+				Sort.Order order = orderIterator.next();
+
+				if (!order.getProperty().equals("UNSORTED")) {
+					if (order.isAscending()) {
+						expressionList.order().asc(order.getProperty());
+					}
+
+					if (order.isDescending()) {
+						expressionList.order().desc(order.getProperty());
+					}
+				}
+			}
+		}
+
+		Page<PublishingSharedData> page = new PageImpl<PublishingSharedData>(expressionList.findList(), pageable, expressionList.findCount());
+
+		return page;
 	}
 }
  

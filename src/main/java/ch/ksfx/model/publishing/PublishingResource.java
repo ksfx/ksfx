@@ -17,8 +17,6 @@
 
 package ch.ksfx.model.publishing;
 
-import ch.ksfx.model.PublishingConfiguration;
-
 import javax.persistence.*;
 import java.util.List;
 
