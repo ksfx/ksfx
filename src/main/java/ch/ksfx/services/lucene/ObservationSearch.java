@@ -136,7 +136,7 @@ public class ObservationSearch
 			throw new RuntimeException("Error in Lucene query GET TOTAL HITS");
 		}
 		
-		return results.totalHits;	
+		return new Long(results.totalHits.value).intValue(); //.value right???
 	}
 	
 	public List<Observation> getObservations(Integer startIndex, Integer endIndex)
@@ -147,7 +147,7 @@ public class ObservationSearch
 			TopDocs results = searcher.search(query, endIndex + 1);
 	        ScoreDoc[] hits = results.scoreDocs;
 	    	
-	    	for (int i = startIndex; i < results.totalHits; i++) {
+	    	for (int i = startIndex; i < results.totalHits.value; i++) { //.value right???
 	      		if (i > (endIndex)) {
 					break;
 	      		}

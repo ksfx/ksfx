@@ -18,15 +18,21 @@
 package ch.ksfx.dao.ebean.spidering;
 
 import ch.ksfx.dao.spidering.SpideringDAO;
+import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.model.spidering.Resource;
 import ch.ksfx.model.spidering.Spidering;
 import ch.ksfx.model.spidering.SpideringConfiguration;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
 import io.ebean.SqlUpdate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -95,6 +101,39 @@ public class EbeanSpideringDAO implements SpideringDAO
     public List<Spidering> getSpideringsForSpideringConfiguration(SpideringConfiguration spideringConfiguration)
     {
         return Ebean.find(Spidering.class).where().eq("spideringConfiguration.id", spideringConfiguration.getId()).findList();
+    }
+
+    public Page<Spidering> getSpideringsForPageableAndSpideringConfiguration(Pageable pageable, SpideringConfiguration spideringConfiguration)
+    {
+        ExpressionList expressionList = Ebean.find(Spidering.class).where();
+
+        if (spideringConfiguration != null) {
+            expressionList.eq("spideringConfiguration", spideringConfiguration);
+        }
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+
+        if (!pageable.getSort().isUnsorted()) {
+            Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+            while (orderIterator.hasNext()) {
+                Sort.Order order = orderIterator.next();
+
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                    }
+
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                    }
+                }
+            }
+        }
+
+        Page<Spidering> page = new PageImpl<Spidering>(expressionList.findList(), pageable, expressionList.findCount());
+
+        return page;
     }
 
     @Override

@@ -17,7 +17,11 @@
 
 package ch.ksfx.dao.spidering;
 
+import ch.ksfx.model.activity.Activity;
+import ch.ksfx.model.activity.ActivityCategory;
 import ch.ksfx.model.spidering.ResourceLoaderPluginConfiguration;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -26,6 +30,7 @@ public interface ResourceLoaderPluginConfigurationDAO
 {
     public void saveOrUpdate(ResourceLoaderPluginConfiguration resourceLoaderPluginConfiguration);
     public List<ResourceLoaderPluginConfiguration> getAllResourceLoaderPluginConfigurations();
+    public Page<ResourceLoaderPluginConfiguration> getResourceLoaderPluginConfigurationsForPageable(Pageable pageable);
     public ResourceLoaderPluginConfiguration getResourceLoaderPluginConfigurationForId(Long resourceLoaderPluginConfigurationId);
     public void deleteResourceLoaderPluginConfiguration(ResourceLoaderPluginConfiguration resourceLoaderPluginConfiguration);
 }

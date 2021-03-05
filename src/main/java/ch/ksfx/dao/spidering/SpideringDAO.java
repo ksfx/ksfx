@@ -17,8 +17,13 @@
 
 package ch.ksfx.dao.spidering;
 
+import ch.ksfx.model.activity.Activity;
+import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.model.spidering.Spidering;
 import ch.ksfx.model.spidering.SpideringConfiguration;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.Date;
 import java.util.List;
 
@@ -33,5 +38,6 @@ public interface SpideringDAO
     public List<Spidering> getSpideringsOlderThanForSpideringConfiguration(Date date, SpideringConfiguration spideringConfiguration);
     //public GridDataSource getSpideringGridDataSourceForSpideringConfiguration(SpideringConfiguration spideringConfiguration);
     public List<Spidering> getSpideringsForSpideringConfiguration(SpideringConfiguration spideringConfiguration);
+    public Page<Spidering> getSpideringsForPageableAndSpideringConfiguration(Pageable pageable, SpideringConfiguration spideringConfiguration);
     public Integer calculateResourcesCount(Spidering spidering);
 }

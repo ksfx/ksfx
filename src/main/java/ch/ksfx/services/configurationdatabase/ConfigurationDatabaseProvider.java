@@ -37,7 +37,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class ConfigurationDatabaseProvider
 {
-    @Autowired
     private SystemEnvironment systemEnvironment;
 
     public ConfigurationDatabaseProvider(SystemEnvironment systemEnvironment)

@@ -11,19 +11,22 @@
     <div style="float:right"><a th:href="@{/informationretrieval/spideringconfigurationedit}" class="fa fa-plus fa-2x" title="Add Spidering Configuration" alt="Add Spidering Configuration"></a>&nbsp;&nbsp;&nbsp;</div>
     <table class="table table-striped table-responsive-md">
         <thead>
-        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','bla'} },sortables=${ {'id','name'} },page=${spideringConfigurationsPage},path='/informationretrieval')" />
-        <!-- <tr>
-            <th>id</th>
-            <th>name <a th:href="@{/informationretrieval/(sort=(${spideringConfigurationsPage?.sort?.getOrderFor('name')?.ascending} ? 'name,desc' : 'name,asc'))}">s</a></th>
-            <th>Edit</th>
-        </tr>
-        -->
+        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','spiderings','runspidering','schedule','edit','delete'} },sortables=${ {'id','name'} },names=${ {'ID','Name','Spiderings','Run Spidering','Schedule','Edit','Delete'} },page=${spideringConfigurationsPage},path='/informationretrieval')" />
         </thead>
         <tbody>
         <tr th:each="spideringConfiguration : ${spideringConfigurationsPage.content}">
             <td th:text="${spideringConfiguration.id}"></td>
             <td th:text="${spideringConfiguration.name}"></td>
+            <td><a th:href="@{/informationretrieval/spideringsviewer/{id}(id=${spideringConfiguration.id})}" class="fa fa-list"></a></td>
+            <td><a th:href="@{/informationretrieval/spideringconfigurationrun/{id}(id=${spideringConfiguration.id})}" class="fa fa-play"></a></td>
+            <td>
+                <th:block th:if="${!#strings.isEmpty(spideringConfiguration.cronSchedule)}">
+                    <span th:if="${spideringConfiguration.cronScheduleEnabled}"><a th:href="@{/informationretrieval/spideringconfigurationdeleteschedule/{id}(id=${spideringConfiguration.id})}" class="fa fa-stop" alt="Disable Scheduling" title="Disable Scheduling"></a></span>
+                    <span th:unless="${spideringConfiguration.cronScheduleEnabled}"><a th:href="@{/informationretrieval/spideringconfigurationschedule/{id}(id=${spideringConfiguration.id})}" class="fa fa-clock-o" alt="Enable Scheduling" title="Enable Scheduling"></a></span>
+                </th:block>
+            </td>
             <td><a th:href="@{/informationretrieval/spideringconfigurationedit/{id}(id=${spideringConfiguration.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
+            <td></td>
         </tr>
         </tbody>
     </table>

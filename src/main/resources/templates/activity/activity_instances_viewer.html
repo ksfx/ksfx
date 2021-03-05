@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Activities</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<h1>KSFX - Activities</h1>
+<div th:if="${activityInstancesPage.totalPages  > 0}">
+    <div th:replace="components/pagination :: pagination(path='/activity/activityinstances/' + ${activity.id}, page=${activityInstancesPage})"></div>
+    <table class="table table-striped table-responsive-md">
+        <thead>
+        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','started','finished','approved','resultdata','console','delete'} },sortables=${ {'id','started','finished'} },names=${ {'ID','Started','Finished','Approved','Result Data','Console','Delete'} },page=${activityInstancesPage},path='/activity/activityinstances/' + ${activity.id})" />
+        </thead>
+        <tbody>
+        <tr th:each="activityInstance : ${activityInstancesPage.content}">
+            <td th:text="${activityInstance.id}"></td>
+            <td th:text="${activityInstance.started}"></td>
+            <td th:text="${activityInstance.finished}"></td>
+            <td th:text="${activityInstance.approved}"></td>
+            <td>
+                <div th:each="activityInstancePersistentData : ${activityInstance.activityInstancePersistentDatas}">
+                    <span th:inline="text">[[${activityInstancePersistentData.dataKey}]]: [[${activityInstancePersistentData.dataValue}]]</span>
+                </div>
+            </td>
+            <td><a th:href="@{/activity/activityedit/{id}(id=${activityInstance.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
+            <td><a th:href="@{/activity/activityedit/{id}(id=${activityInstance.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- <t:actionlink t:id="clearActivityInstances" class="glyphicon glyphicon-trash" title="Clear activity instances" alt="Clear activity instances"></t:actionlink> -->
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

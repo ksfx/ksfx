@@ -3,11 +3,16 @@ package ch.ksfx.controller.informationretrieval;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.spidering.*;
 import ch.ksfx.model.spidering.*;
+import ch.ksfx.services.scheduler.SchedulerService;
+import ch.ksfx.services.spidering.SpideringRunner;
+import org.quartz.SchedulerException;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
+
+import java.util.Date;
 
 //https://www.baeldung.com/spring-boot-crud-thymeleaf
 @Controller
@@ -15,6 +20,9 @@ import org.springframework.data.domain.Pageable;
 public class InformationRetrievalController
 {
     private final SpideringConfigurationDAO spideringConfigurationDAO;
+    private final SpideringDAO spideringDAO;
+    private final SpideringRunner spideringRunner;
+    private final SchedulerService schedulerService;
     private final UrlFragmentDAO urlFragmentDAO;
     private final ResourceLoaderPluginConfigurationDAO resourceLoaderPluginConfigurationDAO;
     private final ResultUnitConfigurationDAO resultUnitConfigurationDAO;
@@ -27,6 +35,9 @@ public class InformationRetrievalController
     private final SpideringPostActivityDAO spideringPostActivityDAO;
 
     public InformationRetrievalController(SpideringConfigurationDAO spideringConfigurationDAO,
+                                          SpideringDAO spideringDAO,
+                                          SpideringRunner spideringRunner,
+                                          SchedulerService schedulerService,
                                           UrlFragmentDAO urlFragmentDAO,
                                           ResourceLoaderPluginConfigurationDAO resourceLoaderPluginConfigurationDAO,
                                           ResultUnitConfigurationDAO resultUnitConfigurationDAO,
@@ -39,6 +50,9 @@ public class InformationRetrievalController
                                           SpideringPostActivityDAO spideringPostActivityDAO)
     {
         this.spideringConfigurationDAO = spideringConfigurationDAO;
+        this.spideringDAO = spideringDAO;
+        this.spideringRunner = spideringRunner;
+        this.schedulerService = schedulerService;
         this.urlFragmentDAO = urlFragmentDAO;
         this.resourceLoaderPluginConfigurationDAO = resourceLoaderPluginConfigurationDAO;
         this.resultUnitConfigurationDAO = resultUnitConfigurationDAO;
@@ -60,16 +74,6 @@ public class InformationRetrievalController
 
         return "informationretrieval/information_retrieval";
     }
-
-    /*
-    @GetMapping("/spideringconfigurationedit")
-    public String spideringConfigurationEdit(Model model)
-    {
-        model.addAttribute("spideringConfiguration", new SpideringConfiguration());
-
-        return "informationretrieval/spidering_configuration_edit";
-    }
-     */
 
     @GetMapping({"/spideringconfigurationedit", "/spideringconfigurationedit/{id}"})
     public String spideringConfigurationEdit(@PathVariable(value = "id", required = false) Long spideringConfigurationId, Model model)
@@ -162,5 +166,47 @@ public class InformationRetrievalController
                 spideringPostActivityDAO.saveOrUpdate(spideringPostActivity);
             }
         }
+    }
+
+    @GetMapping({"/spideringconfigurationrun/{id}"})
+    public String spideringConfigurationRun(@PathVariable(value = "id", required = true) Long spideringConfigurationId)
+    {
+        Spidering spidering = new Spidering();
+        spidering.setSpideringConfiguration(spideringConfigurationDAO.getSpideringConfigurationForId(spideringConfigurationId));
+        spidering.setStarted(new Date());
+
+        spideringDAO.saveOrUpdate(spidering);
+
+        System.out.println("Started spidering with id: " + spidering.getId());
+
+        spideringRunner.runSpidering(spidering);
+
+        return "redirect:/informationretrieval/";
+    }
+
+    @GetMapping({"/spideringconfigurationschedule/{id}"})
+    public String spideringConfigurationSchedule(@PathVariable(value = "id", required = true) Long spideringConfigurationId)
+    {
+        SpideringConfiguration spideringConfiguration = spideringConfigurationDAO.getSpideringConfigurationForId(spideringConfigurationId);
+        spideringConfiguration.setCronScheduleEnabled(true);
+
+        schedulerService.scheduleSpidering(spideringConfiguration);
+
+        spideringConfigurationDAO.saveOrUpdate(spideringConfiguration);
+
+        return "redirect:/informationretrieval/";
+    }
+
+    @GetMapping({"/spideringconfigurationdeleteschedule/{id}"})
+    public String spideringConfigurationDeleteSchedule(@PathVariable(value = "id", required = true) Long spideringConfigurationId) throws SchedulerException
+    {
+        SpideringConfiguration spideringConfiguration = spideringConfigurationDAO.getSpideringConfigurationForId(spideringConfigurationId);
+        spideringConfiguration.setCronScheduleEnabled(false);
+
+        schedulerService.deleteJob("Spidering" + spideringConfiguration.getId().toString(), "Spiderings");
+
+        spideringConfigurationDAO.saveOrUpdate(spideringConfiguration);
+
+        return "redirect:/informationretrieval/";
     }
 }

@@ -21,6 +21,9 @@ import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.model.activity.ActivityInstanceParameter;
 import ch.ksfx.model.activity.ActivityInstancePersistentData;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 
@@ -32,6 +35,7 @@ public interface ActivityInstanceDAO
     public List<ActivityInstance> getAllActivityInstances();
     public List<ActivityInstance> getActivityInstancesWithApprovalRequired();
     public List<ActivityInstance> getActivityInstancesForActivity(Activity activity);
+    public Page<ActivityInstance> getActivityInstancesForPageableAndActivity(Pageable pageable, Activity activity);
     public ActivityInstance getActivityInstanceForId(Long activityInstanceId);
     public void deleteActivityInstance(ActivityInstance activityInstance);
 //    public GridDataSource getActivityInstanceGridDataSourceForActivity(Activity activity);

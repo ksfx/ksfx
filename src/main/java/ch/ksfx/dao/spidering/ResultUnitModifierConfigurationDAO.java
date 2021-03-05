@@ -17,7 +17,10 @@
 
 package ch.ksfx.dao.spidering;
 
+import ch.ksfx.model.spidering.ResourceLoaderPluginConfiguration;
 import ch.ksfx.model.spidering.ResultUnitModifierConfiguration;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -26,6 +29,7 @@ public interface ResultUnitModifierConfigurationDAO
 {
     public void saveOrUpdate(ResultUnitModifierConfiguration resultUnitModifierConfiguration);
     public List<ResultUnitModifierConfiguration> getAllResultUnitModifierConfigurations();
+    public Page<ResultUnitModifierConfiguration> getResultUnitModifierConfigurationsForPageable(Pageable pageable);
     public ResultUnitModifierConfiguration getResultUnitModifierConfigurationForId(Long resultUnitModifierConfigurationId);
     public void deleteResultUnitModifierConfiguration(ResultUnitModifierConfiguration resultUnitModifierConfiguration);
 }

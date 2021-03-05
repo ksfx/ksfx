@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit Resource Loader Plugin</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<h1>KSFX - Edit Resource Loader Plugin</h1>
+
+<div class="container">
+    <div class="list-group">
+        <div class="list-group-item">
+            <form id="resourceLoaderPluginConfigurationForm" action="#" th:action="@{/informationretrieval/resourceloaderpluginconfigurationedit}" th:object="${resourceLoaderPluginConfiguration}" method="post">
+                <input type="hidden" th:field="*{id}" />
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
+                    <input type="text" class="form-control" id="name" th:field="*{name}" />
+                </div>
+                <div class="form-group">
+                    <label for="groovyCode">Groovy Code</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('groovyCode')}" th:errors="*{groovyCode}">Groovy code not valid</div>
+                    <textarea class="form-control" id="groovyCode" th:field="*{groovyCode}" style="height:600px" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <a th:href="@{/informationretrieval/resourceloaderpluginconfiguration/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

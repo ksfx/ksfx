@@ -20,7 +20,7 @@ package ch.ksfx.dao.ebean.spidering;
 import ch.ksfx.dao.spidering.ResultUnitModifierDAO;
 import ch.ksfx.model.spidering.ResultUnitModifier;
 import ch.ksfx.model.spidering.ResultUnitModifierConfiguration;
-//import ch.ksfx.web.services.logger.SystemLogger;
+import ch.ksfx.services.systemlogger.SystemLogger;
 import groovy.lang.GroovyClassLoader;
 import org.springframework.stereotype.Repository;
 
@@ -32,11 +32,11 @@ import java.lang.reflect.Constructor;
 @Repository
 public class EbeanResultUnitModifierDAO implements ResultUnitModifierDAO
 {
-//    private SystemLogger systemLogger;
+    private SystemLogger systemLogger;
 
-    public EbeanResultUnitModifierDAO(/*SystemLogger systemLogger*/)
+    public EbeanResultUnitModifierDAO(SystemLogger systemLogger)
     {
-//        this.systemLogger = systemLogger;
+        this.systemLogger = systemLogger;
     }
 
     @Override

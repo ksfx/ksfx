@@ -20,6 +20,8 @@ package ch.ksfx.dao.ebean.spidering;
 import ch.ksfx.dao.spidering.ResourceLoaderPluginDAO;
 import ch.ksfx.model.spidering.ResourceLoaderPlugin;
 import ch.ksfx.model.spidering.ResourceLoaderPluginConfiguration;
+import ch.ksfx.services.ServiceProvider;
+import ch.ksfx.services.systemlogger.SystemLogger;
 import groovy.lang.GroovyClassLoader;
 import org.springframework.stereotype.Repository;
 
@@ -28,13 +30,13 @@ import java.lang.reflect.Constructor;
 @Repository
 public class EbeanResourceLoaderPluginDAO implements ResourceLoaderPluginDAO
 {
-//    private SystemLogger systemLogger;
-//    private ObjectLocatorService objectLocatorService;
+    private SystemLogger systemLogger;
+    private ServiceProvider serviceProvider;
 
-    public EbeanResourceLoaderPluginDAO(/*SystemLogger systemLogger, ObjectLocatorService objectLocatorService*/)
+    public EbeanResourceLoaderPluginDAO(SystemLogger systemLogger, ServiceProvider serviceProvider)
     {
-//        this.systemLogger = systemLogger;
-//        this.objectLocatorService = objectLocatorService;
+        this.systemLogger = systemLogger;
+        this.serviceProvider = serviceProvider;
     }
 
     @Override
@@ -49,12 +51,12 @@ public class EbeanResourceLoaderPluginDAO implements ResourceLoaderPluginDAO
             GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
             Class clazz = groovyClassLoader.parseClass(resourceLoaderPluginConfiguration.getGroovyCode());
 
-            Constructor cons = clazz.getDeclaredConstructor(/*ObjectLocator.class*/);
+            Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
 
-            return (ResourceLoaderPlugin) cons.newInstance(/*objectLocatorService.getObjectLocator()*/);
+            return (ResourceLoaderPlugin) cons.newInstance(serviceProvider);
         } catch (Exception e) {
             e.printStackTrace();
-//            systemLogger.logMessage("FATAL","Error while getting Resource Loader Plugin Configuration",e);
+            systemLogger.logMessage("FATAL","Error while getting Resource Loader Plugin Configuration",e);
         }
 
         return null;

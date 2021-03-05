@@ -20,11 +20,10 @@ package ch.ksfx.dao.ebean.spidering;
 import ch.ksfx.dao.spidering.ResultVerifierDAO;
 import ch.ksfx.model.spidering.ResultVerifier;
 import ch.ksfx.model.spidering.ResultVerifierConfiguration;
-//import ch.ksfx.web.services.ObjectLocatorService;
-//import ch.ksfx.web.services.logger.SystemLogger;
+import ch.ksfx.services.systemlogger.SystemLogger;
+import ch.ksfx.services.ServiceProvider;
 import groovy.lang.GroovyClassLoader;
 import org.springframework.stereotype.Repository;
-//import org.apache.tapestry5.ioc.ObjectLocator;
 
 import java.lang.reflect.Constructor;
 
@@ -34,13 +33,13 @@ import java.lang.reflect.Constructor;
 @Repository
 public class EbeanResultVerifierDAO implements ResultVerifierDAO
 {
-//    private ObjectLocatorService objectLocatorService;
-//    private SystemLogger systemLogger;
+    private ServiceProvider serviceProvider;
+    private SystemLogger systemLogger;
 
-    public EbeanResultVerifierDAO(/*ObjectLocatorService objectLocatorService, SystemLogger systemLogger*/)
+    public EbeanResultVerifierDAO(ServiceProvider serviceProvider, SystemLogger systemLogger)
     {
-//        this.objectLocatorService = objectLocatorService;
-//        this.systemLogger = systemLogger;
+        this.serviceProvider = serviceProvider;
+        this.systemLogger = systemLogger;
     }
 
     @Override
@@ -54,12 +53,12 @@ public class EbeanResultVerifierDAO implements ResultVerifierDAO
             GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
             Class clazz = groovyClassLoader.parseClass(resultVerifierConfiguration.getGroovyCode());
 
-            Constructor cons = clazz.getDeclaredConstructor(/*ObjectLocator.class*/);
+            Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
 
-            return (ResultVerifier) cons.newInstance(/*objectLocatorService.getObjectLocator()*/);
+            return (ResultVerifier) cons.newInstance(serviceProvider);
         } catch (Exception e) {
             e.printStackTrace();
-            //systemLogger.logMessage("FATAL","Error while getting result verifier",e);
+            systemLogger.logMessage("FATAL","Error while getting result verifier",e);
         }
 
         return null;

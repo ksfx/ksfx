@@ -20,6 +20,8 @@ package ch.ksfx.dao.ebean.activity;
 import ch.ksfx.dao.activity.ActivityExecutionDAO;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.activity.ActivityExecution;
+import ch.ksfx.services.ServiceProvider;
+import ch.ksfx.services.systemlogger.SystemLogger;
 import groovy.lang.GroovyClassLoader;
 import org.springframework.stereotype.Repository;
 
@@ -28,33 +30,32 @@ import java.lang.reflect.Constructor;
 @Repository
 public class EbeanActivityExecutionDAO implements ActivityExecutionDAO
 {
-//    private SystemLogger systemLogger;
-//    private ObjectLocatorService objectLocatorService;
+    private SystemLogger systemLogger;
+    private ServiceProvider serviceProvider;
 
-    public EbeanActivityExecutionDAO(/*SystemLogger systemLogger, ObjectLocatorService objectLocatorService*/)
+    public EbeanActivityExecutionDAO(SystemLogger systemLogger, ServiceProvider serviceProvider)
     {
-//        this.systemLogger = systemLogger;
-//        this.objectLocatorService = objectLocatorService;
+        this.systemLogger = systemLogger;
+        this.serviceProvider = serviceProvider;
     }
 
     @Override
     public ActivityExecution getActivityExecution(Activity activity)
     {
-        System.out.println("activity " + activity);
         try {
             if (activity.getGroovyCode() == null || activity.getGroovyCode().isEmpty()) {
-                throw new IllegalArgumentException("Result unit modifier has no code");
+                throw new IllegalArgumentException("Activity has no code");
             }
 
             GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
             Class clazz = groovyClassLoader.parseClass(activity.getGroovyCode());
 
-            Constructor cons = clazz.getDeclaredConstructor(/*ObjectLocator.class*/);
+            Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
 
-            return (ActivityExecution) cons.newInstance(/*objectLocatorService.getObjectLocator()*/);
+            return (ActivityExecution) cons.newInstance(serviceProvider);
         } catch (Exception e) {
             e.printStackTrace();
-//            systemLogger.logMessage("FATAL","Error while getting activity execution strategy",e);
+            systemLogger.logMessage("FATAL","Error while getting activity execution strategy",e);
         }
 
         return null;

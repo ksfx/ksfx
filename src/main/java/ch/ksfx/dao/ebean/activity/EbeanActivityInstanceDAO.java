@@ -25,8 +25,13 @@ import ch.ksfx.model.activity.ActivityInstanceParameter;
 import ch.ksfx.model.activity.ActivityInstancePersistentData;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -72,6 +77,40 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
     public List<ActivityInstance> getActivityInstancesForActivity(Activity activity)
     {
         return Ebean.find(ActivityInstance.class).where().eq("activity.id", activity.getId()).findList();
+    }
+
+    @Override
+    public Page<ActivityInstance> getActivityInstancesForPageableAndActivity(Pageable pageable, Activity activity)
+    {
+        ExpressionList expressionList = Ebean.find(ActivityInstance.class).where();
+
+        if (activity != null) {
+            expressionList.eq("activity", activity);
+        }
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+
+        if (!pageable.getSort().isUnsorted()) {
+            Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+            while (orderIterator.hasNext()) {
+                Sort.Order order = orderIterator.next();
+
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                    }
+
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                    }
+                }
+            }
+        }
+
+        Page<ActivityInstance> page = new PageImpl<ActivityInstance>(expressionList.findList(), pageable, expressionList.findCount());
+
+        return page;
     }
 
     public List<ActivityInstance> getActivityInstancesWithApprovalRequired()
