@@ -18,10 +18,17 @@
 package ch.ksfx.dao.ebean.spidering;
 
 import ch.ksfx.dao.spidering.ResultVerifierConfigurationDAO;
+import ch.ksfx.model.spidering.ResultUnitModifierConfiguration;
 import ch.ksfx.model.spidering.ResultVerifierConfiguration;
 import io.ebean.Ebean;
+import io.ebean.ExpressionList;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -41,6 +48,36 @@ public class EbeanResultVerifierConfigurationDAO implements ResultVerifierConfig
     public List<ResultVerifierConfiguration> getAllResultVerifierConfigurations()
     {
         return Ebean.find(ResultVerifierConfiguration.class).findList();
+    }
+
+    @Override
+    public Page<ResultVerifierConfiguration> getResultVerifierConfigurationsForPageable(Pageable pageable)
+    {
+        ExpressionList expressionList = Ebean.find(ResultVerifierConfiguration.class).where();
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+
+        if (!pageable.getSort().isUnsorted()) {
+            Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+            while (orderIterator.hasNext()) {
+                Sort.Order order = orderIterator.next();
+
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                    }
+
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                    }
+                }
+            }
+        }
+
+        Page<ResultVerifierConfiguration> page = new PageImpl<ResultVerifierConfiguration>(expressionList.findList(), pageable, expressionList.findCount());
+
+        return page;
     }
 
     @Override

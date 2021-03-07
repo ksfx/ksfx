@@ -24,12 +24,14 @@ import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.note.*;
 import ch.ksfx.model.spidering.ResourceLoaderPluginConfiguration;
 import ch.ksfx.model.spidering.SpideringConfiguration;
-import io.ebean.Ebean;
-import io.ebean.Query;
-import io.ebean.RawSql;
-import io.ebean.RawSqlBuilder;
+import io.ebean.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -60,7 +62,41 @@ public class EbeanNoteDAO implements NoteDAO
 			return Ebean.find(Note.class).where().eq("noteCategory", noteCategory).findList();
 		}
 	}
-	
+
+	@Override
+	public Page<Note> getNotesForPageableAndNoteCategory(Pageable pageable, NoteCategory noteCategory)
+	{
+		ExpressionList expressionList = Ebean.find(Note.class).where();
+
+		if (noteCategory != null) {
+			expressionList.eq("noteCategory", noteCategory);
+		}
+
+		expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+		expressionList.setMaxRows(pageable.getPageSize());
+
+		if (!pageable.getSort().isUnsorted()) {
+			Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+			while (orderIterator.hasNext()) {
+				Sort.Order order = orderIterator.next();
+
+				if (!order.getProperty().equals("UNSORTED")) {
+					if (order.isAscending()) {
+						expressionList.order().asc(order.getProperty());
+					}
+
+					if (order.isDescending()) {
+						expressionList.order().desc(order.getProperty());
+					}
+				}
+			}
+		}
+
+		Page<Note> page = new PageImpl<Note>(expressionList.findList(), pageable, expressionList.findCount());
+
+		return page;
+	}
+
 	public List<NoteActivity> getNoteActivitiesForActivity(Activity activity)
 	{
 		return Ebean.find(NoteActivity.class).where().eq("activity", activity).findList();
@@ -219,7 +255,41 @@ public class EbeanNoteDAO implements NoteDAO
 	{
 		return Ebean.find(NoteFile.class, noteFileId);
 	}
-	
+
+	@Override
+	public Page<NoteFile> getNoteFilesForPageableAndNote(Pageable pageable, Note note)
+	{
+		ExpressionList expressionList = Ebean.find(NoteFile.class).where();
+
+		if (note != null) {
+			expressionList.eq("note", note);
+		}
+
+		expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+		expressionList.setMaxRows(pageable.getPageSize());
+
+		if (!pageable.getSort().isUnsorted()) {
+			Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+			while (orderIterator.hasNext()) {
+				Sort.Order order = orderIterator.next();
+
+				if (!order.getProperty().equals("UNSORTED")) {
+					if (order.isAscending()) {
+						expressionList.order().asc(order.getProperty());
+					}
+
+					if (order.isDescending()) {
+						expressionList.order().desc(order.getProperty());
+					}
+				}
+			}
+		}
+
+		Page<NoteFile> page = new PageImpl<NoteFile>(expressionList.findList(), pageable, expressionList.findCount());
+
+		return page;
+	}
+
 	@Override
 	public void deleteNoteFile(NoteFile noteFile)
 	{

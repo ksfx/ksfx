@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit Note</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<h1>KSFX - Edit Note</h1>
+
+<div class="container">
+    <div class="list-group">
+        <div class="list-group-item">
+            <form id="noteForm" action="#" th:action="@{/admin/note/noteedit}" th:object="${note}" method="post">
+                <input type="hidden" th:field="*{id}" />
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">Title not valid</div>
+                    <input type="text" class="form-control" id="title" th:field="*{title}" />
+                </div>
+                <div class="form-group">
+                    <label for="noteCategory">Category</label>
+                    <select class="form-control" id="noteCategory" th:field="*{noteCategory.id}">
+                        <option th:value="0" text=""></option>
+                        <option th:each="noteCategory : ${allNoteCategories}"
+                                th:value="${noteCategory.id}"
+                                th:text="${noteCategory.name}">
+                            Note Category
+                        </option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="content">Content</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('content')}" th:errors="*{content}">Content code not valid</div>
+                    <textarea class="form-control" id="content" th:field="*{content}" style="height:600px" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <a th:href="@{/admin/note/note/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+            </form>
+
+            <div th:if="${note.id != null}">
+                <br />
+                <br />
+                <br />
+                <h3>Attached Files</h3>
+                <table class="table table-striped table-responsive-md">
+                    <thead>
+                    <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','filename','comment','delete'} },sortables=${ {'id'} },names=${ {'ID','Filename','Comment','Delete'} },page=${noteFilesPage},path='/admin/note/noteedit' + ${note.id})" />
+                    </thead>
+                    <tbody>
+                    <tr th:each="note : ${noteFilesPage.content}">
+                        <td th:text="${note.id}"></td>
+                        <td><a th:href="@{/admin/note/notefiledownload/{id}(id=${note.id})}" th:inline="text">[[${note.fileName}]]</a></td>
+                        <td th:text="${note.comment}"></td>
+                        <td><a th:href="@{/admin/note/notefiledelete/{id}(id=${note.id})}" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

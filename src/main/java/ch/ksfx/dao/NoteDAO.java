@@ -17,12 +17,15 @@
 
 package ch.ksfx.dao;
 
+import ch.ksfx.model.logger.LogMessage;
 import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.TimeSeries;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.note.*;
 import ch.ksfx.model.spidering.ResourceLoaderPluginConfiguration;
 import ch.ksfx.model.spidering.SpideringConfiguration;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -32,6 +35,7 @@ public interface NoteDAO
 	public void saveOrUpdateNote(Note note);
 	public List<Note> getAllNotes();
 	public List<Note> getNotesForNoteCategory(NoteCategory noteCategory);
+	public Page<Note> getNotesForPageableAndNoteCategory(Pageable pageable, NoteCategory noteCategory);
 	public List<Note> searchNotes(String title, NoteCategory noteCategory, TimeSeries timeSeries, Activity activity, PublishingConfiguration publishingConfiguration, SpideringConfiguration spideringConfiguration, ResourceLoaderPluginConfiguration resourceLoaderPluginConfiguration, boolean searchMainNotes);
 	public Note getNoteForId(Long noteId);
 	public void deleteNote(Note note);
@@ -40,6 +44,7 @@ public interface NoteDAO
 	public NoteCategory getNoteCategoryForId(Long noteCategoryId);
 	public void deleteNoteCategory(NoteCategory noteCategory);
 	public NoteFile getNoteFileForId(Long noteFileId);
+	public Page<NoteFile> getNoteFilesForPageableAndNote(Pageable pageable, Note note);
 	public void deleteNoteFile(NoteFile noteFile);
 	public void saveOrUpdateNoteFile(NoteFile noteFile);
 	

@@ -19,12 +19,19 @@ package ch.ksfx.dao.ebean;
 
 import ch.ksfx.dao.LogMessageDAO;
 import ch.ksfx.model.logger.LogMessage;
+import ch.ksfx.model.spidering.ResultVerifierConfiguration;
+import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
 import io.ebean.SqlRow;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -86,6 +93,48 @@ public class EbeanLogMessageDAO implements LogMessageDAO
     public void clearLogMessages()
     {
         Ebean.createSqlUpdate("DELETE FROM log_message").execute();
+    }
+
+    @Override
+    public Page<LogMessage> getLogMessagesForPageableAndTag(Pageable pageable, String tag)
+    {
+        ExpressionList expressionList = Ebean.find(LogMessage.class).where();
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+
+        if (tag != null && !tag.isEmpty()) {
+            expressionList.eq("tag", tag);
+        }
+
+        boolean hasOrder = false;
+
+        if (!pageable.getSort().isUnsorted()) {
+            Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+            while (orderIterator.hasNext()) {
+                Sort.Order order = orderIterator.next();
+
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                        hasOrder = true;
+                    }
+
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                        hasOrder = true;
+                    }
+                }
+            }
+        }
+
+        if (hasOrder == false) {
+            expressionList.order().desc("date");
+        }
+
+        Page<LogMessage> page = new PageImpl<LogMessage>(expressionList.findList(), pageable, expressionList.findCount());
+
+        return page;
     }
 
     /*
