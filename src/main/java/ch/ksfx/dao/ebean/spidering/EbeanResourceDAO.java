@@ -19,13 +19,19 @@ package ch.ksfx.dao.ebean.spidering;
 
 import ch.ksfx.dao.spidering.ResourceDAO;
 import ch.ksfx.model.spidering.Resource;
+import ch.ksfx.model.spidering.Result;
 import ch.ksfx.model.spidering.Spidering;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
 import io.ebean.QueryIterator;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -119,6 +125,40 @@ public class EbeanResourceDAO implements ResourceDAO
         } while (!relevantIds.isEmpty());
 
         return allResults;
+    }
+
+    @Override
+    public Page<Resource> getResourcesForPageableAndSpidering(Pageable pageable, Spidering spidering)
+    {
+        ExpressionList expressionList = Ebean.find(Resource.class).where();
+
+        if (spidering != null) {
+            expressionList.eq("spidering", spidering);
+        }
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+
+        if (!pageable.getSort().isUnsorted()) {
+            Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+            while (orderIterator.hasNext()) {
+                Sort.Order order = orderIterator.next();
+
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                    }
+
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                    }
+                }
+            }
+        }
+
+        Page<Resource> page = new PageImpl<Resource>(expressionList.findList(), pageable, expressionList.findCount());
+
+        return page;
     }
 
     /*

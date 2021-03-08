@@ -17,10 +17,9 @@
 
 package ch.ksfx.dao.spidering;
 
-import ch.ksfx.model.spidering.Result;
-import ch.ksfx.model.spidering.ResultUnit;
-import ch.ksfx.model.spidering.Spidering;
-import ch.ksfx.model.spidering.SpideringConfiguration;
+import ch.ksfx.model.spidering.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 //import org.apache.tapestry5.grid.GridDataSource;
 
 import java.util.Date;
@@ -35,6 +34,7 @@ public interface ResultDAO
 	public List<Result> getResultsNotFoundSince(Date date);
 	public List<Result> getResultsNotFoundSinceForSpideringConfiguration(Date date, SpideringConfiguration spideringConfiguration);
     public List<Result> getResultsForSpidering(Spidering spidering);
+    public Page<Result> getResultsForPageableAndSpideringConfigurationAndFilter(Pageable pageable, SpideringConfiguration spideringConfiguration, boolean filterInvalid);
 //    public GridDataSource getResultGridDataSourceForSpideringConfiguration(SpideringConfiguration spideringConfiguration, boolean filterInvalid);
     public Result getResultForId(Long resultId);
     public void deleteResult(Result result);

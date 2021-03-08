@@ -16,7 +16,7 @@
         <tbody>
         <tr th:each="spideringConfiguration : ${spideringConfigurationsPage.content}">
             <td th:text="${spideringConfiguration.id}"></td>
-            <td th:text="${spideringConfiguration.name}"></td>
+            <td><a th:href="@{/informationretrieval/result/{id}(id=${spideringConfiguration.id})}" th:inline="text">[[${spideringConfiguration.name}]]</a></td>
             <td><a th:href="@{/informationretrieval/spideringsviewer/{id}(id=${spideringConfiguration.id})}" class="fa fa-list"></a></td>
             <td><a th:href="@{/informationretrieval/spideringconfigurationrun/{id}(id=${spideringConfiguration.id})}" class="fa fa-play"></a></td>
             <td>

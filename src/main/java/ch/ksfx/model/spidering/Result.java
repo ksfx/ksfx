@@ -18,6 +18,7 @@
 package ch.ksfx.model.spidering;
 
 import ch.ksfx.util.MD5Helper;
+import org.apache.commons.lang.StringEscapeUtils;
 
 import javax.persistence.*;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -252,5 +253,18 @@ public class Result
         }
 
         return null;
+    }
+
+    @Transient
+    public String getFormattedHtmlData()
+    {
+        String data = "";
+        data += "<table><tr>";
+        for (ResultUnit resultUnit : getResultUnits()) {
+            data += "<td valign='top'>" + StringEscapeUtils.escapeHtml(resultUnit.getValue()) + "</td>";
+        }
+        data += "</tr></table>";
+
+        return data;
     }
 }

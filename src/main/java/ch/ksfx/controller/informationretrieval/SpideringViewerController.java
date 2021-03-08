@@ -41,9 +41,4 @@ public class SpideringViewerController
 
         return "informationretrieval/spiderings_viewer";
     }
-
-    public Integer getResourcesCount(Long spideringId)
-    {
-        return spideringDAO.calculateResourcesCount(spideringDAO.getSpideringForId(spideringId));
-    }
 }

@@ -18,19 +18,17 @@
 package ch.ksfx.dao.ebean.spidering;
 
 import ch.ksfx.dao.spidering.ResultDAO;
-import ch.ksfx.model.spidering.Result;
-import ch.ksfx.model.spidering.ResultUnit;
-import ch.ksfx.model.spidering.Spidering;
-import ch.ksfx.model.spidering.SpideringConfiguration;
+import ch.ksfx.model.spidering.*;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
 import io.ebean.SqlUpdate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Repository
 public class EbeanResultDAO implements ResultDAO
@@ -66,6 +64,44 @@ public class EbeanResultDAO implements ResultDAO
     public List<Result> getResultsForSpidering(Spidering spidering)
     {
         return Ebean.find(Result.class).where().in("spidering.id", spidering.getId()).findList();
+    }
+
+    @Override
+    public Page<Result> getResultsForPageableAndSpideringConfigurationAndFilter(Pageable pageable, SpideringConfiguration spideringConfiguration, boolean filterInvalid)
+    {
+        ExpressionList expressionList = Ebean.find(Result.class).where();
+
+        if (spideringConfiguration != null) {
+            expressionList.eq("spideringConfiguration", spideringConfiguration);
+        }
+
+        if (filterInvalid) {
+            expressionList.eq("isValid", false);
+        }
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+
+        if (!pageable.getSort().isUnsorted()) {
+            Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+            while (orderIterator.hasNext()) {
+                Sort.Order order = orderIterator.next();
+
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                    }
+
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                    }
+                }
+            }
+        }
+
+        Page<Result> page = new PageImpl<Result>(expressionList.findList(), pageable, expressionList.findCount());
+
+        return page;
     }
 
     /*

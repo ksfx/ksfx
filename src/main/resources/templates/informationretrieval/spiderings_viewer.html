@@ -26,7 +26,7 @@
             <td th:text="${spidering.resultCount}"></td>
             <td th:text="${spidering.validResultCount}"></td>
             <td th:text="${spidering.invalidResultCount}"></td>
-            <td th:text="${spideringDAO.calculateResourcesCount(spidering)}"></td>
+            <td><a th:href="@{/informationretrieval/resource/{id}(id=${spidering.id})}" th:inline="text">[[${spideringDAO.calculateResourcesCount(spidering)}]]</a></td>
             <td><a th:href="@{/activity/activityedit/{id}(id=${spidering.id})}" class="fa fa-pencil" alt="Start Parsing" title="Start Parsing"></a></td>
             <td><a th:href="@{/activity/activityedit/{id}(id=${spidering.id})}" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>

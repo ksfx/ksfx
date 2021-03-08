@@ -18,8 +18,13 @@
 package ch.ksfx.dao.spidering;
 
 import ch.ksfx.model.spidering.Resource;
+import ch.ksfx.model.spidering.Result;
 import ch.ksfx.model.spidering.Spidering;
+import ch.ksfx.model.spidering.SpideringConfiguration;
 import io.ebean.QueryIterator;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 
@@ -32,6 +37,7 @@ public interface ResourceDAO
     public List getResourcesForSpideringAndDepthIds(Spidering spidering, Integer depth);
     public List<Resource> getChildResources(Resource resource);
 //    public GridDataSource getResourceGridDataSourceForSpidering(Spidering spidering);
+    public Page<Resource> getResourcesForPageableAndSpidering(Pageable pageable, Spidering spidering);
     public Resource getResourceForId(Long resourceId);
     public void deleteResource(Resource resource);
 }
