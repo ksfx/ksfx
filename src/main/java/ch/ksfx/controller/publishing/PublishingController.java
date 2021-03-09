@@ -16,7 +16,12 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/publishing")
@@ -50,8 +55,27 @@ public class PublishingController
     {
         PublishingConfiguration publishingConfiguration = new PublishingConfiguration();
 
-        if (publishingConfiguration != null) {
+        if (publishingConfigurationId != null) {
             publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+        } else {
+            InputStream inputStream = null;
+            String demoPublishingStrategy = null;
+
+            try {
+                inputStream = getClass().getClassLoader().getResourceAsStream("groovy/DemoPublishingStrategy.groovy");
+
+                demoPublishingStrategy = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            publishingConfiguration.setPublishingStrategy(demoPublishingStrategy);
         }
 
         model.addAttribute("allPublishingCategories", publishingConfigurationDAO.getAllPublishingCategories());
@@ -114,8 +138,17 @@ public class PublishingController
         }
     }
 
-    @GetMapping({"/publishingresourceedit", "/publishingresourceedit/{id}"})
-    public String publishingResourceEdit(@PathVariable(value = "id", required = false) Long publishingResourceId, Model model, Pageable pageable)
+    @GetMapping("/publishingconfigurationdelete/{id}")
+    public String publishingConfigurationDelete(@PathVariable(value = "id", required = false) Long publishingConfigurationId)
+    {
+        PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+        publishingConfigurationDAO.deletePublishingConfiguration(publishingConfiguration);
+
+        return "redirect:/publishing/";
+    }
+
+    @GetMapping({"/publishingresourceedit/{publishingConfigurationId}", "/publishingresourceedit/{publishingConfigurationId}/{publishingResourceId}"})
+    public String publishingResourceEdit(@PathVariable(value = "publishingConfigurationId", required = true) Long publishingConfigurationId, @PathVariable(value = "publishingResourceId", required = false) Long publishingResourceId, Model model, Pageable pageable)
     {
         PublishingResource publishingResource = new PublishingResource();
 
@@ -123,26 +156,23 @@ public class PublishingController
             publishingResource = publishingResourceDAO.getPublishingResourceForId(publishingResourceId);
         }
 
-        if (publishingResource.getPublishingConfiguration() != null) {
-            PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingResource.getPublishingConfiguration().getId());
-            model.addAttribute("publishingConfiguration", publishingConfiguration);
-        }
 
+        PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+
+        model.addAttribute("publishingConfiguration", publishingConfiguration);
         model.addAttribute("publishingResource", publishingResource);
 
         return "publishing/publishing_resource_edit";
     }
 
-    @PostMapping({"/publishingresourceedit", "/publishingresourceedit/{id}"})
-    public String publishingResourceSubmit(@PathVariable(value = "id", required = false) Long publishingResourceId, @Valid @ModelAttribute PublishingResource publishingResource, BindingResult bindingResult, Model model)
+    @PostMapping({"/publishingresourceedit/{publishingConfigurationId}", "/publishingresourceedit/{publishingConfigurationId}/{publishingResourceId}"})
+    public String publishingResourceSubmit(@PathVariable(value = "publishingConfigurationId", required = true) Long publishingConfigurationId, @PathVariable(value = "publishingResourceId", required = false) Long publishingResourceId, @Valid @ModelAttribute PublishingResource publishingResource, BindingResult bindingResult, Model model)
     {
         validatePublishingResource(publishingResource, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            if (publishingResource.getPublishingConfiguration() != null) {
-                PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingResource.getPublishingConfiguration().getId());
-                model.addAttribute("publishingConfiguration", publishingConfiguration);
-            }
+            PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+            model.addAttribute("publishingConfiguration", publishingConfiguration);
 
             return "publishing/publishing_resource_edit";
         }

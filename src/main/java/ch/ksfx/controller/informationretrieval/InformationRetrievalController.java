@@ -5,10 +5,13 @@ import ch.ksfx.dao.spidering.*;
 import ch.ksfx.model.spidering.*;
 import ch.ksfx.services.scheduler.SchedulerService;
 import ch.ksfx.services.spidering.SpideringRunner;
+import ch.ksfx.util.StacktraceUtil;
+import org.quartz.CronExpression;
 import org.quartz.SchedulerException;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 
@@ -97,38 +100,74 @@ public class InformationRetrievalController
     }
 
     @PostMapping({"/spideringconfigurationedit", "/spideringconfigurationedit/{id}"})
-    public String informationRetrievalSubmit(@PathVariable(value = "id", required = false) Long spideringConfigurationId, @ModelAttribute SpideringConfiguration spideringConfiguration, Model model)
+    public String informationRetrievalSubmit(@PathVariable(value = "id", required = false) Long spideringConfigurationId, @ModelAttribute SpideringConfiguration spideringConfiguration, BindingResult bindingResult, Model model)
     {
-        for (ResourceConfiguration rc : spideringConfiguration.getResourceConfigurations()) {
-            if (rc.getResourceLoaderPluginConfiguration().getId() == 0) {
-                rc.setResourceLoaderPluginConfiguration(null);
-            }
+        if (spideringConfiguration.getResourceConfigurations() != null) {
+            for (ResourceConfiguration rc : spideringConfiguration.getResourceConfigurations()) {
+                if (rc.getResourceLoaderPluginConfiguration().getId() == 0) {
+                    rc.setResourceLoaderPluginConfiguration(null);
+                }
 
-            if (rc.getPagingResourceLoaderPluginConfiguration() != null) {
-                if (rc.getPagingResourceLoaderPluginConfiguration().getId() == 0) {
-                    rc.setPagingResourceLoaderPluginConfiguration(null);
+                if (rc.getPagingResourceLoaderPluginConfiguration() != null) {
+                    if (rc.getPagingResourceLoaderPluginConfiguration().getId() == 0) {
+                        rc.setPagingResourceLoaderPluginConfiguration(null);
+                    }
                 }
             }
         }
 
+        if (spideringConfiguration.getResultVerifierConfiguration() != null && spideringConfiguration.getResultVerifierConfiguration().getId() == 0) {
+            spideringConfiguration.setResultVerifierConfiguration(null);
+        }
+
+        validateSpideringConfiguration(spideringConfiguration, bindingResult);
+
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("allUrlFragmentFinders", urlFragmentDAO.getAllUrlFragmentFinders());
+            model.addAttribute("allResourceLoeaderPluginConfigurations", resourceLoaderPluginConfigurationDAO.getAllResourceLoaderPluginConfigurations());
+            model.addAttribute("allResultUnitFinders", resultUnitConfigurationDAO.getAllResultUnitFinders());
+            model.addAttribute("allResultUnitTypes", resultUnitConfigurationDAO.getAllResultUnitTypes());
+            model.addAttribute("allResultUnitModifierConfigurations", resultUnitModifierConfigurationDAO.getAllResultUnitModifierConfigurations());
+            model.addAttribute("allResultVerifierConfigurations", resultVerifierConfigurationDAO.getAllResultVerifierConfigurations());
+            model.addAttribute("allActivities", activityDAO.getAllActivities());
+            model.addAttribute("spideringConfiguration", spideringConfiguration);
+
+            //form validation, if fails -> return to form instead redirect...
+            return "informationretrieval/spidering_configuration_edit";
+        }
+
         saveSpideringConfiguation(spideringConfiguration);
 
-        System.out.println("Spidering Post Activity Id" + spideringConfiguration.getSpideringPostActivities().get(0).getId());
-        System.out.println("Spidering Post Activity Spidering Configuration id" + spideringConfiguration.getSpideringPostActivities().get(0).getSpideringConfiguration().getId());
-
-        model.addAttribute("allUrlFragmentFinders", urlFragmentDAO.getAllUrlFragmentFinders());
-        model.addAttribute("allResourceLoeaderPluginConfigurations", resourceLoaderPluginConfigurationDAO.getAllResourceLoaderPluginConfigurations());
-        model.addAttribute("allResultUnitFinders", resultUnitConfigurationDAO.getAllResultUnitFinders());
-        model.addAttribute("allResultUnitTypes", resultUnitConfigurationDAO.getAllResultUnitTypes());
-        model.addAttribute("allResultUnitModifierConfigurations", resultUnitModifierConfigurationDAO.getAllResultUnitModifierConfigurations());
-        model.addAttribute("allResultVerifierConfigurations", resultVerifierConfigurationDAO.getAllResultVerifierConfigurations());
-        model.addAttribute("allActivities", activityDAO.getAllActivities());
-        model.addAttribute("spideringConfiguration", spideringConfiguration);
-
-        //form validation, if fails -> return to form instead redirect...
-        //return "informationretrieval/spidering_configuration_edit";
-
         return "redirect:/informationretrieval/spideringconfigurationedit/" + spideringConfiguration.getId();
+    }
+
+    public void validateSpideringConfiguration(SpideringConfiguration spideringConfiguration, BindingResult bindingResult)
+    {
+        if (spideringConfiguration.getCronSchedule() != null && !spideringConfiguration.getCronSchedule().isEmpty()) {
+            try {
+                CronExpression cronExpression = new CronExpression(spideringConfiguration.getCronSchedule());
+            } catch (Exception e) {
+                bindingResult.rejectValue("cronSchedule", "spideringConfiguration.cronSchedule", "Cron Schedule not valid");
+            }
+        }
+
+        Integer siteIdentifierCount = 0;
+
+        if (spideringConfiguration.getResourceConfigurations() != null) {
+            for (ResourceConfiguration resourceConfiguration : spideringConfiguration.getResourceConfigurations()) {
+                if (resourceConfiguration.getResultUnitConfigurations() != null) {
+                    for (ResultUnitConfiguration resultUnitConfiguration : resourceConfiguration.getResultUnitConfigurations()) {
+                        if (resultUnitConfiguration.getSiteIdentifier()) {
+                            siteIdentifierCount++;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (siteIdentifierCount > 1) {
+            bindingResult.rejectValue("name", "spideringConfiguration.name", "Only one site identifier can be defined");
+        }
     }
 
     public void saveSpideringConfiguation(SpideringConfiguration spideringConfiguration)
@@ -206,6 +245,156 @@ public class InformationRetrievalController
         schedulerService.deleteJob("Spidering" + spideringConfiguration.getId().toString(), "Spiderings");
 
         spideringConfigurationDAO.saveOrUpdate(spideringConfiguration);
+
+        return "redirect:/informationretrieval/";
+    }
+
+    @GetMapping({"/spideringconfigurationaddresourceconfiguration/{id}"})
+    public String spideringConfigurationAddResourceConfiguration(@PathVariable(value = "id", required = true) Long spideringConfigurationId)
+    {
+        SpideringConfiguration spideringConfiguration = spideringConfigurationDAO.getSpideringConfigurationForId(spideringConfigurationId);
+
+        ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
+        resourceConfiguration.setSpideringConfiguration(spideringConfiguration);
+        resourceConfigurationDAO.saveOrUpdate(resourceConfiguration);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + spideringConfiguration.getId();
+    }
+
+    @GetMapping({"/spideringconfigurationremoveresourceconfiguration/{id}"})
+    public String spideringConfigurationRemoveResourceConfiguration(@PathVariable(value = "id", required = true) Long resourceConfigurationId)
+    {
+        ResourceConfiguration resourceConfiguration = resourceConfigurationDAO.getResourceConfigurationForId(resourceConfigurationId);
+
+        resourceConfigurationDAO.deleteResourceConfiguration(resourceConfiguration);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + resourceConfiguration.getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationaddpaging/{id}"})
+    public String spideringConfigurationAddPaging(@PathVariable(value = "id", required = true) Long resourceConfigurationId)
+    {
+        ResourceConfiguration resourceConfiguration = resourceConfigurationDAO.getResourceConfigurationForId(resourceConfigurationId);
+
+        resourceConfiguration.setPaging(true);
+
+        resourceConfigurationDAO.saveOrUpdate(resourceConfiguration);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + resourceConfiguration.getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationremovepaging/{id}"})
+    public String spideringConfigurationRemovePaging(@PathVariable(value = "id", required = true) Long resourceConfigurationId)
+    {
+        ResourceConfiguration resourceConfiguration = resourceConfigurationDAO.getResourceConfigurationForId(resourceConfigurationId);
+
+        for (PagingUrlFragment pagingUrlFragment : resourceConfiguration.getPagingUrlFragments()) {
+            pagingUrlFragmentDAO.delete(pagingUrlFragment);
+        }
+
+        resourceConfiguration.setPaging(false);
+
+        resourceConfigurationDAO.saveOrUpdate(resourceConfiguration);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + resourceConfiguration.getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationaddpagingurlfragment/{id}"})
+    public String spideringConfigurationAddPagingUrlFragment(@PathVariable(value = "id", required = true) Long resourceConfigurationId)
+    {
+        ResourceConfiguration resourceConfiguration = resourceConfigurationDAO.getResourceConfigurationForId(resourceConfigurationId);
+
+        PagingUrlFragment pagingUrlFragment = new PagingUrlFragment();
+
+        pagingUrlFragment.setResourceConfiguration(resourceConfiguration);
+        pagingUrlFragmentDAO.saveOrUpdate(pagingUrlFragment);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + resourceConfiguration.getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationremovepagingurlfragment/{id}"})
+    public String spideringConfigurationRemovePagingUrlFragment(@PathVariable(value = "id", required = true) Long pagingUrlFragmentId)
+    {
+        PagingUrlFragment  pagingUrlFragment = pagingUrlFragmentDAO.getPagingUrlFragmentForId(pagingUrlFragmentId);
+
+        pagingUrlFragmentDAO.delete(pagingUrlFragment);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + pagingUrlFragment.getResourceConfiguration().getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationaddurlfragment/{id}"})
+    public String onActionFromAddUrlFragment(@PathVariable(value = "id", required = true) Long resourceConfigurationId)
+    {
+        ResourceConfiguration resourceConfiguration = resourceConfigurationDAO.getResourceConfigurationForId(resourceConfigurationId);
+
+        UrlFragment urlFragment = new UrlFragment();
+
+        urlFragment.setResourceConfiguration(resourceConfiguration);
+        urlFragmentDAO.saveOrUpdate(urlFragment);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + resourceConfiguration.getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationremoveurlfragment/{id}"})
+    public String onActionFromRemoveUrlFragment(@PathVariable(value = "id", required = true) Long urlFragmentId)
+    {
+        UrlFragment urlFragment = urlFragmentDAO.getUrlFragmentForId(urlFragmentId);
+
+        urlFragmentDAO.delete(urlFragment);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + urlFragment.getResourceConfiguration().getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationaddresultunitconfiguration/{id}"})
+    public String spideringConfigurationAddResultUnitConfiguration(@PathVariable(value = "id", required = true) Long resourceConfigurationId)
+    {
+        ResourceConfiguration resourceConfiguration = resourceConfigurationDAO.getResourceConfigurationForId(resourceConfigurationId);
+
+        ResultUnitConfiguration resultUnitConfiguration = new ResultUnitConfiguration();
+        resultUnitConfiguration.setResourceConfiguration(resourceConfiguration);
+
+        resultUnitConfigurationDAO.saveOrUpdate(resultUnitConfiguration);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + resourceConfiguration.getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationremoveresultunitconfiguration/{id}"})
+    public String spideringConfigurationRemoveResultUnitConfiguration(@PathVariable(value = "id", required = true) Long resultUnitConfigurationId)
+    {
+        ResultUnitConfiguration resultUnitConfiguration = resultUnitConfigurationDAO.getResultUnitConfigurationForId(resultUnitConfigurationId);
+
+        resultUnitConfigurationDAO.delete(resultUnitConfiguration);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + resultUnitConfiguration.getResourceConfiguration().getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationaddresultunitmodifier/{id}"})
+    public String onActionFromAddResultUnitModifierConfiguration(@PathVariable(value = "id", required = true) Long resultUnitConfigurationId)
+    {
+        ResultUnitConfiguration resultUnitConfiguration = resultUnitConfigurationDAO.getResultUnitConfigurationForId(resultUnitConfigurationId);
+
+        ResultUnitConfigurationModifiers resultUnitConfigurationModifiers = new ResultUnitConfigurationModifiers();
+        resultUnitConfigurationModifiers.setResultUnitConfiguration(resultUnitConfiguration);
+
+        resultUnitConfigurationModifiersDAO.saveOrUpdate(resultUnitConfigurationModifiers);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + resultUnitConfiguration.getResourceConfiguration().getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationremoveresultunitmodifier/{id}"})
+    public String onActionFromRemoveResultUnitModifierConfiguration(@PathVariable(value = "id", required = true) Long resultUnitConfigurationModifiersId)
+    {
+        ResultUnitConfigurationModifiers resultUnitConfigurationModifiers = resultUnitConfigurationModifiersDAO.getResultUnitConfigurationModifiersForId(resultUnitConfigurationModifiersId);
+
+        resultUnitConfigurationModifiersDAO.delete(resultUnitConfigurationModifiers);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + resultUnitConfigurationModifiers.getResultUnitConfiguration().getResourceConfiguration().getSpideringConfiguration().getId();
+    }
+
+    @GetMapping({"/spideringconfigurationdelete/{id}"})
+    public String onActionFromDelete(@PathVariable(value = "id", required = true) Long spideringConfigurationId)
+    {
+        spideringConfigurationDAO.deleteSpideringConfiguration(spideringConfigurationDAO.getSpideringConfigurationForId(spideringConfigurationId));
 
         return "redirect:/informationretrieval/";
     }

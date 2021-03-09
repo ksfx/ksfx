@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Console</title>
+</head>
+<body>
+<div style="padding-top:20px">
+    <div style="width:98%;text-align:right">
+        <a th:href="@{/console/clearconsole/{entityType}/{entityId}(entityType=${entityType},entityId=${entityId})}" class="fa fa-eraser" alt="Clear Console" title="Clear Console">&nbsp;Clear Console</a>
+    </div>
+    <pre th:utext="${console}"></pre>
+</div>
+</body>
+</html>

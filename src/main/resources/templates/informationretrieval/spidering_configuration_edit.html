@@ -7,29 +7,32 @@
 <header th:replace="layout :: site-header"/>
 <h1>KSFX - Information Retrieval</h1>
 <div class="container">
-<div class="list-group" style="width:80%">
+<div class="list-group">
     <div class="list-group-item">
         <form action="#" th:action="@{/informationretrieval/spideringconfigurationedit}" th:object="${spideringConfiguration}" method="post">
             <input type="hidden" th:field="*{id}" />
             <div class="form-group">
-                <label class="control-label" for="name">Name</label><br />
-                <input type="text" th:field="*{name}" />
+                <label class="control-label" for="name">Name</label>
+                <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
+                <input type="text" class="form-control" id="name" th:field="*{name}" />
             </div>
             <div class="form-group">
-                <label class="control-label" for="cronSchedule">Cron Schedule</label><br />
-                <input type="text" th:field="*{cronSchedule}" />
+                <label class="control-label" for="cronSchedule">Cron Schedule</label>
+                <div class="text-danger" th:if="${#fields.hasErrors('cronSchedule')}" th:errors="*{cronSchedule}">Name not valid</div>
+                <input type="text" class="form-control" id="cronSchedule" th:field="*{cronSchedule}" />
             </div>
-            <div class="form-group">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="checkDuplicatesGlobally" name="checkDuplicatesGlobally" th:field="*{checkDuplicatesGlobally}" />
                 <label class="control-label" for="checkDuplicatesGlobally">Check Duplicates Globally</label>
-                <input type="checkbox" name="checkDuplicatesGlobally" th:field="*{checkDuplicatesGlobally}" />
             </div>
-            <div class="form-group">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="debugSpidering" name="debugSpidering" th:field="*{debugSpidering}" />
                 <label class="control-label" for="debugSpidering">Debug Spidering</label>
-                <input type="checkbox" name="debugSpidering" th:field="*{debugSpidering}" />
             </div>
 
-            <!-- <t:if test="spideringConfiguration.id"> -->
-            <!-- <t:actionlink t:id="addResourceConfiguration">Add Resource Configuration</t:actionlink> -->
+            <h4 style="width:100%">
+                <b>Resource Configurations <a th:href="@{/informationretrieval/spideringconfigurationaddresourceconfiguration/{spideringConfigurationId}(spideringConfigurationId=${spideringConfiguration.id})}" style="float:right;margin-top:8px" class="fa fa-plus" alt="Add Resource Configuration" title="Add Resource Configuration"></a></b>
+            </h4>
 
             <th:block th:each="resourceConfiguration,resourceConfigurationStatus : ${spideringConfiguration.resourceConfigurations}">
                 <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].id}" />
@@ -37,13 +40,14 @@
 
                 <div class="list-group-item">
                     <div th:style="${'padding-left:' + (resourceConfigurationStatus.index * 100) + 'px'}">
-                        <div style="width:100%">
-                            <input type="checkbox" name="baseLevel" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].baseLevel}" /> Is base level
+                        <div class="form-check">
+                            <input type="checkbox"class="form-check-input" id="baseLevel" name="baseLevel" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].baseLevel}" />
+                            <label class="control-label" for="baseLevel">Is base level</label>
                         </div>
 
-                        <div style="width:335px">
-                            Resource Loader Plugin
-                            <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resourceLoaderPluginConfiguration.id}">
+                        <div class="form-group">
+                            <label for="resourceLoaderPluginConfiguration">Resource Loader Plugin</label>
+                            <select class="form-control" id="resourceLoaderPluginConfiguration" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resourceLoaderPluginConfiguration.id}">
                                 <option th:value="0" text=""></option>
                                 <option th:each="resourceLoaderPluginConfiguration : ${allResourceLoeaderPluginConfigurations}"
                                         th:value="${resourceLoaderPluginConfiguration.id}"
@@ -53,60 +57,45 @@
                             </select>
                         </div>
 
-                        <!--
-                        <div style="float:right">
-                            <t:actionlink t:id="addurlfragment" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" alt="Add url fragment" title="Add url fragment"></t:actionlink>
-                        </div>
-                        -->
-                        <div>
-                            URL Fragments
-                        </div>
+                        <h4 style="width:100%">
+                            <b>URL Fragments <a th:href="@{/informationretrieval/spideringconfigurationaddurlfragment/{resourceConfigurationId}(resourceConfigurationId=${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].id})}" style="float:right;margin-top:8px" class="fa fa-plus" alt="Add URL fragment" title="Add URL fragment"></a></b>
+                        </h4>
                         <th:block th:each="urlFragment,urlFragmentStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments}">
                             <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].id}" />
                             <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].resourceConfiguration.id}" />
-                            <div class="form-group">
-                                <div class="row" style="width: 450px">
-                                    <div class="col" style="width: 150px">
-                                        <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].urlFragmentFinder.id}">
-                                            <option th:each="urlFragmentFinder : ${allUrlFragmentFinders}"
-                                                    th:value="${urlFragmentFinder.id}"
-                                                    th:text="${urlFragmentFinder.name}">
-                                                Url Fragment Finder
-                                            </option>
-                                        </select>
-                                    </div>
-                                    <div class="col" style="width: 200px">
-                                        <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].fragmentQuery}" />
-                                    </div>
-                                    <div class="col" style="width: 50px">
-                                        &nbsp;
-                                        <!-- <t:actionlink t:id="removeUrlFragment" context="urlFragment.id" class="glyphicon glyphicon-minus" title="Remove url fragment" alt="Remove url fragment"></t:actionlink> -->
+                            <div class="form-row">
+                            <div class="form-group col-md-3">
+                                <label for="urlFragmentFinder">URL Fragment Finder</label>
+                                <select class="form-control" id="urlFragmentFinder" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].urlFragmentFinder.id}">
+                                    <option th:each="urlFragmentFinder : ${allUrlFragmentFinders}"
+                                            th:value="${urlFragmentFinder.id}"
+                                            th:text="${urlFragmentFinder.name}">
+                                        Url Fragment Finder
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="fragmentQuery">Fragment Query</label>
+                                <input type="text" class="form-control" id="fragmentQuery" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].urlFragments[__${urlFragmentStatus.index}__].fragmentQuery}" />
+                            </div>
+                                <div class="form-group col-md-3">
+                                    <label for="delUrlFragment" class="fa fa-pencil"></label>
+                                    <div id="delUrlFragment">
+                                        <a th:href="@{/informationretrieval/spideringconfigurationremoveurlfragment/{urlfragment}(urlfragment=${urlFragment.id})}" style="margin-top:10px" class="fa fa-minus" alt="Remove URL fragment" title="Remove URL fragment"></a>
                                     </div>
                                 </div>
                             </div>
                         </th:block>
-                        <div style="float:right">
-                            <!-- <t:actionlink t:id="addResultUnitConfiguration" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" alt="Add result unit configuration" title="Add result unit configuration"></t:actionlink> -->
-                        </div>
-                        <div>
-                            Result Units
-                        </div>
+                        <h4 style="width:100%">
+                            <b>Result Units <a th:href="@{/informationretrieval/spideringconfigurationaddresultunitconfiguration/{resourceConfigurationId}(resourceConfigurationId=${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].id})}" style="float:right;margin-top:10px" class="fa fa-plus" alt="Add result unit" title="Add result unit"></a></b>
+                        </h4>
                         <th:block th:each="resultUnitConfiguration,resultUnitConfigurationStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations}">
                             <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].id}" />
                             <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resourceConfiguration.id}" />
-                            <div class="row">
-                                    <!-- allResultUnitFinders -->
-                                <div class="col">
-                                    <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitFinder.id}">
-                                        <option th:each="resultUnitFinder : ${allResultUnitFinders}"
-                                                th:value="${resultUnitFinder.id}"
-                                                th:text="${resultUnitFinder.name}">
-                                            Result Unit Finder
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="col">
-                                    <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitType.id}">
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <label for="resultUnitType">Type</label>
+                                    <select class="form-control" id="resultUnitType" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitType.id}">
                                         <option th:each="resultUnitType : ${allResultUnitTypes}"
                                                 th:value="${resultUnitType.id}"
                                                 th:text="${resultUnitType.name}">
@@ -114,16 +103,38 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="col">
-                                    <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].finderQuery}" />
+                                <div class="form-group col-md-3">
+                                    <label for="resultUnitFinder">Result Unit Finder</label>
+                                    <select class="form-control" id="resultUnitFinder" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitFinder.id}">
+                                        <option th:each="resultUnitFinder : ${allResultUnitFinders}"
+                                                th:value="${resultUnitFinder.id}"
+                                                th:text="${resultUnitFinder.name}">
+                                            Result Unit Finder
+                                        </option>
+                                    </select>
                                 </div>
-                                <div class="col">
-                                    <input type="checkbox" name="siteIdentifierId" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].siteIdentifier}" /> ID
+                                <div class="form-group col-md-3">
+                                    <label for="finderQuery">Finder Query</label>
+                                    <input type="text" class="form-control" id="finderQuery" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].finderQuery}" />
                                 </div>
-                                <div class="col">
-                                    <input type="checkbox" name="lockedForUpdates" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].lockedForUpdates}" /> Updates locked
+                                <div class="form-group col-md-1">
+                                    <label for="siteIdentifierId" class="fa fa-key" data-toggle="tooltip" data-placement="top" title="Is this result unit the unique identifier for a result in a publishing configuration?"></label>
+                                    <div id="siteIdentifierId">
+                                    <input type="checkbox" name="siteIdentifierId" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].siteIdentifier}" />
+                                    </div>
                                 </div>
-                                <div class="col">
+                                <div class="form-group col-md-1">
+                                    <label for="lockedForUpdates" class="fa fa-lock" data-toggle="tooltip" data-placement="top" title="This result unit will not be updated if the result is found again"></label>
+                                    <div id="lockedForUpdates">
+                                    <input type="checkbox" name="lockedForUpdates" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].lockedForUpdates}" />
+                                    </div>
+                                </div>
+                                <div class="form-group col-md-1">
+                                    <label for="resultUnitOptions" class="fa fa-pencil"></label>
+                                    <div id="resultUnitOptions">
+                                        <a th:href="@{/informationretrieval/spideringconfigurationaddresultunitmodifier/{resultUnitConfiguration}(resultUnitConfiguration=${resultUnitConfiguration.id})}" style="margin-top:10px" class="fa fa-cogs" alt="Add Result Unit Modifier" title="Add Result Unit Modifier"></a>
+                                        <a th:href="@{/informationretrieval/spideringconfigurationremoveresultunitconfiguration/{resultUnitConfiguration}(resultUnitConfiguration=${resultUnitConfiguration.id})}" style="margin-top:10px" class="fa fa-minus" alt="Remove result unit" title="Remove result unit"></a>
+                                    </div>
                                     <!-- <t:actionlink t:id="addResultUnitModifierConfiguration" context="resultUnitConfiguration.id" class="glyphicon glyphicon-plus" title="Add modifier" alt="Add modifier"></t:actionlink> -->
                                     <!-- <t:actionlink t:id="removeResultUnitConfiguration" context="resultUnitConfiguration.id" class="glyphicon glyphicon-minus" title="Remove result unit configuration" alt="Remove result unit configuration"></t:actionlink> -->
                                 </div>
@@ -132,9 +143,10 @@
                             <th:block th:each="resultUnitConfigurationModifier,resultUnitConfigurationModifierStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitConfigurationModifiers}">
                                 <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitConfigurationModifiers[__${resultUnitConfigurationModifierStatus.index}__].id}" />
                                 <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitConfigurationModifiers[__${resultUnitConfigurationModifierStatus.index}__].resultUnitConfiguration.id}" />
-                                <div class="row">
-                                    <div class="col">
-                                        <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitConfigurationModifiers[__${resultUnitConfigurationModifierStatus.index}__].resultUnitModifierConfiguration.id}">
+                                <div class="form-group row">
+                                    <label for="resultUnitModifierConfiguration" class="col-sm-3 col-form-label fa fa-cog"></label>
+                                    <div class="col-sm-6">
+                                        <select class="form-control" id="resultUnitModifierConfiguration" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].resultUnitConfigurations[__${resultUnitConfigurationStatus.index}__].resultUnitConfigurationModifiers[__${resultUnitConfigurationModifierStatus.index}__].resultUnitModifierConfiguration.id}">
                                             <option th:each="resultUnitModifierConfiguration : ${allResultUnitModifierConfigurations}"
                                                     th:value="${resultUnitModifierConfiguration.id}"
                                                     th:text="${resultUnitModifierConfiguration.name}">
@@ -142,8 +154,9 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="col">
-                                        <!-- <t:actionlink t:id="removeResultUnitModifierConfiguration" context="resultUnitConfigurationModifiers.id" class="glyphicon glyphicon-minus" title="Remove modifier" alt="Remove modifier"></t:actionlink> -->
+                                    <div class="col-sm-3">
+                                        <a th:href="@{/informationretrieval/spideringconfigurationremoveresultunitmodifier/{id}(id=${resultUnitConfigurationModifier.id})}" style="margin-top:10px" class="fa fa-minus" alt="Remove Result Unit Modifier" title="Remove Result Unit Modifier"></a>
+                                            <!-- <t:actionlink t:id="removeResultUnitModifierConfiguration" context="resultUnitConfigurationModifiers.id" class="glyphicon glyphicon-minus" title="Remove modifier" alt="Remove modifier"></t:actionlink> -->
                                     </div>
                                 </div>
                             </th:block>
@@ -155,30 +168,37 @@
                                 <t:actionlink t:id="addPaging" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" title="Add paging" alt="Add paging"></t:actionlink>
                             </div>
                         </t:if> -->
+                        <h4 style="width:100%">
+                            <b>
+                                Paging
+                                <a th:unless="${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].paging}" th:href="@{/informationretrieval/spideringconfigurationaddpaging/{resourceConfigurationId}(resourceConfigurationId=${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].id})}" style="float:right;margin-top:10px" class="fa fa-plus" alt="Add Paging" title="Add Paging"></a>
+                                <a th:if="${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].paging}" th:href="@{/informationretrieval/spideringconfigurationremovepaging/{resourceConfigurationId}(resourceConfigurationId=${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].id})}" style="float:right;margin-top:10px" class="fa fa-minus" alt="Remove Paging" title="Remove Paging"></a>
+                            </b>
+                        </h4>
                         <div th:if="${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].paging}">
-                        <div>
-                            Pagings
-                        </div>
-                        <div style="width:335px">
-                            Resource Loader Plugin (Paging)
-                            <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingResourceLoaderPluginConfiguration.id}">
-                                <option th:value="0" text=""></option>
-                                <option th:each="resourceLoaderPluginConfiguration : ${allResourceLoeaderPluginConfigurations}"
-                                        th:value="${resourceLoaderPluginConfiguration.id}"
-                                        th:text="${resourceLoaderPluginConfiguration.name}">
-                                    Resource Loader Plugin Configuration (Paging)
-                                </option>
-                            </select>
-                        </div>
-                        <!-- <div style="float:right">
-                            <t:actionlink t:id="addPagingUrlfragment" context="resourceConfiguration.id" class="glyphicon glyphicon-plus" alt="Add url fragment" title="Add url fragment"></t:actionlink>
-                        </div> -->
+                            <div class="form-group">
+                                <label for="resourceLoaderPluginConfigurationPaging">Resource Loader Plugin (Paging)</label>
+
+                                <select class="form-control" id="resourceLoaderPluginConfigurationPaging" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingResourceLoaderPluginConfiguration.id}">
+                                    <option th:value="0" text=""></option>
+                                    <option th:each="resourceLoaderPluginConfiguration : ${allResourceLoeaderPluginConfigurations}"
+                                            th:value="${resourceLoaderPluginConfiguration.id}"
+                                            th:text="${resourceLoaderPluginConfiguration.name}">
+                                        Resource Loader Plugin Configuration (Paging)
+                                    </option>
+                                </select>
+                            </div>
+                            <h4 style="width:100%">
+                                <b>URL Fragments (Paging) <a th:href="@{/informationretrieval/spideringconfigurationaddpagingurlfragment/{resourceConfigurationId}(resourceConfigurationId=${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].id})}" style="float:right;margin-top:8px" class="fa fa-plus" alt="Add Paging URL fragment" title="Add Paging URL fragment"></a></b>
+                            </h4>
+
                         <th:block th:each="pagingUrlFragment,pagingUrlFragmentStatus : ${spideringConfiguration.resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments}">
                             <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].id}" />
                             <input type="hidden" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].resourceConfiguration.id}" />
-                            <div class="row">
-                                <div class="col">
-                                    <select th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].urlFragmentFinder.id}">
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <label for="urlFragmentFinderPaging">URL Fragment Finder (Paging)</label>
+                                    <select class="form-control" id="urlFragmentFinderPaging" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].urlFragmentFinder.id}">
                                         <option th:each="urlFragmentFinder : ${allUrlFragmentFinders}"
                                                 th:value="${urlFragmentFinder.id}"
                                                 th:text="${urlFragmentFinder.name}">
@@ -186,60 +206,72 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="col">
-                                    <input type="text" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].fragmentQuery}" />
+                                <div class="form-group col-md-6">
+                                    <label for="fragmentQueryPaging">URL Fragment Finder (Paging)</label>
+                                    <input type="text" class="form-control" id="fragmentQueryPaging" th:field="*{resourceConfigurations[__${resourceConfigurationStatus.index}__].pagingUrlFragments[__${pagingUrlFragmentStatus.index}__].fragmentQuery}" />
                                 </div>
-                                <div class="col">
-                                    <!-- <t:actionlink t:id="removePagingUrlFragment" context="pagingUrlFragment.id" class="glyphicon glyphicon-minus" title="Remove url fragment" alt="Remove url fragment"></t:actionlink> -->
+                                <div class="form-group col-md-3">
+                                    <label for="delUrlFragmentPaging" class="fa fa-pencil"></label>
+                                    <div id="delUrlFragmentPaging">
+                                        <a th:href="@{/informationretrieval/spideringconfigurationremovepagingurlfragment/{urlfragment}(urlfragment=${pagingUrlFragment.id})}" style="margin-top:10px" class="fa fa-minus" alt="Remove Paging URL fragment" title="Remove Paging URL fragment"></a>
+                                    </div>
                                 </div>
                             </div>
                         </th:block>
-                        <!-- <t:actionlink t:id="removePaging" context="resourceConfiguration.id" class="glyphicon glyphicon-minus" title="Remove paging" alt="Remove paging"></t:actionlink> -->
 
                         </div>
 
-                        <div style="padding-top:50px">
-                            <!-- <t:actionlink t:id="removeResourceConfiguration" context="resourceConfiguration.id" class="glyphicon glyphicon-minus" title="Remove resource configuration" alt="Remove resource configuration"></t:actionlink> -->
+                        <div class="row">
+                            <div class="col">
+                            <a th:href="@{/informationretrieval/spideringconfigurationremoveresourceconfiguration/{resourceConfigurationId}(resourceConfigurationId=${resourceConfiguration.id})}" style="float:right;margin-top:8px" class="fa fa-trash-o" alt="Remove Resource Configuration" title="Remove Resource Configuration"></a>
+                            </div>
                         </div>
                     </div>
                 </div>
             </th:block>
             <div class="list-group-item">
-                <div>
-                    <div>
-                        Result Verifier
-                    </div>
-                    <div class="form-group">
-                        <select th:field="*{resultVerifierConfiguration.id}">
-                            <option th:each="resultVerifierConfiguration : ${allResultVerifierConfigurations}"
-                                    th:value="${resultVerifierConfiguration.id}"
-                                    th:text="${resultVerifierConfiguration.name}">
-                                Result Verifier Configuration
-                            </option>
-                        </select>
-                    </div>
+                <h4>
+                    <b>Result Verifier</b>
+                </h4>
+                <div class="form-group">
+                    <label for="resultVerifierConfiguration">Verifier</label>
+                    <select class="form-control" id="resultVerifierConfiguration" th:field="*{resultVerifierConfiguration.id}">
+                        <option th:value="0" text=""></option>
+                        <option th:each="resultVerifierConfiguration : ${allResultVerifierConfigurations}"
+                                th:value="${resultVerifierConfiguration.id}"
+                                th:text="${resultVerifierConfiguration.name}">
+                            Result Verifier Configuration
+                        </option>
+                    </select>
                 </div>
-                <div style="float:right">
+                <!--
+                <div style="float:right">  -->
                     <!-- <t:actionlink t:id="addSpideringPostActivity" class="glyphicon glyphicon-plus" alt="Add spidering post activity" title="Add spidering post activity"></t:actionlink> -->
-                </div>
-                <div>
-                    Post Spidering Activities
-                </div>
+                <!-- </div> -->
+
+
+                <h4 style="width:100%">
+                    <b>Post Spidering Activities <a style="float:right;margin-top:10px" context="resourceConfiguration.id" class="fa fa-plus" alt="Add post spidering activity" title="Add post spidering activity"></a></b>
+                </h4>
                 <div>
                     <th:block th:each="spideringPostActivity,spideringPostActivityStatus : ${spideringConfiguration.spideringPostActivities}">
                         <input type="hidden" th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].id}" />
                         <input type="hidden" th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].spideringConfiguration.id}" />
-                        <select th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].activity.id}">
-                            <option th:each="activity : ${allActivities}"
-                                    th:value="${activity.id}"
-                                    th:text="${activity.name}">
-                                Post Spidering Activity
-                            </option>
-                        </select>
+                        <div class="form-group">
+                            <label for="postSpideringActivity">Activity</label>
+                            <select class="form-control" id="postSpideringActivity" th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].activity.id}">
+                                <option th:each="activity : ${allActivities}"
+                                        th:value="${activity.id}"
+                                        th:text="${activity.name}">
+                                    Post Spidering Activity
+                                </option>
+                            </select>
+                        </div>
                     </th:block>
                 </div>
 
-                <div><input type="submit" value="Submit" /> <input type="reset" value="Reset" /></div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <a th:href="@{/informationretrieval/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
             </div>
 
 
@@ -247,11 +279,6 @@
     </div>
 </div>
 </div>
-<br />
-<br />
-<br />
-<br />
-<br />
 <footer th:replace="layout :: site-footer" />
 </body>
 </html>

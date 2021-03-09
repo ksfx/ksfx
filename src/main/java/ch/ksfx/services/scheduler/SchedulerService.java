@@ -24,6 +24,7 @@ import ch.ksfx.dao.spidering.SpideringDAO;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.spidering.SpideringConfiguration;
 import ch.ksfx.services.activity.ActivityInstanceJob;
+import ch.ksfx.services.configurationdatabase.ConfigurationDatabaseProvider;
 import ch.ksfx.services.spidering.SpideringJob;
 import ch.ksfx.services.activity.ActivityInstanceRunner;
 import ch.ksfx.services.systemlogger.SystemLogger;
@@ -49,6 +50,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 @Component
 public class SchedulerService
 {
+    private ConfigurationDatabaseProvider configurationDatabaseProvider;
     private SpideringConfigurationDAO spideringConfigurationDAO;
     private SchedulerFactory schedulerFactory;
     private Scheduler scheduler;
@@ -62,8 +64,9 @@ public class SchedulerService
 
     private Logger logger = LoggerFactory.getLogger(SchedulerService.class);
 
-    public SchedulerService(SystemLogger systemLogger, SystemEnvironment systemEnvironment, SpideringRunner spideringRunner, SpideringDAO spideringDAO, SpideringConfigurationDAO spideringConfigurationDAO, ActivityDAO activityDAO, ActivityInstanceDAO activityInstanceDAO, ActivityInstanceRunner activityInstanceRunner)
+    public SchedulerService(ConfigurationDatabaseProvider configurationDatabaseProvider, SystemLogger systemLogger, SystemEnvironment systemEnvironment, SpideringRunner spideringRunner, SpideringDAO spideringDAO, SpideringConfigurationDAO spideringConfigurationDAO, ActivityDAO activityDAO, ActivityInstanceDAO activityInstanceDAO, ActivityInstanceRunner activityInstanceRunner)
     {
+        this.configurationDatabaseProvider = configurationDatabaseProvider;
         this.systemLogger = systemLogger;
         this.systemEnvironment = systemEnvironment;
         this.spideringRunner = spideringRunner;
@@ -85,8 +88,8 @@ public class SchedulerService
             scheduler = schedulerFactory.getScheduler();
             scheduler.start();
 
-//            startSpideringSchedules();
-//            startActivitySchedules();
+            startSpideringSchedules();
+            startActivitySchedules();
 
         } catch (Exception e) {
             systemLogger.logMessage("FATAL","Error while starting scheduler service", e);

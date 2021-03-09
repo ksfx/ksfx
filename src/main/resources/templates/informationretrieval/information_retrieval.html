@@ -26,11 +26,10 @@
                 </th:block>
             </td>
             <td><a th:href="@{/informationretrieval/spideringconfigurationedit/{id}(id=${spideringConfiguration.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
-            <td></td>
+            <td><a th:attr="data-href=@{/informationretrieval/spideringconfigurationdelete/{id}(id=${spideringConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>
         </tbody>
     </table>
-<!--    <div th:replace="web/pagination :: pagination"></div> -->
 </div>
 <footer th:replace="layout :: site-footer" />
 </body>

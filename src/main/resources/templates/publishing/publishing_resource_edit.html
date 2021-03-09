@@ -19,7 +19,7 @@
     </div>
     <div class="list-group">
         <div class="list-group-item">
-            <form id="publishingResourceForm" action="#" th:action="@{/publishing/publishingresourceedit}" th:object="${publishingResource}" method="post">
+            <form id="publishingResourceForm" action="#" th:action="@{/publishing/publishingresourceedit/{publishingConfigurationId}(publishingConfigurationId=${publishingConfiguration.id})}" th:object="${publishingResource}" method="post">
                 <input type="hidden" th:field="*{id}" />
                 <input type="hidden" th:field="*{publishingConfiguration.id}" />
                 <div class="form-group">

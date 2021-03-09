@@ -18,7 +18,9 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
+import java.io.*;
 import java.lang.reflect.Constructor;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/activity")
@@ -71,6 +73,25 @@ public class ActivityController
 
         if (activityId != null) {
             activity = activityDAO.getActivityForId(activityId);
+        } else {
+            InputStream inputStream = null;
+            String activityDemo = null;
+
+            try {
+                inputStream = getClass().getClassLoader().getResourceAsStream("groovy/DemoActivity.groovy");
+
+                activityDemo = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            activity.setGroovyCode(activityDemo);
         }
 
         model.addAttribute("allActivityApprovalStrategies", activityDAO.getAllActivityApprovalStrategies());
@@ -157,6 +178,16 @@ public class ActivityController
         schedulerService.deleteJob("Activity" + activity.getId().toString(),"Activities");
 
         activityDAO.saveOrUpdateActivity(activity);
+
+        return "redirect:/activity/";
+    }
+
+    @GetMapping({"/activitydelete/{id}"})
+    public String activityDelete(@PathVariable(value = "id", required = true) Long activityId)
+    {
+        Activity activity = activityDAO.getActivityForId(activityId);
+
+        activityDAO.deleteActivity(activity);
 
         return "redirect:/activity/";
     }
