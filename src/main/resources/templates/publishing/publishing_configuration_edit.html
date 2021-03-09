@@ -5,7 +5,12 @@
 </head>
 <body>
 <header th:replace="layout :: site-header"/>
-<h1>KSFX - Edit Publishing Configuration</h1>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/publishing/}">Publishing</a></li>
+        <li class="breadcrumb-item active">Edit Publishing Configuration</li>
+    </ol>
+</nav>
 
 <div class="container">
     <div class="list-group">
