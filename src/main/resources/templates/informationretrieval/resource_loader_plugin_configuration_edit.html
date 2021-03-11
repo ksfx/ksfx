@@ -5,7 +5,13 @@
 </head>
 <body>
 <header th:replace="layout :: site-header"/>
-<h1>KSFX - Edit Resource Loader Plugin</h1>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/informationretrieval}">Information Retrieval</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/informationretrieval/resourceloaderpluginconfiguration}">Resource Loader Plugins</a></li>
+        <li class="breadcrumb-item active">Edit Resource Loader Plugin</li>
+    </ol>
+</nav>
 
 <div class="container">
     <div class="list-group">

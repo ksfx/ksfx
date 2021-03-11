@@ -8,7 +8,7 @@ page (Pageable):    the current page
 path (String):      path to the page with pagination
 -->
 <nav th:fragment="pagination" style="margin-bottom: 20px">
-    <ul class="pagination justify-content-center">
+    <ul class="pagination justify-content-center" th:if="${page.totalPages > 0}">
         <li class="page-item disabled"  th:if="${!page.hasPrevious()}">
             <span class="page-link">Previous</span>
         </li>

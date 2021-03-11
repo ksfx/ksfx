@@ -22,7 +22,7 @@
         <tr th:each="publishingConfiguration : ${publishingConfigurationsPage.content}">
             <td th:text="${publishingConfiguration.id}"></td>
             <td th:text="${publishingConfiguration.name}"></td>
-            <td>Generate</td>
+            <td><a th:href="@{/publishing/publicationviewer/0/{uri}(uri=${publishingConfiguration.uri})}" class="fa fa-play" alt="Generate Publication" title="Generate Publication"></a></td>
             <td><a th:href="@{/publishing/publicationviewer/1/{uri}(uri=${publishingConfiguration.uri})}" class="fa fa-cloud-download" alt="View From Cache" title="View From Cache"></a></td>
             <td><a href="#" onclick="$('#console-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/console/publishingConfiguration/{id}(id=${publishingConfiguration.id})}" data-toggle="modal" data-target="#consoleModal" class="fa fa-terminal"></a></td>
             <td><a th:href="@{/publishing/publishingconfigurationedit/{id}(id=${publishingConfiguration.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>

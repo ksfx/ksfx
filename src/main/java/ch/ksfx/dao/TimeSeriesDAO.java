@@ -21,6 +21,9 @@ import ch.ksfx.model.AssetPricingTimeRange;
 import ch.ksfx.model.ImportableField;
 import ch.ksfx.model.TimeSeries;
 import ch.ksfx.model.TimeSeriesType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 
@@ -36,6 +39,7 @@ public interface TimeSeriesDAO
     public TimeSeriesType getTimeSeriesTypeForId(Long timeSeriesTypeId);
     public List<TimeSeries> searchTimeSeries(String timeSeriesName, Integer limit);
 //    public GridDataSource getTimeSeriesGridDataSource();
+    public Page<TimeSeries> getTimeSeriesForPageable(Pageable pageable);
     public List<TimeSeries> getIndexableTimeSeries();
     public List<AssetPricingTimeRange> getAllAssetPricingTimeRanges();
     public AssetPricingTimeRange getAssetPricingTimeRangeForName(String intraday);

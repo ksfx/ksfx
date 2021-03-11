@@ -22,18 +22,19 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Date;
+import java.util.List;
 
 public interface ObservationDAO
 {
-//	public Observation getFirstObservationForTimeSeriesId(Integer timeSeriesId);
+	public Observation getFirstObservationForTimeSeriesId(Integer timeSeriesId);
 //    public Observation getLastObservationForTimeSeriesId(Integer timeSeriesId);
     public void saveObservation(Observation observation);
     public Observation getObservationForTimeSeriesIdObservationTimeAndSourceId(Integer timeSeriesId, Date observationTime, String sourceId);
 //    public List<Observation> getObservations();
-//    public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate);
+    public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate);
     public Page<Observation> getObservationsForPageableAndTimeSSeriesId(Pageable pageable, Integer timeSeriesId);
 //    public void deleteObservation(Observation observation);
 //    public void deleteAllObservationsForTimeSeries(TimeSeries timeSeries);
 //    public List<Observation> queryObservationsSparse(Integer timeSeriesId, Date startDate, Date endDate);
-//    public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate, Integer limit);
+    public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate, Integer limit);
 }

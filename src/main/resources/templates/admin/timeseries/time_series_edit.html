@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit Resource Loader Plugin</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/admin}">Admin</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/admin/timeseries/}">Time Series</a></li>
+        <li class="breadcrumb-item active">Edit Time Series</li>
+    </ol>
+</nav>
+
+<div class="container">
+    <div class="list-group">
+        <div class="list-group-item">
+            <form id="timeSeriesForm" action="#" th:action="@{/admin/timeseriesedit/}" th:object="${timeSeries}" method="post">
+                <input type="hidden" th:field="*{id}" />
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
+                    <input type="text" class="form-control" id="name" th:field="*{name}" />
+                </div>
+                <div class="form-group">
+                    <label for="locator">Locator</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('locator')}" th:errors="*{locator}">Locator not valid</div>
+                    <input type="text" class="form-control" id="locator" th:field="*{locator}" />
+                </div>
+                <div class="form-group">
+                    <label for="locator">Source</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('source')}" th:errors="*{source}">Source not valid</div>
+                    <input type="text" class="form-control" id="source" th:field="*{source}" />
+                </div>
+                <div class="form-group">
+                    <label for="sourceId">Source ID</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('sourceId')}" th:errors="*{sourceId}">Source not valid</div>
+                    <input type="text" class="form-control" id="sourceId" th:field="*{sourceId}" />
+                </div>
+                <div class="form-group">
+                    <label for="approximateSize">Approximate Size</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('approximateSize')}" th:errors="*{approximateSize}">Approximate Size</div>
+                    <input type="text" class="form-control" id="approximateSize" th:field="*{approximateSize}" />
+                </div>
+                <div class="form-group">
+                    <label for="timeSeriesType">Type</label>
+                    <select class="form-control" id="timeSeriesType" th:field="*{timeSeriesType.id}">
+                        <option th:each="timeSeriesType : ${allTimeSeriesTypes}"
+                                th:value="${timeSeriesType.id}"
+                                th:text="${timeSeriesType.name}">
+                            Time Series Type
+                        </option>
+                    </select>
+                </div>
+                <div class="form-check">
+                    <div class="text-danger" th:if="${#fields.hasErrors('indexable')}" th:errors="*{indexable}">Indexable</div>
+                    <input type="checkbox" class="form-check-input" id="indexable" th:field="*{indexable}" />
+                    <label for="indexable" class="form-check-label">Indexable</label>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <a th:href="@{/admin/timeseries/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

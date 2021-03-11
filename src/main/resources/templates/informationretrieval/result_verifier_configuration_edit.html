@@ -5,7 +5,13 @@
 </head>
 <body>
 <header th:replace="layout :: site-header"/>
-<h1>KSFX - Edit Result Verifier</h1>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/informationretrieval}">Information Retrieval</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/informationretrieval/resultverifierconfiguration}">Result Verfiers</a></li>
+        <li class="breadcrumb-item active">Edit Result Verifier</li>
+    </ol>
+</nav>
 
 <div class="container">
     <div class="list-group">

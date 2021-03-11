@@ -18,6 +18,10 @@
 package ch.ksfx.dao;
 
 import ch.ksfx.model.GenericDataStore;
+import ch.ksfx.model.activity.Activity;
+import ch.ksfx.model.activity.ActivityInstance;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -25,6 +29,7 @@ import java.util.List;
 public interface GenericDataStoreDAO
 {
     public List<GenericDataStore> getAllGenericDataStores();
+    public Page<GenericDataStore> getGenericDataStoresForPageable(Pageable pageable);
     public void saveOrUpdateGenericDataStore(GenericDataStore genericDataStore);
     public void deleteGenericDataStore(GenericDataStore genericDataStore);
     public GenericDataStore getGenericDataStoreForId(Long genericDataStoreId);

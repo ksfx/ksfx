@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 
 @Controller
-@RequestMapping("/informationretrieval/result")
+@RequestMapping("/informationretrieval")
 public class ResultController
 {
     private ResultDAO resultDAO;
@@ -26,7 +26,7 @@ public class ResultController
         this.spideringConfigurationDAO = spideringConfigurationDAO;
     }
 
-    @GetMapping("/{spideringconfigurationid}")
+    @GetMapping("/result/{spideringconfigurationid}")
     public String resultIndex(@PathVariable(value = "spideringconfigurationid", required = true) Long spideringConfigurationId, Pageable pageable, Model model, HttpServletRequest request)
     {
         boolean filterInvalidResults = false;
@@ -46,7 +46,7 @@ public class ResultController
         return "informationretrieval/result";
     }
 
-    @PostMapping("/{spideringconfigurationid}")
+    @PostMapping("/result/{spideringconfigurationid}")
     public String filterInvalidSubmit(@PathVariable(value = "spideringconfigurationid", required = true) Long spideringConfigurationId, @RequestParam(required = false) Boolean filterInvalidResults, HttpServletRequest request)
     {
         System.out.println("POST " + filterInvalidResults);
@@ -56,6 +56,16 @@ public class ResultController
         }
 
         request.getSession().setAttribute("filterInvalidResults", filterInvalidResults);
+
+        return "redirect:/informationretrieval/result/" + spideringConfigurationId;
+    }
+
+    @GetMapping("/spideringconfigurationdeleteresults/{spideringconfigurationid}")
+    public String clearResults(@PathVariable(value = "spideringconfigurationid", required = true) Long spideringConfigurationId)
+    {
+        SpideringConfiguration spideringConfiguration = spideringConfigurationDAO.getSpideringConfigurationForId(spideringConfigurationId);
+        resultDAO.deleteResultsForSpideringConfiguration(spideringConfiguration);
+
 
         return "redirect:/informationretrieval/result/" + spideringConfigurationId;
     }

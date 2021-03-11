@@ -13,7 +13,12 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/informationretrieval")
@@ -21,11 +26,13 @@ public class ResultUnitModifierConfigurationController
 {
     private ResultUnitModifierConfigurationDAO resultUnitModifierConfigurationDAO;
     private SystemLogger systemLogger;
+    private ServiceProvider serviceProvider;
 
-    public ResultUnitModifierConfigurationController(ResultUnitModifierConfigurationDAO resultUnitModifierConfigurationDAO, SystemLogger systemLogger)
+    public ResultUnitModifierConfigurationController(ResultUnitModifierConfigurationDAO resultUnitModifierConfigurationDAO, SystemLogger systemLogger, ServiceProvider serviceProvider)
     {
         this.resultUnitModifierConfigurationDAO = resultUnitModifierConfigurationDAO;
         this.systemLogger = systemLogger;
+        this.serviceProvider = serviceProvider;
     }
 
     @GetMapping("/resultunitmodifierconfiguration")
@@ -43,6 +50,25 @@ public class ResultUnitModifierConfigurationController
 
         if (resultUnitModifierConfigurationId != null) {
             resultUnitModifierConfiguration = resultUnitModifierConfigurationDAO.getResultUnitModifierConfigurationForId(resultUnitModifierConfigurationId);
+        } else {
+            InputStream inputStream = null;
+            String resultUnitModifierDemo = null;
+
+            try {
+                inputStream = getClass().getClassLoader().getResourceAsStream("groovy/DemoResultUnitModifier.groovy");
+
+                resultUnitModifierDemo = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            resultUnitModifierConfiguration.setGroovyCode(resultUnitModifierDemo);
         }
 
         model.addAttribute("resultUnitModifierConfiguration", resultUnitModifierConfiguration);
@@ -70,10 +96,20 @@ public class ResultUnitModifierConfigurationController
             GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
             Class clazz = groovyClassLoader.parseClass(resultUnitModifierConfiguration.getGroovyCode());
 
-            Constructor cons = clazz.getDeclaredConstructor(SystemLogger.class);
-            cons.newInstance(systemLogger);
+            Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
+            cons.newInstance(serviceProvider);
         } catch (Exception e) {
             bindingResult.rejectValue("groovyCode", "resourceLoaderPluginConfiguration.groovyCode", e.getMessage() + StacktraceUtil.getStackTrace(e));
         }
+    }
+
+    @GetMapping({"/resultunitmodifierconfigurationdelete/{id}"})
+    public String resultUnitModifierConfigurationDelete(@PathVariable(value = "id", required = true) Long resultUnitModifierConfigurationId, Model model)
+    {
+        ResultUnitModifierConfiguration resultUnitModifierConfiguration = resultUnitModifierConfigurationDAO.getResultUnitModifierConfigurationForId(resultUnitModifierConfigurationId);
+
+        resultUnitModifierConfigurationDAO.deleteResultUnitModifierConfiguration(resultUnitModifierConfiguration);
+
+        return "redirect:/informationretrieval/resultunitmodifierconfiguration";
     }
 }

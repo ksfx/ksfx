@@ -52,7 +52,7 @@ public class ParsingRun implements Runnable
         this.systemLogger = systemLogger;
         this.spidering = spidering;
         this.serviceProvider = serviceProvider;
-        this.resultUnitModifierDAO = new EbeanResultUnitModifierDAO(systemLogger);
+        this.resultUnitModifierDAO = new EbeanResultUnitModifierDAO(systemLogger, serviceProvider);
     }
 
     public void terminateParsing()

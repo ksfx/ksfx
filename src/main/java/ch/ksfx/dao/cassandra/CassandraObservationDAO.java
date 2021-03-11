@@ -32,6 +32,8 @@ import ch.ksfx.model.TimeSeries;
 //import com.datastax.driver.core.querybuilder.Select;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.cql.*;
 import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder;
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
@@ -42,6 +44,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.time.Duration;
 import java.util.*;
 
 @Repository
@@ -53,7 +56,13 @@ public class CassandraObservationDAO implements ObservationDAO
 //    CqlSession simpleCluster = CqlSession.builder().addContactPoint("localhost").withSocketOptions(new SocketOptions().setConnectTimeoutMillis(20000).setReadTimeoutMillis(30000)).build();
 //    CqlSession simpleSession = simpleCluster.connect("observation_store");
 
-    CqlSession simpleSession = CqlSession.builder().withKeyspace("observation_store").build();
+    CqlSession simpleSession = CqlSession.builder()
+            .withConfigLoader(DriverConfigLoader.programmaticBuilder()
+                    .withDuration(DefaultDriverOption.REQUEST_TIMEOUT, Duration.ofMillis(100000))
+                    .withDuration(DefaultDriverOption.CONNECTION_CONNECT_TIMEOUT, Duration.ofMillis(100000))
+                    .build())
+            .withKeyspace("observation_store")
+            .build();
 
     PreparedStatement insertObservationStatement = null;
 
@@ -71,7 +80,6 @@ public class CassandraObservationDAO implements ObservationDAO
     @Override
     public void saveObservation(Observation observation)
     {
-
         try {
             BoundStatement bs = insertObservationStatement.bind(observation.getTimeSeriesId(), observation.getObservationTime(), observation.getSourceId(), observation.getScalarValue(), observation.getComplexValue(), observation.getMetaData());
             ResultSet rs = simpleSession.execute(bs);
@@ -84,22 +92,24 @@ public class CassandraObservationDAO implements ObservationDAO
         }
     }
 
-    /*
     @Override
     public Observation getFirstObservationForTimeSeriesId(Integer timeSeriesId)
     {
         try {
-            Statement select = QueryBuilder.select().from("observation_store", "observation").where(QueryBuilder.eq("time_series_id", timeSeriesId)).orderBy(QueryBuilder.asc("observation_time")).limit(1);
-            
-            ResultSet resultSet = simpleSession.execute(select);
+            Select select = QueryBuilder.selectFrom("observation_store", "observation").all().whereColumn("time_series_id").isEqualTo(QueryBuilder.bindMarker());
+            select = select.orderBy("observation_time", ClusteringOrder.ASC);
+            select = select.limit(1);
 
-            List<Row> rows = resultSet.all();
+            PreparedStatement statement = simpleSession.prepare(select.build());
+            ResultSet results = simpleSession.execute(statement.bind(timeSeriesId));
+
+            List<Row> rows = results.all();
 
             if (rows != null && rows.size() > 0) {
                 Observation o = new Observation();
                 o.setTimeSeriesId(rows.get(0).getInt("time_series_id"));
                 //o.setObservationTime(new Date(rows.get(0).getDate("observation_time").getMillisSinceEpoch()));
-                o.setObservationTime(rows.get(0).getTimestamp("observation_time"));
+                o.setObservationTime(Date.from(rows.get(0).getInstant("observation_time")));
                 o.setSourceId(rows.get(0).getString("source_id"));
                 o.setScalarValue(rows.get(0).getString("scalar_value"));
                 o.setComplexValue(rows.get(0).getMap("complex_value", String.class, String.class));
@@ -115,7 +125,6 @@ public class CassandraObservationDAO implements ObservationDAO
 
         return null;
     }
-    */
 
     /*
     @Override
@@ -220,41 +229,49 @@ public class CassandraObservationDAO implements ObservationDAO
     }
      */
 
-    /*
+
     public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate)
     {
         return queryObservations(timeSeriesId, startDate, endDate, null);
     }
-     */
 
-    /*
     public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate, Integer limit)
     {
         try {
             List<Observation> observations = new ArrayList<Observation>();
 
-            Select.Where select = QueryBuilder.select().all().from("observation_store", "observation").where(QueryBuilder.eq("time_series_id", timeSeriesId));
+            List<Object> boundValues = new ArrayList<Object>();
+
+            Select select = QueryBuilder.selectFrom("observation_store", "observation").all().whereColumn("time_series_id").isEqualTo(QueryBuilder.bindMarker());
+            boundValues.add(timeSeriesId);
+
+            //Select.Where select = QueryBuilder.select().all().from("observation_store", "observation").where(QueryBuilder.eq("time_series_id", timeSeriesId));
 
             if (startDate != null) {
-                select.and(QueryBuilder.gte("observation_time",startDate));
+                select = select.whereColumn("observation_time").isGreaterThanOrEqualTo(QueryBuilder.bindMarker());
+                boundValues.add(startDate.toInstant());
+//                select.and(QueryBuilder.gte("observation_time",startDate));
             }
 
             if (endDate != null) {
-                select.and(QueryBuilder.lte("observation_time", endDate));
+                select = select.whereColumn("observation_time").isLessThanOrEqualTo(QueryBuilder.bindMarker());
+                boundValues.add(endDate.toInstant());
+//                select.and(QueryBuilder.lte("observation_time", endDate));
             }
             
             if (limit != null) {
             	select.limit(limit);
             }
 
-            ResultSet results = simpleSession.execute(select);
+            PreparedStatement statement = simpleSession.prepare(select.build());
+            ResultSet results = simpleSession.execute(statement.bind(boundValues.toArray()));
 
             for (Row row : results) {
 
                 Observation o = new Observation();
                 o.setTimeSeriesId(row.getInt("time_series_id"));
                 //o.setObservationTime(new Date(row.getDate("observation_time").getMillisSinceEpoch()));
-                o.setObservationTime(row.getTimestamp("observation_time"));
+                o.setObservationTime(Date.from(row.getInstant("observation_time")));
                 o.setSourceId(row.getString("source_id"));
                 o.setScalarValue(row.getString("scalar_value"));
                 o.setComplexValue(row.getMap("complex_value", String.class, String.class));
@@ -269,7 +286,6 @@ public class CassandraObservationDAO implements ObservationDAO
         } finally {
         }
     }
-     */
 
     /*
     public List<Observation> queryObservationsSparse(Integer timeSeriesId, Date startDate, Date endDate)

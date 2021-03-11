@@ -13,9 +13,10 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
-@RequestMapping("/informationretrieval/resource")
+@RequestMapping("/informationretrieval")
 public class ResourceController
 {
     private ResourceDAO resourceDAO;
@@ -27,7 +28,7 @@ public class ResourceController
         this.spideringDAO = spideringDAO;
     }
 
-    @GetMapping("/{spideringid}")
+    @GetMapping("/resource/{spideringid}")
     public String resourceIndex(@PathVariable(value = "spideringid", required = true) Long spideringId, Pageable pageable, Model model)
     {
         Spidering spidering = spideringDAO.getSpideringForId(spideringId);
@@ -37,5 +38,17 @@ public class ResourceController
         model.addAttribute("resourcesPage", resourcesPage);
 
         return "informationretrieval/resource";
+    }
+
+    @GetMapping("/resourceview/{resourceid}")
+    public @ResponseBody String resourceView(@PathVariable(value = "resourceid", required = true) Long resourceId, Model model)
+    {
+        Resource resource = resourceDAO.getResourceForId(resourceId);
+
+        return resource.getContent();
+
+//        model.addAttribute("resource", resource);
+
+//        return "informationretrieval/resource_view";
     }
 }

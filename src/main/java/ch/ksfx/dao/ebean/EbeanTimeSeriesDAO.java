@@ -23,11 +23,17 @@ import ch.ksfx.model.ImportableField;
 import ch.ksfx.model.TimeSeries;
 import ch.ksfx.model.TimeSeriesType;
 import ch.ksfx.model.note.NoteTimeSeries;
+import ch.ksfx.model.spidering.ResourceLoaderPluginConfiguration;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
 import io.ebean.RawSqlBuilder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.Iterator;
 import java.util.List;
 
 @Repository
@@ -87,6 +93,36 @@ public class EbeanTimeSeriesDAO implements TimeSeriesDAO
     	return Ebean.find(TimeSeries.class).setRawSql(RawSqlBuilder.parse(sql).columnMapping("source_id", "sourceId").columnMapping("approximate_size", "approximateSize").columnMapping("time_series_type", "timeSeriesType.id").create()).findList();
     	
         //return Ebean.find(TimeSeries.class).where().like("name", "%" + timeSeriesName + "%").findList();
+    }
+
+    @Override
+    public Page<TimeSeries> getTimeSeriesForPageable(Pageable pageable)
+    {
+        ExpressionList expressionList = Ebean.find(TimeSeries.class).where();
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+
+        if (!pageable.getSort().isUnsorted()) {
+            Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
+            while (orderIterator.hasNext()) {
+                Sort.Order order = orderIterator.next();
+
+                if (!order.getProperty().equals("UNSORTED")) {
+                    if (order.isAscending()) {
+                        expressionList.order().asc(order.getProperty());
+                    }
+
+                    if (order.isDescending()) {
+                        expressionList.order().desc(order.getProperty());
+                    }
+                }
+            }
+        }
+
+        Page<TimeSeries> page = new PageImpl<TimeSeries>(expressionList.findList(), pageable, expressionList.findCount());
+
+        return page;
     }
 
     @Override

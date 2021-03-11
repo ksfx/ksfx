@@ -5,7 +5,12 @@
 </head>
 <body>
 <header th:replace="layout :: site-header"/>
-<h1>KSFX - Activities</h1>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/activity/}">Activities</a></li>
+        <li class="breadcrumb-item active">Edit Activity</li>
+    </ol>
+</nav>
 
 <div class="container">
  <div class="list-group">

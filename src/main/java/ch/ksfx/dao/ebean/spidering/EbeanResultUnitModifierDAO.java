@@ -20,6 +20,7 @@ package ch.ksfx.dao.ebean.spidering;
 import ch.ksfx.dao.spidering.ResultUnitModifierDAO;
 import ch.ksfx.model.spidering.ResultUnitModifier;
 import ch.ksfx.model.spidering.ResultUnitModifierConfiguration;
+import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import groovy.lang.GroovyClassLoader;
 import org.springframework.stereotype.Repository;
@@ -33,10 +34,12 @@ import java.lang.reflect.Constructor;
 public class EbeanResultUnitModifierDAO implements ResultUnitModifierDAO
 {
     private SystemLogger systemLogger;
+    private ServiceProvider serviceProvider;
 
-    public EbeanResultUnitModifierDAO(SystemLogger systemLogger)
+    public EbeanResultUnitModifierDAO(SystemLogger systemLogger, ServiceProvider serviceProvider)
     {
         this.systemLogger = systemLogger;
+        this.serviceProvider = serviceProvider;
     }
 
     @Override
@@ -50,12 +53,12 @@ public class EbeanResultUnitModifierDAO implements ResultUnitModifierDAO
             GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
             Class clazz = groovyClassLoader.parseClass(resultUnitModifierConfiguration.getGroovyCode());
 
-            Constructor cons = clazz.getDeclaredConstructor(/*SystemLogger.class*/);
+            Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
 
-            return (ResultUnitModifier) cons.newInstance(/*systemLogger*/);
+            return (ResultUnitModifier) cons.newInstance(serviceProvider);
         } catch (Exception e) {
             e.printStackTrace();
-//            systemLogger.logMessage("FATAL","Error while getting decision strategy",e);
+            systemLogger.logMessage("FATAL","Error while getting result unit modifier",e);
         }
 
         return null;

@@ -60,6 +60,7 @@ public class ActivityController
     {
         Page<ActivityInstance> activityInstancePage = activityInstanceDAO.getActivityInstancesForPageableAndActivity(pageable, activityDAO.getActivityForId(activityId));
 
+        model.addAttribute("activityInstanceRunner", activityInstanceRunner);
         model.addAttribute("activity", activityDAO.getActivityForId(activityId));
         model.addAttribute("activityInstancesPage", activityInstancePage);
 

@@ -52,3 +52,7 @@ th[data-grid-property="observationTime"]
 {
     width: 200px;
 }
+
+.breadcrumb {
+    border-radius: 0;
+}

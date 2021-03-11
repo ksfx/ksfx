@@ -25,4 +25,12 @@ public class SystemLogController
 
         return "admin/systemlog/system_log";
     }
+
+    @GetMapping("/clearlogs")
+    public String clearLogs()
+    {
+        logMessageDAO.clearLogMessages();
+
+        return "redirect:/admin/systemlog/";
+    }
 }

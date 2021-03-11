@@ -13,7 +13,12 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/informationretrieval")
@@ -43,6 +48,25 @@ public class ResourceLoaderPluginConfigurationController
 
         if (resourceLoaderPluginConfigurationId != null) {
             resourceLoaderPluginConfiguration = resourceLoaderPluginConfigurationDAO.getResourceLoaderPluginConfigurationForId(resourceLoaderPluginConfigurationId);
+        } else {
+            InputStream inputStream = null;
+            String resourceLoaderPluginDemo = null;
+
+            try {
+                inputStream = getClass().getClassLoader().getResourceAsStream("groovy/DemoResourceLoaderPlugin.groovy");
+
+                resourceLoaderPluginDemo = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            resourceLoaderPluginConfiguration.setGroovyCode(resourceLoaderPluginDemo);
         }
 
         model.addAttribute("resourceLoaderPluginConfiguration", resourceLoaderPluginConfiguration);
@@ -75,5 +99,15 @@ public class ResourceLoaderPluginConfigurationController
         } catch (Exception e) {
             bindingResult.rejectValue("groovyCode", "resourceLoaderPluginConfiguration.groovyCode", e.getMessage() + StacktraceUtil.getStackTrace(e));
         }
+    }
+
+    @GetMapping({"/resourceloaderpluginconfigurationdelete/{id}"})
+    public String resourceLoaderPluginConfigurationDelete(@PathVariable(value = "id", required = true) Long resourceLoaderPluginConfigurationId)
+    {
+        ResourceLoaderPluginConfiguration resourceLoaderPluginConfiguration = resourceLoaderPluginConfigurationDAO.getResourceLoaderPluginConfigurationForId(resourceLoaderPluginConfigurationId);
+
+        resourceLoaderPluginConfigurationDAO.deleteResourceLoaderPluginConfiguration(resourceLoaderPluginConfiguration);
+
+        return "redirect:/informationretrieval/resourceloaderpluginconfiguration";
     }
 }

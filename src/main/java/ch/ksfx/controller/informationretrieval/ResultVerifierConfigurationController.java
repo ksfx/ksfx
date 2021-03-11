@@ -13,7 +13,12 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/informationretrieval")
@@ -45,6 +50,25 @@ public class ResultVerifierConfigurationController
 
         if (resultVerifierConfigurationId != null) {
             resultVerifierConfiguration = resultVerifierConfigurationDAO.getResultVerifierConfigurationForId(resultVerifierConfigurationId);
+        } else {
+            InputStream inputStream = null;
+            String resultVerifierDemo = null;
+
+            try {
+                inputStream = getClass().getClassLoader().getResourceAsStream("groovy/DemoResultVerifier.groovy");
+
+                resultVerifierDemo = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            resultVerifierConfiguration.setGroovyCode(resultVerifierDemo);
         }
 
         model.addAttribute("resultVerifierConfiguration", resultVerifierConfiguration);
@@ -77,5 +101,15 @@ public class ResultVerifierConfigurationController
         } catch (Exception e) {
             bindingResult.rejectValue("groovyCode", "resultVerifierConfiguration.groovyCode", e.getMessage() + StacktraceUtil.getStackTrace(e));
         }
+    }
+
+    @GetMapping({"/resultverifierconfigurationdelete/{id}"})
+    public String resultVerifierConfigurationDelete(@PathVariable(value = "id", required = true) Long resultVerifierConfigurationId)
+    {
+        ResultVerifierConfiguration resultVerifierConfiguration = resultVerifierConfigurationDAO.getResultVerifierConfigurationForId(resultVerifierConfigurationId);
+
+        resultVerifierConfigurationDAO.deleteResultVerifierConfiguration(resultVerifierConfiguration);
+
+        return "redirect:/informationretrieval/resultverifierconfiguration";
     }
 }

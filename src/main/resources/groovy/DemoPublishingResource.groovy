@@ -22,25 +22,25 @@ import ch.ksfx.util.Console
 import ch.ksfx.util.GenericResponse
 import ch.ksfx.util.PublishingDataShare
 
-class DemoPublishingStrategy implements PublishingStrategy
+class DemoPublishingResource implements PublishingStrategy
 {
     private ServiceProvider serviceProvider;
 
-    public DemoPublishingStrategy(ServiceProvider serviceProvider, List<String> uriParameters)
+    public DemoPublishingResource(ServiceProvider serviceProvider, List<String> uriParameters)
     {
         this.serviceProvider = serviceProvider;
     }
 
     public GenericResponse getPublishingData()
     {
-    	Console.write("Hello World Publishing Configuration");
-    	
-    	PublishingSharedData psd = new PublishingSharedData();
-		psd.setTextData("Hello World Data");
-		PublishingDataShare.addData("HelloWorldKey",psd);
-		
-		PublishingSharedData psdFromStore = PublishingDataShare.getData("HelloWorldKey");
-    	
-		return new GenericResponse("Hello World".getBytes("UTF-8"), "", "text/plain", false);
+        Console.write("Hello World Publishing Resource");
+
+        PublishingSharedData psd = new PublishingSharedData();
+        psd.setTextData("Hello World Publishing Resource Data");
+        PublishingDataShare.addData("HelloWorldPublishingResourceKey",psd);
+
+        PublishingSharedData psdFromStore = PublishingDataShare.getData("HelloWorldPublishingResourceKey");
+
+        return new GenericResponse("Hello World Publishing Resource".getBytes("UTF-8"), "", "text/plain", false);
     }
 }

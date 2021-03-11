@@ -132,7 +132,7 @@ public class PublishingController
             Class clazz = groovyClassLoader.parseClass(publishingConfiguration.getPublishingStrategy());
 
             Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
-            cons.newInstance(serviceProvider);
+            //cons.newInstance(serviceProvider);
         } catch (Exception e) {
             bindingResult.rejectValue("publishingStrategy", "publishingConfiguration.publishingStrategy", e.getMessage() + StacktraceUtil.getStackTrace(e));
         }
@@ -154,6 +154,25 @@ public class PublishingController
 
         if (publishingResourceId != null) {
             publishingResource = publishingResourceDAO.getPublishingResourceForId(publishingResourceId);
+        } else {
+            InputStream inputStream = null;
+            String demoPublishingResource = null;
+
+            try {
+                inputStream = getClass().getClassLoader().getResourceAsStream("groovy/DemoPublishingResource.groovy");
+
+                demoPublishingResource = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            publishingResource.setPublishingStrategy(demoPublishingResource);
         }
 
 
@@ -168,6 +187,12 @@ public class PublishingController
     @PostMapping({"/publishingresourceedit/{publishingConfigurationId}", "/publishingresourceedit/{publishingConfigurationId}/{publishingResourceId}"})
     public String publishingResourceSubmit(@PathVariable(value = "publishingConfigurationId", required = true) Long publishingConfigurationId, @PathVariable(value = "publishingResourceId", required = false) Long publishingResourceId, @Valid @ModelAttribute PublishingResource publishingResource, BindingResult bindingResult, Model model)
     {
+        System.out.println("ID: " + publishingConfigurationId);
+
+        if (publishingResource.getPublishingConfiguration() == null || publishingResource.getPublishingConfiguration().getId() == null) {
+            publishingResource.setPublishingConfiguration(publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId));
+        }
+
         validatePublishingResource(publishingResource, bindingResult);
 
         if (bindingResult.hasErrors()) {
@@ -177,7 +202,9 @@ public class PublishingController
             return "publishing/publishing_resource_edit";
         }
 
-        return "redirect:/publishing/publishingresourceedit/" + publishingResource.getId();
+        publishingResourceDAO.saveOrUpdatePublishingResource(publishingResource);
+
+        return "redirect:/publishing/publishingresourceedit/" + publishingResource.getPublishingConfiguration().getId() + "/" + publishingResource.getId();
     }
 
     public void validatePublishingResource(PublishingResource publishingResource, BindingResult bindingResult)
@@ -193,9 +220,19 @@ public class PublishingController
             Class clazz = groovyClassLoader.parseClass(publishingResource.getPublishingStrategy());
 
             Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
-            cons.newInstance(serviceProvider);
+            //cons.newInstance(serviceProvider);
         } catch (Exception e) {
             bindingResult.rejectValue("publishingStrategy", "publishingResource.publishingStrategy", e.getMessage() + StacktraceUtil.getStackTrace(e));
         }
+    }
+
+    @GetMapping({"/publishingresourcedelete/{publishingResourceId}"})
+    public String publishingResourceDelete(@PathVariable(value = "publishingResourceId", required = false) Long publishingResourceId)
+    {
+        PublishingResource publishingResource = publishingResourceDAO.getPublishingResourceForId(publishingResourceId);
+
+        publishingResourceDAO.deletePublishingResource(publishingResource);
+
+        return "redirect:/publishing/publishingconfigurationedit/" + publishingResource.getPublishingConfiguration().getId();
     }
 }

@@ -5,9 +5,15 @@
 </head>
 <body>
 <header th:replace="layout :: site-header"/>
-<h1>KSFX - Resource Loader Plugins</h1>
-<div th:if="${resourceLoaderPluginConfigurationsPage.totalPages  > 0}">
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/informationretrieval/}">Information Retrieval</a></li>
+        <li class="breadcrumb-item active">Resource Loader Plugins</li>
+    </ol>
+</nav>
+
     <div th:replace="components/pagination :: pagination(path='/informationretrieval/resourceloaderpluginconfiguration/', page=${resourceLoaderPluginConfigurationsPage})"></div>
+    <div style="float:right"><a th:href="@{/informationretrieval/resourceloaderpluginconfigurationedit}" class="fa fa-plus fa-2x" title="Add Resource Loader Plugin Configuration" alt="Add Resource Loader Plugin Configuration"></a>&nbsp;&nbsp;&nbsp;</div>
     <table class="table table-striped table-responsive-md">
         <thead>
         <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','edit','delete'} },sortables=${ {'id','name'} },names=${ {'ID','Name','Edit','Delete'} },page=${resourceLoaderPluginConfigurationsPage},path='/informationretrieval/resourceloaderpluginconfiguration/')" />
@@ -17,11 +23,10 @@
             <td th:text="${resoureLoaderPluginConfiguration.id}"></td>
             <td th:text="${resoureLoaderPluginConfiguration.name}"></td>
             <td><a th:href="@{/informationretrieval/resourceloaderpluginconfigurationedit/{id}(id=${resoureLoaderPluginConfiguration.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
-            <td><a th:href="@{/informationretrieval/resourceloaderpluginconfigurationedit/{id}(id=${resoureLoaderPluginConfiguration.id})}" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+            <td><a th:attr="data-href=@{/informationretrieval/resourceloaderpluginconfigurationdelete/{id}(id=${resoureLoaderPluginConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>
         </tbody>
     </table>
-</div>
 <footer th:replace="layout :: site-footer" />
 </body>
 </html>

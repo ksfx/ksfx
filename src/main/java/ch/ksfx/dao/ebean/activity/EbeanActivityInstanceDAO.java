@@ -91,6 +91,8 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
         expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
         expressionList.setMaxRows(pageable.getPageSize());
 
+        boolean hasOrder = false;
+
         if (!pageable.getSort().isUnsorted()) {
             Iterator<Sort.Order> orderIterator = pageable.getSort().iterator();
             while (orderIterator.hasNext()) {
@@ -99,13 +101,19 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
                 if (!order.getProperty().equals("UNSORTED")) {
                     if (order.isAscending()) {
                         expressionList.order().asc(order.getProperty());
+                        hasOrder = true;
                     }
 
                     if (order.isDescending()) {
                         expressionList.order().desc(order.getProperty());
+                        hasOrder = true;
                     }
                 }
             }
+        }
+
+        if (hasOrder == false) {
+            expressionList.order().desc("id");
         }
 
         Page<ActivityInstance> page = new PageImpl<ActivityInstance>(expressionList.findList(), pageable, expressionList.findCount());

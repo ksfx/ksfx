@@ -5,9 +5,13 @@
 </head>
 <body>
 <header th:replace="layout :: site-header"/>
-<h1 th:inline="text">KSFX - Results for: [[${spideringConfiguration.name}]]</h1>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/informationretrieval/}">Information Retrieval</a></li>
+        <li class="breadcrumb-item active" th:inline="text">Results for: [[${spideringConfiguration.name}]]</li>
+    </ol>
+</nav>
 
-<div th:if="${resultsPage.totalPages  > 0}">
     <form id="filterInvalidResultsForm" action="#" th:action="@{/informationretrieval/result/{id}(id=${spideringConfiguration.id})}" method="post">
         <div class="form-check">
             <input type="checkbox" th:checked="${filterInvalidResults}" class="form-check-input" name="filterInvalidResults" id="filterInvalidResults" onchange="$('#filterInvalidResultsForm').submit();"/>
@@ -15,7 +19,7 @@
         </div>
     </form>
     <div th:replace="components/pagination :: pagination(path='/informationretrieval/result/' + ${spideringConfiguration.id}, page=${resultsPage})"></div>
-
+    <div style="float:right"><a th:attr="data-href=@{/informationretrieval/spideringconfigurationdeleteresults/{spideringConfigurationId}(spideringConfigurationId=${spideringConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o fa-2x" title="Clear All" alt="Clear All"></a>&nbsp;&nbsp;&nbsp;</div>
     <table class="table table-striped table-responsive-md">
         <thead>
         <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','firstFound','lastFound','uriString','isValid','updated','siteIdentifierHash','data'} },sortables=${ {'id','firstFound','lastFound','isValid'} },names=${ {'ID','First Found','Last Found','URI String','Valid','Updated','Site Identifier Hash','Data'} },page=${resultsPage},path='/informationretrieval/result/' + ${spideringConfiguration.id})" />
@@ -33,7 +37,6 @@
         </tr>
         </tbody>
     </table>
-</div>
 
 <footer th:replace="layout :: site-footer" />
 </body>

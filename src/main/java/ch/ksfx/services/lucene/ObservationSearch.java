@@ -135,6 +135,8 @@ public class ObservationSearch
 			e.printStackTrace();
 			throw new RuntimeException("Error in Lucene query GET TOTAL HITS");
 		}
+
+		System.out.println("Results: " + results.totalHits + " total hits value: " + results.totalHits.value);
 		
 		return new Long(results.totalHits.value).intValue(); //.value right???
 	}

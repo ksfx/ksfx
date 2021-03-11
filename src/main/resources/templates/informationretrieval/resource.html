@@ -5,7 +5,13 @@
 </head>
 <body>
 <header th:replace="layout :: site-header"/>
-<h1 th:inline="text">KSFX - Resources for: [[${spidering.spideringConfiguration.name}]]</h1>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/informationretrieval}">Information Retrieval</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/informationretrieval/spideringsviewer/{spideringConfigurationId}(spideringConfigurationId=${spidering.spideringConfiguration.id})}" th:inline="text">Spiderings for: [[${spidering.spideringConfiguration.name}]]</a></li>
+        <li class="breadcrumb-item active" th:inline="text">Resources for Spidering [[${spidering.id}]]</li>
+    </ol>
+</nav>
 
 <div th:if="${resourcesPage.totalPages  > 0}">
     <div th:replace="components/pagination :: pagination(path='/informationretrieval/resource/' + ${spidering.id}, page=${resourcesPage})"></div>
@@ -27,8 +33,8 @@
             <td th:text="${resource.depth}"></td>
             <td th:text="${resource.pagingDepth}"></td>
             <td th:text="${resource.size}"></td>
-            <td th:text="${resource.parent}"></td>
-            <td></td>
+            <td th:text="${resource.previousResource?.id}"></td>
+            <td><a th:href="@{/informationretrieval/resourceview/{id}(id=${resource.id})}" class="fa fa-eye" alt="View Resource" title="View Resource" target="_blank"></a></td>
         </tr>
         </tbody>
     </table>
