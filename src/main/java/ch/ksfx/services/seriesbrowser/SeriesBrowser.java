@@ -109,6 +109,7 @@ public class SeriesBrowser
 		
 		if ((ntn.getChildrens() == null || ntn.getChildrens().isEmpty()) && (ntn.getSeries() == null || ntn.getSeries().isEmpty())) {
 			NavigationTreeNode parent = ntn.getParent();
+			//Remove root node is there is no parent??
 			parent.removeChildren(ntn);
 		} 
 	}
@@ -171,7 +172,7 @@ public class SeriesBrowser
 				
 				for (TimeSeries ts : rootNtn.getSeries()) {
 					if (filteredSeriesNames == null || filteredSeriesNames.isEmpty() || filteredSeriesNames.contains(ts.getName())) {
-						markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * (StringUtils.countMatches(rootNtn.getLocator(),"-") + 1))).toString()).replaceAll("#NAME#", "<a href='" + "#" + /*pageRenderLinkSource.createPageRenderLinkWithContext("viewTimeSeries",ts.getId()).toURI() + */ "'><span class=\"fa fa-th-list\"></span>&nbsp;" + ts.getName() + "</a>"));
+						markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * (StringUtils.countMatches(rootNtn.getLocator(),"-") + 1))).toString()).replaceAll("#NAME#", "<a href='" + UriComponentsBuilder.fromPath("/dataexplorer/").pathSegment(ts.getId().toString()).build() + "'><span class=\"fa fa-th-list\"></span>&nbsp;" + ts.getName() + "</a>"));
 					}
 				}
 			} else {
@@ -217,7 +218,7 @@ public class SeriesBrowser
 						.replaceAll("#NAME#", Matcher.quoteReplacement("<a href='" + UriComponentsBuilder.fromPath("/dataexplorer/closenode/").pathSegment(child.getLocator()).build() + "'><span class=\"fa fa-folder-open\"></span>&nbsp;&nbsp;" + child.getName() + "</a> " + getCategoryTitleMarkupForLocator(child.getLocator()))));
 				for (TimeSeries ts : child.getSeries()) {
 					if (filteredSeriesNames == null || filteredSeriesNames.isEmpty() || filteredSeriesNames.contains(ts.getName())) {
-						markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * (StringUtils.countMatches(child.getLocator(),"-") + 1))).toString()).replaceAll("#NAME#", "<a href='" + "#" + /*pageRenderLinkSource.createPageRenderLinkWithContext("viewTimeSeries",ts.getId()).toURI() +*/ "'><span class=\"fa fa-th-list\"></span>&nbsp;" + ts.getName() + "</a>"));
+						markup.append(snip.replaceAll("#MARGIN#", (new Integer(margin * (StringUtils.countMatches(child.getLocator(),"-") + 1))).toString()).replaceAll("#NAME#", "<a href='" + UriComponentsBuilder.fromPath("/dataexplorer/").pathSegment(ts.getId().toString()).build() + "'><span class=\"fa fa-th-list\"></span>&nbsp;" + ts.getName() + "</a>"));
 					}
 				}
 				

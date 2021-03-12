@@ -31,6 +31,9 @@ import ch.ksfx.model.TimeSeries;
 //import com.datastax.driver.core.querybuilder.QueryBuilder;
 //import com.datastax.driver.core.querybuilder.Select;
 
+import ch.ksfx.services.SystemEnvironment;
+import ch.ksfx.services.lucene.IndexEvent;
+import ch.ksfx.services.lucene.IndexService;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
@@ -50,11 +53,8 @@ import java.util.*;
 @Repository
 public class CassandraObservationDAO implements ObservationDAO
 {
-//    private SystemEnvironment systemEnvironment;
-//    private IndexService indexService;
-
-//    CqlSession simpleCluster = CqlSession.builder().addContactPoint("localhost").withSocketOptions(new SocketOptions().setConnectTimeoutMillis(20000).setReadTimeoutMillis(30000)).build();
-//    CqlSession simpleSession = simpleCluster.connect("observation_store");
+    private SystemEnvironment systemEnvironment;
+    private IndexService indexService;
 
     CqlSession simpleSession = CqlSession.builder()
             .withConfigLoader(DriverConfigLoader.programmaticBuilder()
@@ -68,10 +68,10 @@ public class CassandraObservationDAO implements ObservationDAO
 
     private TimeSeriesDAO timeSeriesDAO;
 
-    public CassandraObservationDAO(TimeSeriesDAO timeSeriesDAO/*SystemEnvironment systemEnvironment, IndexService indexService*/)
+    public CassandraObservationDAO(TimeSeriesDAO timeSeriesDAO, SystemEnvironment systemEnvironment, IndexService indexService)
     {
-//		this.systemEnvironment = systemEnvironment;
-//		this.indexService = indexService;
+		this.systemEnvironment = systemEnvironment;
+		this.indexService = indexService;
         this.timeSeriesDAO = timeSeriesDAO;
 
         insertObservationStatement = simpleSession.prepare("INSERT INTO observation (time_series_id, observation_time, source_id, scalar_value, complex_value, meta_data) VALUES (?,?,?,?,?,?);");
@@ -83,8 +83,8 @@ public class CassandraObservationDAO implements ObservationDAO
         try {
             BoundStatement bs = insertObservationStatement.bind(observation.getTimeSeriesId(), observation.getObservationTime(), observation.getSourceId(), observation.getScalarValue(), observation.getComplexValue(), observation.getMetaData());
             ResultSet rs = simpleSession.execute(bs);
-        
- //       	indexService.index(new IndexEvent(observation.getTimeSeriesId(), observation.getObservationTime(), observation.getSourceId(), false));
+
+            indexService.index(new IndexEvent(observation.getTimeSeriesId(), observation.getObservationTime(), observation.getSourceId(), false));
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);

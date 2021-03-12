@@ -29,7 +29,8 @@ public class GenericDataStore
     private Long id;
     private String dataKey;
     private String dataValue;
-    
+
+    //is that used?
     public static Map<String, Object> nonPersistentStore = new HashMap<String,Object>();
 
     public GenericDataStore()

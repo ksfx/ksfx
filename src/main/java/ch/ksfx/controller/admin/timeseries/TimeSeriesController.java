@@ -5,6 +5,8 @@ import ch.ksfx.dao.spidering.ResultUnitModifierConfigurationDAO;
 import ch.ksfx.model.TimeSeries;
 import ch.ksfx.model.spidering.ResourceLoaderPluginConfiguration;
 import ch.ksfx.services.ServiceProvider;
+import ch.ksfx.services.lucene.IndexService;
+import ch.ksfx.services.seriesbrowser.SeriesBrowser;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
@@ -20,17 +22,21 @@ import java.io.InputStreamReader;
 import java.util.stream.Collectors;
 
 @Controller
-@RequestMapping("/admin/timeseries")
+@RequestMapping("/admin")
 public class TimeSeriesController
 {
     private TimeSeriesDAO timeSeriesDAO;
+    private SeriesBrowser seriesBrowser;
+    private IndexService indexService;
 
-    public TimeSeriesController(TimeSeriesDAO timeSeriesDAO)
+    public TimeSeriesController(TimeSeriesDAO timeSeriesDAO, SeriesBrowser seriesBrowser, IndexService indexService)
     {
         this.timeSeriesDAO = timeSeriesDAO;
+        this.seriesBrowser = seriesBrowser;
+        this.indexService = indexService;
     }
 
-    @GetMapping("/")
+    @GetMapping("/timeseries")
     public String timeSeriesIndex(Model model, Pageable pageable)
     {
         model.addAttribute("timeSeriesPage", timeSeriesDAO.getTimeSeriesForPageable(pageable));
@@ -62,9 +68,19 @@ public class TimeSeriesController
             return "admin/timeseries/time_series_edit";
         }
 
-        timeSeriesDAO.saveOrUpdate(timeSeries);
+        if (timeSeries.getId() != null) {
+            TimeSeries oldSeries = timeSeriesDAO.getTimeSeriesForId(timeSeries.getId());
+            seriesBrowser.removeSeries(oldSeries);
+        }
 
-        return "redirect:/admin/timeseries/timeseriesedit/" + timeSeries.getId();
+        timeSeriesDAO.saveOrUpdate(timeSeries);
+        seriesBrowser.addSeries(timeSeries);
+
+        indexService.refreshIndexableTimeSeriesIds();
+
+
+
+        return "redirect:/admin/timeseriesedit/" + timeSeries.getId();
     }
 
     @GetMapping({"/timeseriesdelete/{id}"})
@@ -73,6 +89,10 @@ public class TimeSeriesController
         TimeSeries timeSeries = timeSeriesDAO.getTimeSeriesForId(timeSeriesId);
         timeSeriesDAO.delete(timeSeries);
 
-        return "redirect:/informationretrieval/resourceloaderpluginconfiguration";
+        seriesBrowser.removeSeries(timeSeries);
+
+        indexService.refreshIndexableTimeSeriesIds();
+
+        return "redirect:/admin/timeseries/";
     }
 }

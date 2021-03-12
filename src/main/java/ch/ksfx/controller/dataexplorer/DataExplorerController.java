@@ -1,6 +1,7 @@
 package ch.ksfx.controller.dataexplorer;
 
 import ch.ksfx.dao.ObservationDAO;
+import ch.ksfx.dao.TimeSeriesDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.model.Observation;
 import ch.ksfx.services.seriesbrowser.SeriesBrowser;
@@ -26,23 +27,29 @@ public class DataExplorerController
     private SeriesBrowser seriesBrowser;
     private ObservationDAO observationDAO;
     private ActivityDAO activityDAO;
+    private TimeSeriesDAO timeSeriesDAO;
 
     private List<String> openNodes;
     private List<String> filteredSeriesNames;
     private String seriesNameSearch;
 
-    public DataExplorerController(SeriesBrowser seriesBrowser,ObservationDAO observationDAO, ActivityDAO activityDAO)
+    public DataExplorerController(SeriesBrowser seriesBrowser,ObservationDAO observationDAO, ActivityDAO activityDAO, TimeSeriesDAO timeSeriesDAO)
     {
         this.seriesBrowser = seriesBrowser;
         this.observationDAO = observationDAO;
         this.activityDAO = activityDAO;
+        this.timeSeriesDAO = timeSeriesDAO;
     }
 
-    @GetMapping("/")
-    public String dataExplorerIndex(Pageable pageable, Model model, HttpServletRequest request)
+    @GetMapping({"/{timeSeriesId}","/"})
+    public String dataExplorerIndex(@PathVariable(value = "timeSeriesId", required = false) Integer timeSeriesId, Pageable pageable, Model model, HttpServletRequest request)
     {
         List<String> openNodes = (List<String>) request.getSession().getAttribute("openNodes");
         List<String> filteredSeriesNames = (List<String>) request.getSession().getAttribute("filteredSeriesNames");
+
+        if (timeSeriesId == null) {
+            timeSeriesId = 1;
+        }
 
         if (openNodes == null) {
             openNodes = new ArrayList<String>();
@@ -52,8 +59,9 @@ public class DataExplorerController
             filteredSeriesNames = new ArrayList<String>();
         }
 
-        Page<Observation> observationsPage = observationDAO.getObservationsForPageableAndTimeSSeriesId(pageable, 1);
+        Page<Observation> observationsPage = observationDAO.getObservationsForPageableAndTimeSSeriesId(pageable, timeSeriesId);
 
+        model.addAttribute("timeSeries", timeSeriesDAO.getTimeSeriesForId(timeSeriesId.longValue()));
         model.addAttribute("observationsPage", observationsPage);
         model.addAttribute("browser", seriesBrowser.getMarkupForNode(openNodes, filteredSeriesNames));
         model.addAttribute("dateFormatUtil", new DateFormatUtil());

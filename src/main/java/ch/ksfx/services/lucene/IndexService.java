@@ -24,6 +24,7 @@ import ch.ksfx.services.systemlogger.SystemLogger;
 import ch.ksfx.services.SystemEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -42,7 +43,7 @@ public class IndexService
     private Logger logger = LoggerFactory.getLogger(IndexService.class);
 
 
-	public IndexService(SystemEnvironment systemEnvironment, ObservationDAO observationDAO, SystemLogger systemLogger, TimeSeriesDAO timeSeriesDAO)
+	public IndexService(SystemEnvironment systemEnvironment, @Lazy ObservationDAO observationDAO, SystemLogger systemLogger, TimeSeriesDAO timeSeriesDAO)
 	{
         this.systemEnvironment = systemEnvironment;
         this.observationDAO = observationDAO;

@@ -18,6 +18,9 @@
 package ch.ksfx.dao;
 
 import ch.ksfx.model.Category;
+import ch.ksfx.model.TimeSeries;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -26,6 +29,7 @@ public interface CategoryDAO
 {
 	public void saveOrUpdateCategory(Category category);
 	public List<Category> getAllCategories();
+	public Page<Category> getCategoriesForPageable(Pageable pageable);
 	public Category getCategoryForId(Long categoryId);
 	public Category getCategoryForLocator(String locator);
 	public void deleteCategory(Category category);
