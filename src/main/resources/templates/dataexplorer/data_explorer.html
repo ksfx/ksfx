@@ -12,11 +12,12 @@
     </ol>
 </nav>
 
-<div class="container-fluid"> <!-- style="width:100%;max-width:100%;height:100%;min-height:100%;padding-top:0px;margin-top:0px" -->
-    <div class="row"> <!-- style="width:100%;height:100%;min-height:100%;padding-top:0px;margin-top:0px" -->
-        <div class="col" style="max-width:500px;"> <!-- style="width:200px;height:100%;min-height:100%;padding-top:0px;margin-top:0px" -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col" style="max-width:500px;">
             <div style="width:450px;overflow:hidden" th:utext="${browser}">
             </div>
+            <a th:href="@{/dataexplorer/search}">Search</a>
         </div>
         <div class="col-6"> <!-- style="padding-top:0px;margin-top:0px" -->
             <div th:if="${observationsPage.totalPages  > 0}">

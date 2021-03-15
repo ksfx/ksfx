@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Information Retrieval</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">Data Explorer</li>
+        <li class="breadcrumb-item active">Search</li>
+    </ol>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col" style="max-width:500px;">
+            <div style="width:450px;overflow:hidden" th:utext="${browser}">
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="list-group">
+                <div class="list-group-item">
+                    <form id="searchForm" th:action="@{/dataexplorer/search}" th:object="${searchCriteria}" method="post">
+                        <div class="form-group">
+                            <label for="allQuery">Scalar Value</label>
+                            <input type="text" class="form-control" id="allQuery" th:field="*{allQuery}" />
+                        </div>
+                        <div class="form-group">
+                            <label for="scalarValueQuery">Scalar Value</label>
+                            <input type="text" class="form-control" id="scalarValueQuery" th:field="*{scalarValueQuery}" />
+                        </div>
+                        <div class="form-group">
+                            <label for="autocompletecontainer">Time Series ID</label>
+                            <div class="autocomplete" id="autocompletecontainer">
+                                <input type="text" class="form-control" th:field="*{seriesId}" id="autocompleteinput" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="dateFrom">Date From</label>
+                                <input type="text" class="form-control" id="dateFrom" th:field="*{dateFrom}" placeholder="yyyy-MM-dd" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="dateTo">Date To</label>
+                                <input type="text" class="form-control" id="dateTo" th:field="*{dateTo}" placeholder="yyyy-MM-dd" />
+                            </div>
+                        </div>
+                        <div th:if="${not #lists.isEmpty(searchCriteria.complexValueQueryKeys)}" class="form-row" th:each="complexValueQueryKey, stat : ${searchCriteria.complexValueQueryKeys}">
+                            <div class="form-group col-md-3">
+                                <input type="text" class="form-control" th:field="*{complexValueQueryKeys[__${stat.index}__]}" />
+                            </div>
+                            <div class="form-group col-md-8">
+                                <input type="text" class="form-control" th:field="*{complexValueQueryValues[__${stat.index}__]}"/>
+                            </div>
+                            <div class="form-group col-md-1">
+                                <a th:href="@{/dataexplorer/searchdeletecomplexvaluequery/{complexValueIdx}(complexValueIdx=${stat.index})}" class="fa fa-trash-o" title="Add Complex Value Query" alt="Add Complex Value Query"></a>
+                            </div>
+                        </div>
+                        <a th:href="@{/dataexplorer/searchaddcomplexvaluequery}" class="fa fa-plus" title="Add Complex Value Query" alt="Add Complex Value Query"></a>
+
+                        <!--
+                        <p><b>Complex Value</b></p>
+                        <div class="container-fluid">
+                            <t:loop formState="iteration" source="complexValueQuery.keySet()" value="complexValueKeyLoop">
+                                <div class="row">
+                                    <div class="col-md-1" style="width: 40%;"><t:textfield t:id="complexValueKey" t:value="complexValueKey" placeholder="Key" /></div>
+                                    <div class="col-md-2" style="width: 40%;"><t:textfield t:id="complexValueValue" t:value="complexValueValue" placeholder="Value" /></div>
+                                    <div class="col-md-3" style="width: 40px;"><t:actionlink t:id="deleteComplexValueFragment" context="complexValueKeyLoop"  class="glyphicon glyphicon-minus"></t:actionlink></div>
+                                </div>
+                            </t:loop>
+                        </div>
+                        <t:actionlink t:id="addComplexValueFragment" class="glyphicon glyphicon-plus" title="Add complex value fragment" alt="Add complex value fragment"></t:actionlink>
+                        <p><b>Meta Data</b></p>
+                        <div class="container-fluid">
+                            <t:loop formState="iteration" source="metaDataQuery.keySet()" value="metaDataKeyLoop">
+                                <div class="row">
+                                    <div class="col-md-1" style="width: 40%;"><t:textfield t:id="metaDataKey" t:value="metaDataKey" placeholder="Key" /></div>
+                                    <div class="col-md-2" style="width: 40%;"><t:textfield t:id="metaDataValue" t:value="metaDataValue" placeholder="Value" /></div>
+                                    <div class="col-md-3" style="width: 40px;"><t:actionlink t:id="deleteMetaDataFragment" context="metaDataKeyLoop" class="glyphicon glyphicon-minus"></t:actionlink></div>
+                                </div>
+                            </t:loop>
+                        </div>
+                        <t:actionlink t:id="addMetaDataFragment" class="glyphicon glyphicon-plus" title="Add meta data fragment" alt="Add meta data fragment"></t:actionlink>
+                        -->
+                        <div class="box-foot form-foot">
+                            <button type="submit">Search</button>
+                            <!-- <t:if test="searchRunning">
+                                <t:actionlink t:id="cancelSearch" class="button button-cancel">Reset Search</t:actionlink>
+                            </t:if> -->
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+
+    </div>
+</div>
+
+<script>
+    function closeAllLists() {
+        /*close all autocomplete lists in the document,
+        except the one passed as an argument:*/
+        var x = document.getElementsByClassName("autocomplete-items");
+        for (var i = 0; i < x.length; i++) {
+            x[i].parentNode.removeChild(x[i]);
+        }
+    }
+
+    $('#autocompleteinput').keyup(function () {
+        $.ajax({
+            url:        'suggestseries',
+            data: {search: this.value},
+            success:    function(data){
+            closeAllLists();
+                console.log(data);
+                    a = document.createElement("DIV");
+                    a.setAttribute("id", this.id + "autocomplete-list");
+                    a.setAttribute("class", "autocomplete-items");
+
+                    $('#autocompletecontainer').append(a);
+
+                $.each(data , function( key, valfromserver ) {
+                    console.log( key + ": " + valfromserver ); // Key : 10
+
+                    b = document.createElement("DIV");
+                    b.innerHTML = "<strong>" + valfromserver.substr(0, $('#autocompleteinput').val().length) + "</strong>";
+                    b.innerHTML += valfromserver.substr($('#autocompleteinput').val().length);
+                    b.innerHTML += "<input type='hidden' value='" + key + "'>";
+
+                    b.addEventListener("click", function(e) {
+                        /*insert the value for the autocomplete text field:*/
+                        //console.log('Selected value ' + this.getElementsByTagName("input")[0].value);
+                        $('#autocompleteinput').val(this.getElementsByTagName("input")[0].value);
+                        /*close the list of autocompleted values,
+                        (or any other open lists of autocompleted values:*/
+                        closeAllLists();
+                    });
+                    a.appendChild(b);
+                });
+            }
+        });
+    });
+
+    document.addEventListener("click", function (e) {
+        closeAllLists();
+    });
+</script>
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="height:500px">
+                <iframe src="/publishing/" id="data-explorer-iframe" style="width:100%;height:100%" frameborder="0"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

@@ -81,7 +81,7 @@ public class CassandraObservationDAO implements ObservationDAO
     public void saveObservation(Observation observation)
     {
         try {
-            BoundStatement bs = insertObservationStatement.bind(observation.getTimeSeriesId(), observation.getObservationTime(), observation.getSourceId(), observation.getScalarValue(), observation.getComplexValue(), observation.getMetaData());
+            BoundStatement bs = insertObservationStatement.bind(observation.getTimeSeriesId(), observation.getObservationTime().toInstant(), observation.getSourceId(), observation.getScalarValue(), observation.getComplexValue(), observation.getMetaData());
             ResultSet rs = simpleSession.execute(bs);
 
             indexService.index(new IndexEvent(observation.getTimeSeriesId(), observation.getObservationTime(), observation.getSourceId(), false));

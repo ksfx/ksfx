@@ -17,17 +17,25 @@
 
 package ch.ksfx.model;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import ch.ksfx.util.DateFormatUtil;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import javax.persistence.Transient;
+import java.util.*;
 
 public class Observation
 {
     private Integer timeSeriesId;
     private String sourceId;
+
     private Date observationTime;
     private String scalarValue;
     private Map<String, String> complexValue = new HashMap<String, String>();
+
+    //Transient only for Form...
+    private List<String> complexValueNames;
+    private List<String> complexValueValues;
+
     private Map<String, String> metaData = new HashMap<String, String>();
 
     public Integer getTimeSeriesId()
@@ -50,6 +58,7 @@ public class Observation
         this.sourceId = sourceId;
     }
 
+    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public Date getObservationTime()
     {
         return observationTime;
@@ -116,6 +125,28 @@ public class Observation
         }
 
         return null;
+    }
+
+    @Transient
+    public List<String> getComplexValueNames()
+    {
+        return complexValueNames;
+    }
+
+    public void setComplexValueNames(List<String> complexValueNames)
+    {
+        this.complexValueNames = complexValueNames;
+    }
+
+    @Transient
+    public List<String> getComplexValueValues()
+    {
+        return complexValueValues;
+    }
+
+    public void setComplexValueValues(List<String> complexValueValues)
+    {
+        this.complexValueValues = complexValueValues;
     }
 
     @Override

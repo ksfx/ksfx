@@ -78,6 +78,7 @@ public class DataExplorerController
         Observation observation = observationDAO.getObservationForTimeSeriesIdObservationTimeAndSourceId(Integer.parseInt(timeSeriesIdParam), DateFormatUtil.parseISO8601TimeAndDateString(observationTimeParam), UriUtils.decode(sourceIdParam,
                 "UTF-8"));
 
+        model.addAttribute("dateFormatUtil", new DateFormatUtil());
         model.addAttribute("allActivities", activityDAO.getAllActivities());
         model.addAttribute("observation", observation);
 

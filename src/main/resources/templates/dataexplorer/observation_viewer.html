@@ -7,11 +7,11 @@
 <div style="float:right;">
 
 </div>
-<div style="padding-top:20px">
-    <h3 th:inline="text">${observation.scalarValue}</h3> (${observation.observationTime})
+<div style="padding-top:20px" th:inline="text">
+    <h3 th:inline="text">[[${observation.scalarValue}]]</h3> ([[${observation.observationTime}]])
 </div>
 <div style="padding-top:20px" th:inline="text">
-    Source Id: ${observation.sourceId}
+    Source Id: [[${observation.sourceId}]]
 </div>
 <div style="padding-top:20px" th:inline="text">
     [[${observation.getComplexValueFragmentForName('mainText')}]]
@@ -24,6 +24,7 @@
         </tr>
     </table>
 </div>
+<a th:href="@{/dataexplorer/observationedit/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" class="fa fa-pencil" title="Edit" alt="Edit"></a>
 <!--
 <div style="padding-top:20px">
     <t:pagelink page="observation/genericobservationmanager" context="editingContextParameters">Edit</t:pagelink>

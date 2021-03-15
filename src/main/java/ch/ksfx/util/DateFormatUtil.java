@@ -23,11 +23,11 @@ import java.util.Date;
 
 public class DateFormatUtil
 {
-	static String iso8601TimeAndDatePattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
-	static String lexicographicallySortableTimeAndDatePattern = "yyyyMMddHHmmss";
-    static String simpleTimeAndDatePattern = "yyyy-MM-dd'T'HH:mm:ss";
-    static String simpleDatePattern = "yyyy-MM-dd";
-    static String simpleGermanDatePattern = "dd.MM.yyyy";
+	public static String iso8601TimeAndDatePattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
+    public static String lexicographicallySortableTimeAndDatePattern = "yyyyMMddHHmmss";
+    public static String simpleTimeAndDatePattern = "yyyy-MM-dd'T'HH:mm:ss";
+    public static String simpleDatePattern = "yyyy-MM-dd";
+    public static String simpleGermanDatePattern = "dd.MM.yyyy";
 	
 	public static String formatToISO8601TimeAndDateString(Date date)
 	{

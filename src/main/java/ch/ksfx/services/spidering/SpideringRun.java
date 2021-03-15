@@ -362,6 +362,10 @@ public class SpideringRun implements Runnable
                 }
             }
 
+            if (!isRunning) {
+                break;
+            }
+
             pagingDepth++;
         }
     }

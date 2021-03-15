@@ -24,7 +24,7 @@
             <td th:text="${spidering.started}"></td>
             <td>
                 <span th:if="!${spideringRunner.isSpideringRunning(spidering)}" th:inline="text">[[${spidering.finished}]]</span>
-                <span th:unless="!${spideringRunner.isSpideringRunning(spidering)}" th:inline="text" class="fa fa-spinner fa-pulse fa-2x fa-fw"></span>
+                <span th:unless="!${spideringRunner.isSpideringRunning(spidering)}" th:inline="text"><span class="fa fa-spinner fa-pulse fa-2x fa-fw"></span><a th:attr="data-href=@{/informationretrieval/spideringterminate/{id}(id=${spidering.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-times-circle-o" alt="Terminate Spidering" title="Terminate Spidering"></a></span>
             </td>
             <td th:text="${spidering.newResultCount}"></td>
             <td th:text="${spidering.updatedResultCount}"></td>
@@ -33,8 +33,18 @@
             <td th:text="${spidering.validResultCount}"></td>
             <td th:text="${spidering.invalidResultCount}"></td>
             <td><a th:href="@{/informationretrieval/resource/{id}(id=${spidering.id})}" th:inline="text">[[${spideringDAO.calculateResourcesCount(spidering)}]]</a></td>
-            <td><a th:href="@{/activity/activityedit/{id}(id=${spidering.id})}" class="fa fa-pencil" alt="Start Parsing" title="Start Parsing"></a></td>
-            <td><a th:href="@{/activity/activityedit/{id}(id=${spidering.id})}" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+            <td>
+                <span th:if="!${parsingRunner.isParsingRunning(spidering)}" th:inline="text">
+                    <a th:href="@{/informationretrieval/spideringrunparsing/{id}(id=${spidering.id})}" class="fa fa-play" alt="Start Parsing" title="Start Parsing"></a>
+                </span>
+                <span th:unless="!${parsingRunner.isParsingRunning(spidering)}" th:inline="text" style="white-space: nowrap;">
+                    <span class="fa fa-spinner fa-pulse fa-2x fa-fw"></span>
+                    <a th:attr="data-href=@{/informationretrieval/spideringterminateparsing/{id}(id=${spidering.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-times-circle-o" alt="Terminate Parsing" title="Terminate Parsing"></a>
+                </span>
+            </td>
+            <td>
+                <a th:href="@{/activity/activityedit/{id}(id=${spidering.id})}" class="fa fa-trash-o" alt="Delete" title="Delete"></a>
+            </td>
         </tr>
         </tbody>
     </table>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Information Retrieval</title>
+</head>
+<body>
+<div style="float:right;">
+
+</div>
+<div style="padding-top:20px" th:inline="text">
+    <h3 th:inline="text">[[${observation.scalarValue}]]</h3> ([[${observation.observationTime}]])
+</div>
+<div class="list-group" style="width:100%">
+    <div class="list-group-item">
+        <form id="observationForm" th:action="@{/dataexplorer/observationedit}" th:object="${observation}" method="post">
+            <input type="hidden" th:field="*{timeSeriesId}" />
+            <input type="hidden" th:field="*{sourceId}" />
+            <input type="hidden" th:field="*{observationTime}" />
+            <div>
+                <div class="form-group">
+                    <label for="scalarValue">Scalar Value</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('scalarValue')}" th:errors="*{scalarValue}">Scalar Value</div>
+                    <input type="text" class="form-control" id="scalarValue" th:field="*{scalarValue}" />
+                </div>
+                <p><b>Complex Value</b></p>
+
+                <div class="form-row" th:each="complexValueName, stat : ${observation.complexValueNames}">
+                    <div class="form-group col-md-3">
+                        <input type="text" class="form-control" name="value" th:field="*{complexValueNames[__${stat.index}__]}" />
+                    </div>
+                    <div class="form-group col-md-8">
+                        <input type="text" class="form-control" name="value" th:field="*{complexValueValues[__${stat.index}__]}"/>
+                    </div>
+                    <div class="form-group col-md-1">
+                        <a th:href="@{/dataexplorer/observationcomplexvaluedelete/{timeseriesid}/{observationtime}/{sourceid}/{complexValueKey}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)},complexValueKey=${complexValueName})}" class="fa fa-trash-o" title="Remove Complex Value Fragment" alt="Remove Complex Value Fragment"></a>
+                    </div>
+                </div>
+                <a th:href="@{/dataexplorer/observationcomplexvalueadd/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" class="fa fa-plus" title="Add Complex Value Fragment" alt="Add Complex Value Fragment"></a>
+                <!-- <p><b>Meta Data</b></p>
+                <table>
+                    <tr th:each="metadata, stat : ${observation.complexValuesNames}">
+                        <td th:text="${stat}"><input type="text" name="value" th:value="${metadata.key}" readonly="true"/></td>
+                        <td th:text="${metadata.value}"><input type="text" name="value" th:field="*{metaData[__${metadata.key}__]}"/></td>
+                        <td><a th:href="@{/dataexplorer/observationmetadataadd/{timeseriesid}/{observationtime}/{sourceid}/{metadataKey}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)},metadataKey=${metadata.key})}" class="fa fa-trash-o" title="Remove Metadata Fragment" alt="Remove Metadata Fragment"></a></td>
+                    </tr>
+                </table>
+                <a th:href="@{/dataexplorer/observationmetadataadd/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" class="fa fa-plus" title="Add Metadata Fragment" alt="Add Metadata Fragment"></a> -->
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <a th:href="@{/dataexplorer/viewobservation/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+        </form>
+    </div>
+</div>
+</body>
+</html>
