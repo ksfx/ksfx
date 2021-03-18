@@ -33,7 +33,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.FSDirectory;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
@@ -121,6 +123,8 @@ public class ObservationSearch
 				}		
 			}
 		}
+
+		System.out.println("QUERY: " + StringUtils.join(queryFragments, " AND "));
 		
 		return StringUtils.join(queryFragments, " AND ");
 	}
@@ -170,5 +174,16 @@ public class ObservationSearch
 		}
  		
  		return observations;
+	}
+
+	public Page<Observation> getPagedSearch(Pageable pageable, String allQuery, String scalarValueQuery, Map<String, String> complexValueQuery, Map<String, String> metaDataQuery, Date dateFrom, Date dateTo, String seriesId)
+	{
+		prepare(allQuery, scalarValueQuery, complexValueQuery, metaDataQuery, dateFrom, dateTo, seriesId);
+
+		List<Observation> preparedResults = getObservations(new Long(pageable.getOffset()).intValue(), new Long(pageable.getOffset() + pageable.getPageSize()).intValue());
+
+		Page<Observation> page = new PageImpl<Observation>(preparedResults, pageable, getTotalHits());
+
+		return page;
 	}
 }

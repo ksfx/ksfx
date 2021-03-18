@@ -15,9 +15,25 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col" style="max-width:500px;">
-            <div style="width:450px;overflow:hidden" th:utext="${browser}">
+            <div style="width:450px;overflow:hidden">
+            <li class="list-group-item">
+                <span style="margin-left:0px;margin-right:0px"></span>
+                <form id="seriesNameSearchForm" th:action="@{/dataexplorer/searchseries}" method="post">
+                    <div class="input-group">
+                        <div style="width:360px">
+                            <input type="text" th:value="${seriesNameSearch}" class="form-control" name="seriesNameSearch" id="seriesNameSearch" />
+                        </div>
+                        <span class="input-group-btn">
+                            <a th:if="${searchActive}" th:href="@{/dataexplorer/searchseriesreset}" id="resetSearch" class="btn btn-default"><span class="fa fa-remove"></span></a>
+                            <button th:unless="${searchActive}" class="btn btn-default" type="submit"><span class="fa fa-search"></span></button>
+                        </span>
+                    </div>
+                </form>
+            </li>
+            <div th:utext="${browser}">
             </div>
-            <a th:href="@{/dataexplorer/search}">Search</a>
+            </div>
+            <a th:href="@{/dataexplorer/search}" class="fa fa-search">Search</a>
         </div>
         <div class="col-6"> <!-- style="padding-top:0px;margin-top:0px" -->
             <div th:if="${observationsPage.totalPages  > 0}">
@@ -30,32 +46,10 @@
                     <tbody>
                     <tr th:each="observation : ${observationsPage.content}">
                         <td><span th:if="${observation.observationTime != null}" th:inline="text">[[${dateFormatUtil.formatSimpleTimeAndDateString(observation.observationTime)}]]</span></td>
-                        <td><span th:if="${observation.observationTime != null}"><a href="#" onclick="$('#data-explorer-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/dataexplorer/viewobservation/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" data-toggle="modal" data-target="#exampleModal">[[${observation.scalarValue}]]</a></span></td>
+                        <td><span th:if="${observation.observationTime != null}"><a href="#" onclick="$('#data-explorer-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/dataexplorer/viewobservation/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" data-toggle="modal" data-target="#standardModal">[[${observation.scalarValue}]]</a></span></td>
                     </tr>
                     </tbody>
                 </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Modal -->
-<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body" style="height:500px">
-                <iframe src="/publishing/" id="data-explorer-iframe" style="width:100%;height:100%" frameborder="0"></iframe>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary">Save changes</button>
             </div>
         </div>
     </div>
