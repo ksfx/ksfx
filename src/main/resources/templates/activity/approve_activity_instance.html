@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Console</title>
+</head>
+<body>
+<div style="padding-top:20px">
+    <form t:id="approveActivityInstanceForm" context="activeActivityInstanceId">
+            <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 2}">
+                <a t:id="booleanYes" class="fa fa-hand-right" context="activeActivityInstanceId" title="Yes Boolean" alt="Yes Boolean"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a t:id="booleanNo" class="fa fa-thumbs-down" context="activeActivityInstanceId" title="No Boolean" alt="No Boolean"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a t:id="booleanUnknown" class="fa fa-question-sign" context="activeActivityInstanceId" title="Unknown Boolean" alt="Unknown Boolean"></a>
+            </div>
+            <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 3}">
+                <a t:id="tristateYes" class="fa fa-hand-right" context="activeActivityInstanceId" title="Yes Tristate" alt="Yes Tristate"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a t:id="tristateNeutral" class="fa fa-minus-sign" context="activeActivityInstanceId" title="Neutral Tristate" alt="Neutral Tristate"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a t:id="tristateNo" class="fa fa-thumbs-down" context="activeActivityInstanceId" title="No Tristate" alt="No Tristate"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a t:id="tristateUnknown" class="fa fa-question-sign" context="activeActivityInstanceId" title="Unknown Tristate" alt="Unknown Tristate"></a>
+            </div>
+            <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 3}">
+                <t:textfield t:id="approvalString" t:value="approvalString" placeholder="Approval String" />
+            </div>
+            <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 5}">
+                <div style="float:right;">
+                    <t:actionlink t:id="addActivityInstanceParameter" class="glyphicon glyphicon-plus" context="activeActivityInstanceId" title="Add parameter" alt="Add parameter"></t:actionlink>
+                </div>
+                <div style="padding-top:20px">
+                    <t:loop index="parameterIndex" formState="iteration" source="approvalActivityInstanceParameters" value="activityInstanceParameter">
+                        <t:textfield t:id="activityInstanceParameterdataKey" t:value="activityInstanceParameter.dataKey" placeholder="Key" />
+                        <t:textfield t:id="activityInstanceParameterdataValue" t:value="activityInstanceParameter.dataValue" placeholder="Value" />
+                    </t:loop>
+                </div>
+            </div>
+            <table>
+                <tr th:each="activityInstanceParameter : ${activityInstance.activityInstanceParameters}">
+                    <td><b th:inline="text">[[${activityInstanceParameter.dataKey}]]</b></td>
+                    <td th:inline="text">[[${activityInstanceParameter.dataValue}]]</td>
+                </tr>
+            </table>
+        <div class="modal-footer">
+            <t:actionlink t:id="cancelParameterWindow" class="btn btn-default">Close</t:actionlink>
+            <button type="submit" class="btn btn-primary">Run</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

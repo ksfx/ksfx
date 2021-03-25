@@ -89,7 +89,7 @@
                             </button>
                         </div>
                         <div class="modal-body" style="height:500px">
-                            <iframe id="data-explorer-iframe" style="width:100%;height:100%" frameborder="0"></iframe>
+                            <iframe id="standard-modal-iframe" style="width:100%;height:100%" frameborder="0"></iframe>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
@@ -128,7 +128,7 @@
                             <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Activities</a>
                             <div class="dropdown-menu" aria-labelledby="dropdown01">
                                 <a class="dropdown-item" th:href="@{/activity/}">Activities</a>
-                                <a class="dropdown-item" href="#">Activities Waiting for Approval</a>
+                                <a class="dropdown-item" th:href="@{/activity/approval/}">Activities Waiting for Approval</a>
                                 <a class="dropdown-item" href="#">Activity Categories</a>
                             </div>
                         </li>

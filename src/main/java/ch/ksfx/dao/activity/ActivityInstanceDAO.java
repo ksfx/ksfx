@@ -35,7 +35,7 @@ public interface ActivityInstanceDAO
     public List<ActivityInstance> getAllActivityInstances();
     public List<ActivityInstance> getActivityInstancesWithApprovalRequired();
     public List<ActivityInstance> getActivityInstancesForActivity(Activity activity);
-    public Page<ActivityInstance> getActivityInstancesForPageableAndActivity(Pageable pageable, Activity activity);
+    public Page<ActivityInstance> getActivityInstancesForPageableAndActivity(Pageable pageable, Activity activity, boolean filterUnApproved);
     public ActivityInstance getActivityInstanceForId(Long activityInstanceId);
     public void deleteActivityInstance(ActivityInstance activityInstance);
 //    public GridDataSource getActivityInstanceGridDataSourceForActivity(Activity activity);

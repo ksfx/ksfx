@@ -17,7 +17,7 @@
         <div class="list-group-item">
             <form id="searchForm" th:action="@{/dataexplorer/search}" th:object="${searchCriteria}" method="post">
                 <div class="form-group">
-                    <label for="allQuery">All Query<label>
+                    <label for="allQuery">All Query</label>
                     <input type="text" class="form-control" id="allQuery" th:field="*{allQuery}" />
                 </div>
                 <div class="form-group">
@@ -98,7 +98,7 @@
         <tbody>
         <tr th:each="observation : ${resultsPage.content}">
             <td><span th:if="${observation.observationTime != null}" th:inline="text">[[${dateFormatUtil.formatSimpleTimeAndDateString(observation.observationTime)}]]</span></td>
-            <td><span th:if="${observation.observationTime != null}"><a href="#" onclick="$('#data-explorer-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/dataexplorer/viewobservation/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" data-toggle="modal" data-target="#standardModal">[[${observation.scalarValue}]]</a></span></td>
+            <td><span th:if="${observation.observationTime != null}"><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/dataexplorer/viewobservation/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" data-toggle="modal" data-target="#standardModal">[[${observation.scalarValue}]]</a></span></td>
         </tr>
         </tbody>
     </table>
@@ -116,32 +116,83 @@
 
     $('#autocompleteinput').keyup(function () {
         $.ajax({
-            url:        'suggestseries',
+            url:        'searchsuggestseries',
             data: {search: this.value},
             success:    function(data){
-            closeAllLists();
-                console.log(data);
-                    a = document.createElement("DIV");
-                    a.setAttribute("id", this.id + "autocomplete-list");
-                    a.setAttribute("class", "autocomplete-items");
+                closeAllLists();
 
-                    $('#autocompletecontainer').append(a);
+                a = document.createElement("DIV");
+                a.setAttribute("id", this.id + "autocomplete-list");
+                a.setAttribute("class", "autocomplete-items");
+                a.setAttribute("style", "position: absolute;border: 1px solid #d4d4d4;border-bottom: none;border-top: none;z-index: 99;top: 100%;left: 0;right: 0;");
 
-                $.each(data , function( key, valfromserver ) {
-                    console.log( key + ": " + valfromserver ); // Key : 10
+                $('#autocompletecontainer').append(a);
+
+                $.each(data , function( idx, suggest ) {
+                    console.log( idx + ": " + suggest ); // Key : 10
+                    console.log(suggest);
 
                     b = document.createElement("DIV");
-                    b.innerHTML = "<strong>" + valfromserver.substr(0, $('#autocompleteinput').val().length) + "</strong>";
-                    b.innerHTML += valfromserver.substr($('#autocompleteinput').val().length);
-                    b.innerHTML += "<input type='hidden' value='" + key + "'>";
+                    b.setAttribute("style", "padding: 10px;cursor: pointer;background-color: #fff;border-bottom: 1px solid #d4d4d4;");
+
+                    //Use lowercase to match tokens from search
+                    lowercasehint = suggest.positionHint.toLowerCase();
+                    lowercasesnippet = suggest.snippet.toLowerCase();
+
+                    //Split '§' into single tokens for nicer highlights
+                    acinput = $('#autocompleteinput').val().replaceAll('§', '§ ');
+
+                    //Highlight each token in suggest
+                    tokens = acinput.split(" ");
+
+                    for (var i = 0; i < tokens.length; i++) {
+
+                        if (tokens[i].length > 0) {
+
+                            //Highlight all occurences of single token in lowercasehint and lowercasesnippet
+                            lowercasehint  = lowercasehint.replaceAll(tokens[i].toLowerCase(), "<strong>" + tokens[i].toLowerCase() + "</strong>");
+                            lowercasesnippet = lowercasesnippet.replaceAll(tokens[i].toLowerCase(), "<strong>" + tokens[i].toLowerCase() + "</strong>");
+
+                            //Identify position of each occurence, and copy them one by one to the original snippet that is not lowercase
+                            while (lowercasehint.includes("<strong>")) {
+                                strongStart = lowercasehint.indexOf("<strong>");
+                                output = [suggest.positionHint.slice(0, strongStart), "<strong>", suggest.positionHint.slice(strongStart)].join('');
+                                strongEnd = strongStart + ("<strong>" + tokens[i]).length;
+                                output = [output.slice(0, strongEnd), "</strong>", output.slice(strongEnd)].join('');
+                                suggest.positionHint = output;
+
+                                //Don't change string length and positions but remove <strong> tag
+                                lowercasehint = lowercasehint.replace("<strong>","XXXXXXXX");
+                                lowercasehint = lowercasehint.replace("</strong>","XXXXXXXXX");
+                            }
+
+                            //Identify position of each occurence, and copy them one by one to the original snippet that is not lowercase
+                            while (lowercasesnippet.includes("<strong>")) {
+                                strongStart = lowercasesnippet.indexOf("<strong>");
+                                output = [suggest.snippet.slice(0, strongStart), "<strong>", suggest.snippet.slice(strongStart)].join('');
+                                strongEnd = strongStart + ("<strong>" + tokens[i]).length;
+                                output = [output.slice(0, strongEnd), "</strong>", output.slice(strongEnd)].join('');
+                                suggest.snippet = output;
+
+                                //Don't change string length and positions but remove <strong> tag
+                                lowercasesnippet = lowercasesnippet.replace("<strong>","XXXXXXXX");
+                                lowercasesnippet = lowercasesnippet.replace("</strong>","XXXXXXXXX");
+                            }
+                        }
+                    }
+
+                    b.innerHTML = "<span style='color:gray;font-size:8pt'>" + suggest.positionHint + "</span><br/>" + suggest.snippet;
+                    b.innerHTML += "<input type='hidden' value='" + suggest.snippetIdxId + "'>";
 
                     b.addEventListener("click", function(e) {
                         /*insert the value for the autocomplete text field:*/
-                        //console.log('Selected value ' + this.getElementsByTagName("input")[0].value);
+                        console.log('Selected value ' + this.getElementsByTagName("input")[0].value);
                         $('#autocompleteinput').val(this.getElementsByTagName("input")[0].value);
                         /*close the list of autocompleted values,
                         (or any other open lists of autocompleted values:*/
+                        snippetIdxId = this.getElementsByTagName("input")[0].value;
                         closeAllLists();
+                        //window.location = '/opensearchresult/' + snippetIdxId;
                     });
                     a.appendChild(b);
                 });

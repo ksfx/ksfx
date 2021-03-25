@@ -4,6 +4,7 @@ import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.activity.ActivityInstance;
+import ch.ksfx.model.activity.ActivityInstanceParameter;
 import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.services.activity.ActivityInstanceRunner;
 import ch.ksfx.services.scheduler.SchedulerService;
@@ -17,9 +18,12 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.io.*;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @Controller
@@ -58,7 +62,7 @@ public class ActivityController
     @GetMapping("/activityinstances/{activityid}")
     public String activityInstancesViewer(Pageable pageable, @PathVariable(value = "activityid", required = true) Long activityId, Model model)
     {
-        Page<ActivityInstance> activityInstancePage = activityInstanceDAO.getActivityInstancesForPageableAndActivity(pageable, activityDAO.getActivityForId(activityId));
+        Page<ActivityInstance> activityInstancePage = activityInstanceDAO.getActivityInstancesForPageableAndActivity(pageable, activityDAO.getActivityForId(activityId), false);
 
         model.addAttribute("activityInstanceRunner", activityInstanceRunner);
         model.addAttribute("activity", activityDAO.getActivityForId(activityId));
@@ -191,5 +195,66 @@ public class ActivityController
         activityDAO.deleteActivity(activity);
 
         return "redirect:/activity/";
+    }
+
+    @GetMapping({"/activityrunwithparameters/{activityid}"})
+    public String activityRunWithParameters(@PathVariable(value = "activityid", required = true) Long activityId, Model model, HttpServletRequest request)
+    {
+        if (request.getSession().getAttribute("activityInstance") == null || ((ActivityInstance) request.getSession().getAttribute("activityInstance")).getActivity().getId() != activityId) {
+            ActivityInstance activityInstance = new ActivityInstance();
+            activityInstance.setActivity(activityDAO.getActivityForId(activityId));
+
+            request.getSession().setAttribute("activityInstance", activityInstance);
+        }
+
+//        model.addAttribute("activityId",activityId);
+        model.addAttribute("activityInstance", request.getSession().getAttribute("activityInstance"));
+
+        return "activity/run_with_parameters";
+    }
+
+    @PostMapping({"/activityrunwithparameters/","/activityrunwithparameters/{activityid}"})
+    public String activityRunWithParametersSubmit(@PathVariable(value = "activityid", required = false) Long activityId, @Valid @ModelAttribute ActivityInstance activityInstance, BindingResult bindingResult, Model model, HttpServletRequest request)
+    {
+        activityInstanceDAO.saveOrUpdateActivityInstance(activityInstance);
+
+        System.out.println(activityInstance.getActivity());
+
+        for (ActivityInstanceParameter activityInstanceParameter : activityInstance.getActivityInstanceParameters()) {
+
+            System.out.println("Activity instance parameter " + activityInstanceParameter.getDataKey() + " / " + activityInstanceParameter.getDataValue());
+
+            activityInstanceParameter.setActivityInstance(activityInstance);
+
+            activityInstanceDAO.saveOrUpdateActivityInstanceParameter(activityInstanceParameter);
+        }
+
+        activityInstanceRunner.runActivity(activityInstanceDAO.getActivityInstanceForId(activityInstance.getId()));
+
+        request.getSession().removeAttribute("activityInstance");
+
+        model.addAttribute("started", true);
+
+        return "activity/run_with_parameters";
+    }
+
+    @GetMapping({"/activityinstanceparameteradd/{activityid}"})
+    public String activityRunWithParametersAddParameter(@PathVariable(value = "activityid", required = true) Long activityId, HttpServletRequest request)
+    {
+        if (request.getSession().getAttribute("activityInstance") == null) {
+            request.getSession().setAttribute("activityInstance", new ActivityInstance());
+        }
+
+        ActivityInstance activityInstance = (ActivityInstance) request.getSession().getAttribute("activityInstance");
+
+        if (activityInstance.getActivityInstanceParameters() == null) {
+            activityInstance.setActivityInstanceParameters(new ArrayList<ActivityInstanceParameter>());
+        }
+
+        activityInstance.getActivityInstanceParameters().add(new ActivityInstanceParameter());
+
+        request.getSession().setAttribute("activityInstance", activityInstance);
+
+        return "redirect:/activity/activityrunwithparameters/" + activityId;
     }
 }

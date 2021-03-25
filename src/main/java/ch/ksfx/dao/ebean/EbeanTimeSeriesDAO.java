@@ -88,7 +88,7 @@ public class EbeanTimeSeriesDAO implements TimeSeriesDAO
 	    //private TimeSeriesType timeSeriesType;
 	    //private boolean indexable;    	
 
-		String sql = "SELECT id, name, locator, source, source_id, approximate_size, time_series_type, indexable FROM time_series WHERE MATCH(name) AGAINST('" + timeSeriesName + "' IN BOOLEAN MODE) LIMIT " + limit + ";";
+		String sql = "SELECT id, name, locator, source, source_id, approximate_size, time_series_type, indexable FROM time_series WHERE MATCH(name) AGAINST('" + timeSeriesName + "*' IN BOOLEAN MODE) LIMIT " + limit + ";";
 
     	return Ebean.find(TimeSeries.class).setRawSql(RawSqlBuilder.parse(sql).columnMapping("source_id", "sourceId").columnMapping("approximate_size", "approximateSize").columnMapping("time_series_type", "timeSeriesType.id").create()).findList();
     	

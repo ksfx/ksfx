@@ -33,7 +33,7 @@ public class Activity
     private Long id;
 
     @NotNull
-    @Size(min=2, max=30)
+    @Size(min=2, max=200)
     @NotEmpty
     private String name;
     private ActivityCategory activityCategory;

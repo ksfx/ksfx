@@ -23,7 +23,7 @@
             <td th:text="${activity.id}"></td>
             <td><a th:href="@{/activity/activityinstances/{activityid}/(activityid=${activity.id})}" th:inline="text">[[${activity.name}]]</a></td>
             <td><a th:href="@{/activity/activityrun/{id}(id=${activity.id})}" class="fa fa-play" alt="Run" title="Run"></a></td>
-            <td>Param <!-- class="glyphicon glyphicon-forward"  --></td>
+            <td><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/activity/activityrunwithparameters/{id}(id=${activity.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-forward"></a></td>
             <td>
                 <th:block th:if="${!#strings.isEmpty(activity.cronSchedule)}">
                     <span th:if="${activity.cronScheduleEnabled}"><a th:href="@{/activity/activitydeleteschedule/{id}(id=${activity.id})}" class="fa fa-stop" alt="Disable Scheduling" title="Disable Scheduling"></a></span>

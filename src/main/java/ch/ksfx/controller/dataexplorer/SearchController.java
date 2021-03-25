@@ -1,9 +1,12 @@
 package ch.ksfx.controller.dataexplorer;
 
 import ch.ksfx.dao.ObservationDAO;
+import ch.ksfx.dao.TimeSeriesDAO;
+import ch.ksfx.model.TimeSeries;
 import ch.ksfx.services.SystemEnvironment;
 import ch.ksfx.services.lucene.ObservationSearch;
 import ch.ksfx.util.DateFormatUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,6 +21,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -25,10 +29,12 @@ import java.util.Map;
 public class SearchController
 {
     private ObservationSearch observationSearch;
+    private TimeSeriesDAO timeSeriesDAO;
 
-    public SearchController(SystemEnvironment systemEnvironment, ObservationDAO observationDAO)
+    public SearchController(SystemEnvironment systemEnvironment, ObservationDAO observationDAO, TimeSeriesDAO timeSeriesDAO)
     {
         this.observationSearch = new ObservationSearch(systemEnvironment, observationDAO);
+        this.timeSeriesDAO = timeSeriesDAO;
     }
 
     @GetMapping("/search")
@@ -81,14 +87,27 @@ public class SearchController
         return "redirect:/dataexplorer/search";
     }
 
-    @GetMapping(value = "/suggestseries", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/searchsuggestseries", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity suggestSeries(@RequestParam(name = "search") String search)
     {
-        Map<String, String> myMap = new HashMap<String, String>();
-        myMap.put("1", "Allianz");
-        myMap.put("2", "Generali");
+        System.out.println("Search: " + search);
 
-        return new ResponseEntity<Object>(myMap, HttpStatus.OK);
+        List<TimeSeries> timeSeries = timeSeriesDAO.searchTimeSeries(search, 100);
+
+        List<Map<String, String>> json = new ArrayList<Map<String, String>>();
+
+        for (TimeSeries ts : timeSeries) {
+            Map<String, String> jsonMap = new HashMap<String,String>();
+            jsonMap.put("snippetIdxId", ts.getId().toString());
+            jsonMap.put("snippet", StringUtils.abbreviate(ts.getName(), 80));
+            jsonMap.put("positionHint", StringUtils.abbreviate(ts.getLocator(), 80));
+
+            json.add(jsonMap);
+        }
+
+        System.out.println(json);
+
+        return new ResponseEntity<Object>(json, HttpStatus.OK);
     }
 
     @GetMapping("/searchaddcomplexvaluequery")

@@ -10,16 +10,16 @@ import ch.ksfx.util.DateFormatUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriUtils;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Controller
 @RequestMapping("/dataexplorer")
@@ -196,16 +196,22 @@ public class DataExplorerController
         return "redirect:/dataexplorer/";
     }
 
-    public List<String> onProvideCompletionsFromSeriesNameSearch(String partial)
+    @GetMapping(value = "/dataexplorersuggestseries", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity suggestSeries(@RequestParam(name = "search") String search)
     {
-        List<String> seriesNames = new ArrayList<String>();
+        List<TimeSeries> timeSeries = timeSeriesDAO.searchTimeSeries(search, 100);
 
-        List<TimeSeries> timeSeries = timeSeriesDAO.searchTimeSeries(partial, 100);
+        List<Map<String, String>> json = new ArrayList<Map<String, String>>();
 
         for (TimeSeries ts : timeSeries) {
-            seriesNames.add('"' + ts.getName() + '"');
+            Map<String, String> jsonMap = new HashMap<String,String>();
+            jsonMap.put("snippetIdxId", '"' + ts.getName() + '"');
+            jsonMap.put("snippet", StringUtils.abbreviate(ts.getName(), 80));
+            jsonMap.put("positionHint", StringUtils.abbreviate(ts.getLocator(), 80));
+
+            json.add(jsonMap);
         }
 
-        return seriesNames;
+        return new ResponseEntity<Object>(json, HttpStatus.OK);
     }
 }

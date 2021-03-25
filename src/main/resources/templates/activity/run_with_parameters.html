@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Console</title>
+</head>
+<body>
+<div style="padding-top:20px">
+   <div th:if="${started}">
+       <h3>Job started...</h3>
+   </div>
+    <div th:unless="${started}">
+    <a th:href="@{/activity/activityinstanceparameteradd/{activityid}(activityid=${activityInstance.activity.id})}" style="margin-top:10px" class="fa fa-plus" alt="Add Activity Instance Parameter" title="Add Activity Instance Parameter"></a>
+    <form id="runWithParametersForm" th:action="@{/activity/activityrunwithparameters/}" th:object="${activityInstance}" method="post">
+        <input type="hidden" th:field="*{activity.id}" th:value="${activityId}" />
+        <th:block th:id="${activityInstance.activityInstanceParameters != null}" th:each="activityInstanceParameter,activityInstanceParameterStatus : ${activityInstance.activityInstanceParameters}">
+            <input type="hidden" th:field="*{activityInstanceParameters[__${activityInstanceParameterStatus.index}__].id}" />
+            <div class="form-row">
+                <div class="form-group col-md-3">
+                    <label for="dataKey">Parameter Key</label>
+                    <input type="text" class="form-control" id="dataKey" th:field="*{activityInstanceParameters[__${activityInstanceParameterStatus.index}__].dataKey}" />
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="dataValue">Parameter Value</label>
+                    <input type="text" class="form-control" id="dataValue" th:field="*{activityInstanceParameters[__${activityInstanceParameterStatus.index}__].dataValue}" />
+                </div>
+                <div class="form-group col-md-3">
+                    <label for="delActivityInstanceParameter" class="fa fa-pencil"></label>
+                    <div id="delActivityInstanceParameter">
+                        <a th:href="@{/activity/activityinstanceparameterdelete/{index}(index=${activityInstanceParameterStatus.index})}" style="margin-top:10px" class="fa fa-minus" alt="Remove Activity Instance Parameter" title="Remove Activity Instance Parameter"></a>
+                    </div>
+                </div>
+            </div>
+        </th:block>
+
+        <button type="submit" class="btn btn-primary">RUN</button>
+        <a th:href="@{/activity/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+    </form>
+    </div>
+</div>
+</body>
+</html>

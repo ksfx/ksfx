@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Activities</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/activity/}">Activities</a></li>
+        <li class="breadcrumb-item active" th:inline="text">Activities Waiting for Approval</li>
+    </ol>
+</nav>
+
+<div th:if="${unapprovedActivityInstancesPage.totalPages  > 0}">
+    <div th:replace="components/pagination :: pagination(path='/activity/approval/', page=${unapprovedActivityInstancesPage})"></div>
+    <table class="table table-striped table-responsive-md">
+        <thead>
+        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','approval','delete'} },sortables=${ {'id','name'} },names=${ {'ID','Name','Approval','Delete'} },page=${unapprovedActivityInstancesPage},path='/activity/approval/')" />
+        </thead>
+        <tbody>
+        <tr th:each="activityInstance : ${unapprovedActivityInstancesPage.content}">
+            <td th:text="${activityInstance.id}"></td>
+            <td th:text="${activityInstance.activity.name}"></td>
+            <td><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/activity/approval/activityinstanceapprove/{id}(id=${activityInstance.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-terminal"></a></td>
+            <td><a th:attr="data-href=@{/activity/activityinstancedelete/{id}(id=${activityInstance.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- <t:actionlink t:id="clearActivityInstances" class="glyphicon glyphicon-trash" title="Clear activity instances" alt="Clear activity instances"></t:actionlink> -->
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

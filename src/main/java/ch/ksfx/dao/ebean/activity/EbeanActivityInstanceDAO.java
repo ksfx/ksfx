@@ -80,12 +80,16 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
     }
 
     @Override
-    public Page<ActivityInstance> getActivityInstancesForPageableAndActivity(Pageable pageable, Activity activity)
+    public Page<ActivityInstance> getActivityInstancesForPageableAndActivity(Pageable pageable, Activity activity, boolean filterUnApproved)
     {
         ExpressionList expressionList = Ebean.find(ActivityInstance.class).where();
 
         if (activity != null) {
             expressionList.eq("activity", activity);
+        }
+
+        if (filterUnApproved) {
+            expressionList.eq("approved", false);
         }
 
         expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
