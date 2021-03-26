@@ -8,7 +8,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item">Data Explorer</li>
-        <li class="breadcrumb-item active" th:inline="text">[[${timeSeries.name}]]</li>
+        <li class="breadcrumb-item active" th:inline="text">[[${timeSeries.name}]] &nbsp;&nbsp;<a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/noteviewer/(timeSeriesId=${timeSeries.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-info"></a></li>
     </ol>
 </nav>
 

@@ -25,6 +25,20 @@
     </table>
 </div>
 <a th:href="@{/dataexplorer/observationedit/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" class="fa fa-pencil" title="Edit" alt="Edit"></a>
+
+<form id="sendToActivityForm" th:action="@{/dataexplorer/observationsendtoactivity/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" method="post">
+<div class="form-group">
+    <label for="sendToActivityId">Send Observation to Activity</label>
+    <select class="form-control" id="sendToActivityId" name="sendToActivityId">
+        <option th:each="activity : ${allActivities}"
+                th:value="${activity.id}"
+                th:text="${activity.name}">
+            Activities
+        </option>
+    </select>
+</div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
 <!--
 <div style="padding-top:20px">
     <t:pagelink page="observation/genericobservationmanager" context="editingContextParameters">Edit</t:pagelink>

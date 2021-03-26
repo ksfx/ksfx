@@ -137,6 +137,12 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
     }
 
     @Override
+    public ActivityInstanceParameter getActivityInstanceParameterForId(Long activityInstanceParameterId)
+    {
+        return Ebean.find(ActivityInstanceParameter.class, activityInstanceParameterId);
+    }
+
+    @Override
     public void deleteActivityInstance(ActivityInstance activityInstance)
     {
         for (ActivityInstanceParameter activityInstanceParameter : activityInstance.getActivityInstanceParameters()) {
@@ -148,6 +154,12 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
         }
 
         Ebean.delete(activityInstance);
+    }
+
+    @Override
+    public void deleteActivityInstanceParameter(ActivityInstanceParameter activityInstanceParameter)
+    {
+        Ebean.delete(activityInstanceParameter);
     }
 
     /*

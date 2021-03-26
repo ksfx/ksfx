@@ -10,10 +10,11 @@ import ch.ksfx.services.activity.ActivityInstanceRunner;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,9 +44,128 @@ public class ActivityApprovalController
     @GetMapping("/activityinstanceapprove/{activityinstanceid}")
     public String activityInstanceApprove(@PathVariable(value = "activityinstanceid", required = true) Long activityInstanceId, Model model)
     {
+        ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
+
+        //String approval
+        if (activityInstance.getActivity().getActivityApprovalStrategy() != null && activityInstance.getActivity().getActivityApprovalStrategy().getId() == 4l) {
+            boolean hasApprovalString = false;
+
+            if (activityInstance.getActivityInstanceParameters() != null) {
+                for (ActivityInstanceParameter activityInstanceParameter : activityInstance.getActivityInstanceParameters()) {
+                    if (activityInstanceParameter.getDataKey().equals("approvalString")) {
+                        hasApprovalString = true;
+                    }
+                }
+            }
+
+            if (!hasApprovalString) {
+                ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("approvalString", "");
+                activityInstanceParameter.setActivityInstance(activityInstance);
+
+                activityInstanceDAO.saveOrUpdateActivityInstanceParameter(activityInstanceParameter);
+            }
+        }
+
         model.addAttribute("activityInstance", activityInstanceDAO.getActivityInstanceForId(activityInstanceId));
 
         return "activity/approve_activity_instance";
+    }
+
+    @GetMapping("/submitapproval/{activityinstanceid}/{state}")
+    public String submitApproval(@PathVariable(value = "activityinstanceid", required = true) Long activityInstanceId, @PathVariable(value = "state", required = true) String state, Model model)
+    {
+        ActivityInstanceParameter activityInstanceParameter = null;
+
+        if (state.equals("booleanYes")) {
+            activityInstanceParameter = new ActivityInstanceParameter("boolean", "yes");
+        }
+
+        if (state.equals("booleanNo")) {
+            activityInstanceParameter = new ActivityInstanceParameter("boolean", "no");
+        }
+
+        if (state.equals("booleanUnknown")) {
+            activityInstanceParameter = new ActivityInstanceParameter("boolean", "unknown");
+        }
+
+        if (state.equals("tristateYes")) {
+            activityInstanceParameter = new ActivityInstanceParameter("tristate", "yes");
+        }
+
+        if (state.equals("tristateNeutral")) {
+            activityInstanceParameter = new ActivityInstanceParameter("tristate", "neutral");
+        }
+
+        if (state.equals("tristateNo")) {
+            activityInstanceParameter = new ActivityInstanceParameter("tristate", "no");
+        }
+
+        if (state.equals("tristateUnknown")) {
+            activityInstanceParameter = new ActivityInstanceParameter("tristate", "unknown");
+        }
+
+        saveParameterAndStartJob(activityInstanceParameter, activityInstanceId);
+
+        model.addAttribute("started", true);
+
+        return "activity/approve_activity_instance";
+    }
+
+    @PostMapping("/submitapproval/")
+    public String submitApprovalSubmit(@Valid @ModelAttribute ActivityInstance activityInstance, BindingResult bindingResult, Model model, HttpServletRequest request)
+    {
+        for (ActivityInstanceParameter approvalActivityInstanceParameter : activityInstance.getActivityInstanceParameters()) {
+
+            System.out.println("Activity instance parameter " + approvalActivityInstanceParameter.getDataKey() + " / " + approvalActivityInstanceParameter.getDataValue());
+
+            approvalActivityInstanceParameter.setActivityInstance(activityInstance);
+
+            activityInstanceDAO.saveOrUpdateActivityInstanceParameter(approvalActivityInstanceParameter);
+        }
+
+        activityInstance.setApproved(true);
+        activityInstanceDAO.saveOrUpdateActivityInstance(activityInstance);
+
+        activityInstanceRunner.runActivity(activityInstanceDAO.getActivityInstanceForId(activityInstance.getId()));
+
+        model.addAttribute("started", true);
+
+        return "activity/approve_activity_instance";
+    }
+
+    @GetMapping("/activityinstanceparameteradd/{activityinstanceid}")
+    public String activityInstanceParameterAdd(@PathVariable(value = "activityinstanceid", required = true) Long activityInstanceId)
+    {
+        ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
+
+        ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("","");
+        activityInstanceParameter.setActivityInstance(activityInstance);
+
+        activityInstanceDAO.saveOrUpdateActivityInstanceParameter(activityInstanceParameter);
+
+        return "redirect:/activity/approval/activityinstanceapprove/" + activityInstanceId;
+    }
+
+    @GetMapping("/activityinstanceparameterdelete/{activityinstanceparameterid}")
+    public String activityInstanceParameterDelete(@PathVariable(value = "activityinstanceparameterid", required = true) Long activityInstanceParameterId)
+    {
+        ActivityInstanceParameter activityInstanceParameter = activityInstanceDAO.getActivityInstanceParameterForId(activityInstanceParameterId);
+        activityInstanceDAO.deleteActivityInstanceParameter(activityInstanceParameter);
+
+        return "redirect:/activity/approval/activityinstanceapprove/" + activityInstanceParameter.getActivityInstance().getId();
+    }
+
+    private void saveParameterAndStartJob(ActivityInstanceParameter activityInstanceParameter, Long activityInstanceId)
+    {
+        ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
+        activityInstance.setApproved(true);
+
+        activityInstanceParameter.setActivityInstance(activityInstance);
+
+        activityInstanceDAO.saveOrUpdateActivityInstance(activityInstance);
+        activityInstanceDAO.saveOrUpdateActivityInstanceParameter(activityInstanceParameter);
+
+        activityInstanceRunner.runActivity(activityInstanceDAO.getActivityInstanceForId(activityInstance.getId()));
     }
 
     public void onActionFromDelete(Long activityInstanceId)
@@ -63,41 +183,8 @@ public class ActivityApprovalController
     }
 
     /*
-    public boolean getBooleanApproval()
-    {
-        if (activeActivityInstanceId == null) {
-            return false;
-        }
 
-        return activityInstanceDAO.getActivityInstanceForId(activeActivityInstanceId).getActivity().getActivityApprovalStrategy().getId() == 2l;
-    }
 
-    public boolean getTristateApproval()
-    {
-        if (activeActivityInstanceId == null) {
-            return false;
-        }
-
-        return activityInstanceDAO.getActivityInstanceForId(activeActivityInstanceId).getActivity().getActivityApprovalStrategy().getId() == 3l;
-    }
-
-    public boolean getStringApproval()
-    {
-        if (activeActivityInstanceId == null) {
-            return false;
-        }
-
-        return activityInstanceDAO.getActivityInstanceForId(activeActivityInstanceId).getActivity().getActivityApprovalStrategy().getId() == 4l;
-    }
-
-    public boolean getMapApproval()
-    {
-        if (activeActivityInstanceId == null) {
-            return false;
-        }
-
-        return activityInstanceDAO.getActivityInstanceForId(activeActivityInstanceId).getActivity().getActivityApprovalStrategy().getId() == 5l;
-    }
 
     public boolean getIsActivityInstanceActiveActivityInstance()
     {
@@ -134,48 +221,6 @@ public class ActivityApprovalController
     public void onActionFromCancelParameterWindow()
     {
         onActionFromCloseParameterWindow();
-    }
-
-    public void onActionFromBooleanYes(Long activityInstanceId)
-    {
-        ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("boolean", "yes");
-        saveParameterAndStartJob(activityInstanceParameter, activityInstanceId);
-    }
-
-    public void onActionFromBooleanNo(Long activityInstanceId)
-    {
-        ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("boolean", "no");
-        saveParameterAndStartJob(activityInstanceParameter, activityInstanceId);
-    }
-
-    public void onActionFromBooleanUnknown(Long activityInstanceId)
-    {
-        ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("boolean", "unknown");
-        saveParameterAndStartJob(activityInstanceParameter, activityInstanceId);
-    }
-
-    public void onActionFromTristateYes(Long activityInstanceId)
-    {
-        ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("tristate", "yes");
-        saveParameterAndStartJob(activityInstanceParameter, activityInstanceId);
-    }
-
-    public void onActionFromTristateNeutral(Long activityInstanceId)
-    {
-        ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("tristate", "neutral");
-        saveParameterAndStartJob(activityInstanceParameter, activityInstanceId);
-    }
-
-    public void onActionFromTristateNo(Long activityInstanceId)
-    {
-        ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("tristate", "no");
-        saveParameterAndStartJob(activityInstanceParameter, activityInstanceId);
-    }
-
-    public void onActionFromTristateUnknown(Long activityInstanceId)
-    {
-        ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("tristate", "unknown");
-        saveParameterAndStartJob(activityInstanceParameter, activityInstanceId);
     }
 
     private void saveParameterAndStartJob(ActivityInstanceParameter activityInstanceParameter, Long activityInstanceId)

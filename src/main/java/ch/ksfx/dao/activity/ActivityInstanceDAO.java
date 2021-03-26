@@ -37,7 +37,9 @@ public interface ActivityInstanceDAO
     public List<ActivityInstance> getActivityInstancesForActivity(Activity activity);
     public Page<ActivityInstance> getActivityInstancesForPageableAndActivity(Pageable pageable, Activity activity, boolean filterUnApproved);
     public ActivityInstance getActivityInstanceForId(Long activityInstanceId);
+    public ActivityInstanceParameter getActivityInstanceParameterForId(Long activityInstanceParameterId);
     public void deleteActivityInstance(ActivityInstance activityInstance);
+    public void deleteActivityInstanceParameter(ActivityInstanceParameter activityInstanceParameter);
 //    public GridDataSource getActivityInstanceGridDataSourceForActivity(Activity activity);
     public void appendConsole(Long activityInstanceId, String dataToAppend);
 }

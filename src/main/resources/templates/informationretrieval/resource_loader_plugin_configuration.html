@@ -16,12 +16,13 @@
     <div style="float:right"><a th:href="@{/informationretrieval/resourceloaderpluginconfigurationedit}" class="fa fa-plus fa-2x" title="Add Resource Loader Plugin Configuration" alt="Add Resource Loader Plugin Configuration"></a>&nbsp;&nbsp;&nbsp;</div>
     <table class="table table-striped table-responsive-md">
         <thead>
-        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','edit','delete'} },sortables=${ {'id','name'} },names=${ {'ID','Name','Edit','Delete'} },page=${resourceLoaderPluginConfigurationsPage},path='/informationretrieval/resourceloaderpluginconfiguration/')" />
+        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','info','edit','delete'} },sortables=${ {'id','name'} },names=${ {'ID','Name','Info','Edit','Delete'} },page=${resourceLoaderPluginConfigurationsPage},path='/informationretrieval/resourceloaderpluginconfiguration/')" />
         </thead>
         <tbody>
         <tr th:each="resoureLoaderPluginConfiguration : ${resourceLoaderPluginConfigurationsPage.content}">
             <td th:text="${resoureLoaderPluginConfiguration.id}"></td>
             <td th:text="${resoureLoaderPluginConfiguration.name}"></td>
+            <td><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/noteviewer/(resourceLoaderPluginConfigurationId=${resoureLoaderPluginConfiguration.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-info"></a></td>
             <td><a th:href="@{/informationretrieval/resourceloaderpluginconfigurationedit/{id}(id=${resoureLoaderPluginConfiguration.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
             <td><a th:attr="data-href=@{/informationretrieval/resourceloaderpluginconfigurationdelete/{id}(id=${resoureLoaderPluginConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>

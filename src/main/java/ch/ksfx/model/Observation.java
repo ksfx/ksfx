@@ -38,6 +38,10 @@ public class Observation
 
     private Map<String, String> metaData = new HashMap<String, String>();
 
+    //Transient only for Form...
+    private List<String> metaDataNames;
+    private List<String> metaDataValues;
+
     public Integer getTimeSeriesId()
     {
         return timeSeriesId;
@@ -147,6 +151,26 @@ public class Observation
     public void setComplexValueValues(List<String> complexValueValues)
     {
         this.complexValueValues = complexValueValues;
+    }
+
+    @Transient
+    public List<String> getMetaDataNames()
+    {
+        return metaDataNames;
+    }
+
+    public void setMetaDataNames(List<String> metaDataNames)
+    {
+        this.metaDataNames = metaDataNames;
+    }
+
+    @Transient
+    public List<String> getMetaDataValues() {
+        return metaDataValues;
+    }
+
+    public void setMetaDataValues(List<String> metaDataValues) {
+        this.metaDataValues = metaDataValues;
     }
 
     @Override

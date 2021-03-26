@@ -5,31 +5,49 @@
 </head>
 <body>
 <div style="padding-top:20px">
-    <form t:id="approveActivityInstanceForm" context="activeActivityInstanceId">
+    <div th:if="${started}">
+        <h3>Job started...</h3>
+    </div>
+    <div th:unless="${started}">
+    <form id="activityApprovalForm" action="#" th:action="@{/activity/approval/submitapproval/}" th:object="${activityInstance}" method="post">
+             <input type="hidden" th:field="*{id}" />
             <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 2}">
-                <a t:id="booleanYes" class="fa fa-hand-right" context="activeActivityInstanceId" title="Yes Boolean" alt="Yes Boolean"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                <a t:id="booleanNo" class="fa fa-thumbs-down" context="activeActivityInstanceId" title="No Boolean" alt="No Boolean"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                <a t:id="booleanUnknown" class="fa fa-question-sign" context="activeActivityInstanceId" title="Unknown Boolean" alt="Unknown Boolean"></a>
+                <a th:href="@{/activity/approval/submitapproval/{activityinstanceid}/{state}(activityinstanceid=${activityInstance.id},state='booleanYes')}" class="fa fa-thumbs-up" context="activeActivityInstanceId" title="Yes Boolean" alt="Yes Boolean"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a th:href="@{/activity/approval/submitapproval/{activityinstanceid}/{state}(activityinstanceid=${activityInstance.id},state='booleanNo')}"  class="fa fa-thumbs-down" context="activeActivityInstanceId" title="No Boolean" alt="No Boolean"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a th:href="@{/activity/approval/submitapproval/{activityinstanceid}/{state}(activityinstanceid=${activityInstance.id},state='booleanUnknown')}" class="fa fa-question-circle" context="activeActivityInstanceId" title="Unknown Boolean" alt="Unknown Boolean"></a>
             </div>
             <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 3}">
-                <a t:id="tristateYes" class="fa fa-hand-right" context="activeActivityInstanceId" title="Yes Tristate" alt="Yes Tristate"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                <a t:id="tristateNeutral" class="fa fa-minus-sign" context="activeActivityInstanceId" title="Neutral Tristate" alt="Neutral Tristate"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                <a t:id="tristateNo" class="fa fa-thumbs-down" context="activeActivityInstanceId" title="No Tristate" alt="No Tristate"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                <a t:id="tristateUnknown" class="fa fa-question-sign" context="activeActivityInstanceId" title="Unknown Tristate" alt="Unknown Tristate"></a>
+                <a th:href="@{/activity/approval/submitapproval/{activityinstanceid}/{state}(activityinstanceid=${activityInstance.id},state='tristateYes')}" class="fa fa-thumbs-up" title="Yes Tristate" alt="Yes Tristate"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a th:href="@{/activity/approval/submitapproval/{activityinstanceid}/{state}(activityinstanceid=${activityInstance.id},state='tristateNeutral')}" class="fa fa-minus-circle" title="Neutral Tristate" alt="Neutral Tristate"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a th:href="@{/activity/approval/submitapproval/{activityinstanceid}/{state}(activityinstanceid=${activityInstance.id},state='tristateNo')}" class="fa fa-thumbs-down" title="No Tristate" alt="No Tristate"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <a th:href="@{/activity/approval/submitapproval/{activityinstanceid}/{state}(activityinstanceid=${activityInstance.id},state='tristateUnknown')}" class="fa fa-question-circle" title="Unknown Tristate" alt="Unknown Tristate"></a>
             </div>
-            <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 3}">
+            <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 4}">
                 <t:textfield t:id="approvalString" t:value="approvalString" placeholder="Approval String" />
             </div>
-            <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 5}">
+            <div th:if="${activityInstance.activity?.activityApprovalStrategy.id == 5 ||  activityInstance.activity?.activityApprovalStrategy.id == 4}">
                 <div style="float:right;">
-                    <t:actionlink t:id="addActivityInstanceParameter" class="glyphicon glyphicon-plus" context="activeActivityInstanceId" title="Add parameter" alt="Add parameter"></t:actionlink>
+                    <a th:href="@{/activity/approval/activityinstanceparameteradd/{activityinstanceid}(activityinstanceid=${activityInstance.id})}" style="margin-top:10px" class="fa fa-plus" alt="Add Activity Instance Parameter" title="Add Activity Instance Parameter"></a>
                 </div>
-                <div style="padding-top:20px">
-                    <t:loop index="parameterIndex" formState="iteration" source="approvalActivityInstanceParameters" value="activityInstanceParameter">
-                        <t:textfield t:id="activityInstanceParameterdataKey" t:value="activityInstanceParameter.dataKey" placeholder="Key" />
-                        <t:textfield t:id="activityInstanceParameterdataValue" t:value="activityInstanceParameter.dataValue" placeholder="Value" />
-                    </t:loop>
-                </div>
+                <th:block th:id="${activityInstance.activityInstanceParameters != null}" th:each="activityInstanceParameter,activityInstanceParameterStatus : ${activityInstance.activityInstanceParameters}">
+                    <input type="hidden" th:field="*{activityInstanceParameters[__${activityInstanceParameterStatus.index}__].id}" />
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label for="dataKey">Parameter Key</label>
+                            <input type="text" class="form-control" id="dataKey" th:field="*{activityInstanceParameters[__${activityInstanceParameterStatus.index}__].dataKey}" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="dataValue">Parameter Value</label>
+                            <input type="text" class="form-control" id="dataValue" th:field="*{activityInstanceParameters[__${activityInstanceParameterStatus.index}__].dataValue}" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="delActivityInstanceParameter"></label>
+                            <div id="delActivityInstanceParameter">
+                                <a th:href="@{/activity/approval/activityinstanceparameterdelete/{id}(id=${activityInstanceParameter.id})}" style="margin-top:10px" class="fa fa-minus" alt="Remove Activity Instance Parameter" title="Remove Activity Instance Parameter"></a>
+                            </div>
+                        </div>
+                    </div>
+                </th:block>
             </div>
             <table>
                 <tr th:each="activityInstanceParameter : ${activityInstance.activityInstanceParameters}">
@@ -37,11 +55,10 @@
                     <td th:inline="text">[[${activityInstanceParameter.dataValue}]]</td>
                 </tr>
             </table>
-        <div class="modal-footer">
-            <t:actionlink t:id="cancelParameterWindow" class="btn btn-default">Close</t:actionlink>
+
             <button type="submit" class="btn btn-primary">Run</button>
-        </div>
     </form>
+    </div>
 </div>
 </body>
 </html>

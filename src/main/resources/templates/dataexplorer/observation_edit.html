@@ -36,15 +36,22 @@
                     </div>
                 </div>
                 <a th:href="@{/dataexplorer/observationcomplexvalueadd/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" class="fa fa-plus" title="Add Complex Value Fragment" alt="Add Complex Value Fragment"></a>
-                <!-- <p><b>Meta Data</b></p>
-                <table>
-                    <tr th:each="metadata, stat : ${observation.complexValuesNames}">
-                        <td th:text="${stat}"><input type="text" name="value" th:value="${metadata.key}" readonly="true"/></td>
-                        <td th:text="${metadata.value}"><input type="text" name="value" th:field="*{metaData[__${metadata.key}__]}"/></td>
-                        <td><a th:href="@{/dataexplorer/observationmetadataadd/{timeseriesid}/{observationtime}/{sourceid}/{metadataKey}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)},metadataKey=${metadata.key})}" class="fa fa-trash-o" title="Remove Metadata Fragment" alt="Remove Metadata Fragment"></a></td>
-                    </tr>
-                </table>
-                <a th:href="@{/dataexplorer/observationmetadataadd/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" class="fa fa-plus" title="Add Metadata Fragment" alt="Add Metadata Fragment"></a> -->
+
+                <p><b>Meta Data</b></p>
+
+                <div class="form-row" th:each="metaDataName, stat : ${observation.metaDataNames}">
+                    <div class="form-group col-md-3">
+                        <input type="text" class="form-control" name="value" th:field="*{metaDataNames[__${stat.index}__]}" />
+                    </div>
+                    <div class="form-group col-md-8">
+                        <input type="text" class="form-control" name="value" th:field="*{metaDataValues[__${stat.index}__]}"/>
+                    </div>
+                    <div class="form-group col-md-1">
+                        <a th:href="@{/dataexplorer/observationmetadatadelete/{timeseriesid}/{observationtime}/{sourceid}/{metadatakey}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)},metadatakey=${metaDataName})}" class="fa fa-trash-o" title="Remove Meta Data Fragment" alt="Remove Meta Data Fragment"></a>
+                    </div>
+                </div>
+                <a th:href="@{/dataexplorer/observationmetadataadd/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" class="fa fa-plus" title="Add Meta Data Fragment" alt="Add Meta Data Fragment"></a>
+
             </div>
             <button type="submit" class="btn btn-primary">Submit</button>
             <a th:href="@{/dataexplorer/viewobservation/{timeseriesid}/{observationtime}/{sourceid}(timeseriesid=${observation.timeSeriesId},observationtime=${dateFormatUtil.formatToISO8601TimeAndDateString(observation.observationTime)},sourceid=${#uris.escapePathSegment(observation.sourceId)})}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>

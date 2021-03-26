@@ -56,6 +56,115 @@
                     </tr>
                     </tbody>
                 </table>
+
+                <h3>Related Notes</h3>
+                <table class="table table-striped table-responsive-md">
+                    <thead>
+                        <th style="width:90%">Name</th>
+                        <th style="width:10%">Delete</th>
+                    </thead>
+                    <tbody>
+                        <tr th:each="noteNote : ${note.noteNotes}">
+                            <td th:text="${noteNote.relatedNote.name}"></td>
+                            <td><a th:attr="data-href=@{/admin/note/notenotedelete/{notenoteid}(notenoteid=${noteNote.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Related Activities</h3>
+                <table class="table table-striped table-responsive-md">
+                    <thead>
+                        <th style="width:80%">Name</th>
+                        <th style="width:10%">Main Note</th>
+                        <th style="width:10%">Delete</th>
+                    </thead>
+                    <tbody>
+                        <tr th:each="noteActivity : ${note.noteActivities}">
+                            <td th:text="${noteActivity.activity.name}"></td>
+                            <td>
+                                <a th:href="@{/admin/note/togglemainnoteactivity/{noteactivityid}(noteactivityid=${noteActivity.id})}" class="fa fa-star" th:if="${noteActivity.mainNote}"></a>
+                                <a th:href="@{/admin/note/togglemainnoteactivity/{noteactivityid}(noteactivityid=${noteActivity.id})}" class="fa fa-star-o" th:unless="${noteActivity.mainNote}"></a>
+                            </td>
+                            <td><a th:attr="data-href=@{/admin/note/noteactivitydelete/{noteactivityid}(noteactivityid=${noteActivity.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Related Time Series</h3>
+                <table class="table table-striped table-responsive-md">
+                    <thead>
+                    <th style="width:80%">Name</th>
+                    <th style="width:10%">Main Note</th>
+                    <th style="width:10%">Delete</th>
+                    </thead>
+                    <tbody>
+                    <tr th:each="noteTimeSeries : ${note.noteTimeSeries}">
+                        <td th:text="${noteTimeSeries.timeSeries.name}"></td>
+                        <td>
+                            <a th:href="@{/admin/note/togglemainnotetimeseries/{notetimeseriesid}(notetimeseriesid=${noteTimeSeries.id})}" class="fa fa-star" th:if="${noteTimeSeries.mainNote}"></a>
+                            <a th:href="@{/admin/note/togglemainnotetimeseries/{notetimeseriesid}(notetimeseriesid=${noteTimeSeries.id})}" class="fa fa-star-o" th:unless="${noteTimeSeries.mainNote}"></a>
+                        </td>
+                        <td><a th:attr="data-href=@{/admin/note/notetimeseriesdelete/{notetimeseriesid}(notetimeseriesid=${noteTimeSeries.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <h3>Related Spidering Configurations</h3>
+                <table class="table table-striped table-responsive-md">
+                    <thead>
+                    <th style="width:80%">Name</th>
+                    <th style="width:10%">Main Note</th>
+                    <th style="width:10%">Delete</th>
+                    </thead>
+                    <tbody>
+                    <tr th:each="noteSpideringConfiguration : ${note.noteSpideringConfigurations}">
+                        <td th:text="${noteSpideringConfiguration.spideringConfiguration.name}"></td>
+                        <td>
+                            <a th:href="@{/admin/note/togglemainnotespideringconfiguration/{notespideringconfigurationid}(notespideringconfigurationid=${noteSpideringConfiguration.id})}" class="fa fa-star" th:if="${noteSpideringConfiguration.mainNote}"></a>
+                            <a th:href="@{/admin/note/togglemainnotespideringconfiguration/{notespideringconfigurationid}(notespideringconfigurationid=${noteSpideringConfiguration.id})}" class="fa fa-star-o" th:unless="${noteSpideringConfiguration.mainNote}"></a>
+                        </td>
+                        <td><a th:attr="data-href=@{/admin/note/notetimeseriesdelete/{notespideringconfigurationid}(notespideringconfigurationid=${noteSpideringConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <h3>Related Publishing Configurations</h3>
+                <table class="table table-striped table-responsive-md">
+                    <thead>
+                    <th style="width:80%">Name</th>
+                    <th style="width:10%">Main Note</th>
+                    <th style="width:10%">Delete</th>
+                    </thead>
+                    <tbody>
+                    <tr th:each="notePublishingConfiguration : ${note.notePublishingConfigurations}">
+                        <td th:text="${notePublishingConfiguration.publishingConfiguration.name}"></td>
+                        <td>
+                            <a th:href="@{/admin/note/togglemainnotepublishingconfiguration/{notepublishingconfigurationid}(notepublishingconfigurationid=${notePublishingConfiguration.id})}" class="fa fa-star" th:if="${notePublishingConfiguration.mainNote}"></a>
+                            <a th:href="@{/admin/note/togglemainnotepublishingconfiguration/{notepublishingconfigurationid}(notepublishingconfigurationid=${notePublishingConfiguration.id})}" class="fa fa-star-o" th:unless="${notePublishingConfiguration.mainNote}"></a>
+                        </td>
+                        <td><a th:attr="data-href=@{/admin/note/notepublishingconfigurationdelete/{notepublishingconfigurationid}(notepublishingconfigurationid=${notePublishingConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <h3>Related Resource Loader Plugins</h3>
+                <table class="table table-striped table-responsive-md">
+                    <thead>
+                    <th style="width:80%">Name</th>
+                    <th style="width:10%">Main Note</th>
+                    <th style="width:10%">Delete</th>
+                    </thead>
+                    <tbody>
+                    <tr th:each="noteResourceLoaderPluginConfiguration : ${note.noteResourceLoaderPluginConfigurations}">
+                        <td th:text="${noteResourceLoaderPluginConfiguration.resourceLoaderPluginConfiguration.name}"></td>
+                        <td>
+                            <a th:href="@{/admin/note/togglemainnoteresourceloaderpluginconfiguration/{noteResourceloaderpluginconfigurationid}(noteResourceloaderpluginconfigurationid=${noteResourceLoaderPluginConfiguration.id})}" class="fa fa-star" th:if="${noteResourceLoaderPluginConfiguration.mainNote}"></a>
+                            <a th:href="@{/admin/note/togglemainnoteresourceloaderpluginconfiguration/{noteResourceloaderpluginconfigurationid}(noteResourceloaderpluginconfigurationid=${noteResourceLoaderPluginConfiguration.id})}" class="fa fa-star-o" th:unless="${noteResourceLoaderPluginConfiguration.mainNote}"></a>
+                        </td>
+                        <td><a th:attr="data-href=@{/admin/note/noteresourceloaderpluginconfigurationdelete/{noteResourceloaderpluginconfigurationid}(noteResourceloaderpluginconfigurationid=${noteResourceLoaderPluginConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+                    </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
