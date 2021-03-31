@@ -66,8 +66,39 @@ public class NoteViewerController
         this.spideringConfigurationId = spideringConfigurationId;
         this.resourceLoaderPluginConfigurationId = resourceLoaderPluginConfigurationId;
 
+        String entityType = null;
+        Long entityId = null;
+
+        if (timeSeriesId != null) {
+            entityId = timeSeriesId;
+            entityType = "timeSeries";
+        }
+
+        if (activityId != null) {
+            entityId = activityId;
+            entityType = "activity";
+        }
+
+        if (publishingConfigurationId != null) {
+            entityId = publishingConfigurationId;
+            entityType = "publishingConfiguration";
+        }
+
+        if (spideringConfigurationId != null) {
+            entityId = spideringConfigurationId;
+            entityType = "spideringConfiguration";
+        }
+
+        if (resourceLoaderPluginConfigurationId != null) {
+            entityId = resourceLoaderPluginConfigurationId;
+            entityType = "resourceLoaderPluginConfiguration";
+        }
+
         model.addAttribute("name", getName());
         model.addAttribute("mainNotes", getMainNotes());
+        model.addAttribute("relatedNotes", getRelatedNotes());
+        model.addAttribute("entityId", entityId);
+        model.addAttribute("entityType", entityType);
 
         return "note_viewer";
     }
@@ -130,6 +161,41 @@ public class NoteViewerController
         }
 
         return noteDAO.searchNotes(null, null, timeSeries, activity, publishingConfiguration, spideringConfiguration, resourceLoaderPluginConfiguration, true);
+    }
+
+    public List<Note> getRelatedNotes()
+    {
+        TimeSeries timeSeries = null;
+
+        if (timeSeriesId != null) {
+            timeSeries = timeSeriesDAO.getTimeSeriesForId(timeSeriesId);
+        }
+
+        Activity activity = null;
+
+        if (activityId != null) {
+            activity = activityDAO.getActivityForId(activityId);
+        }
+
+        PublishingConfiguration publishingConfiguration = null;
+
+        if (publishingConfigurationId != null) {
+            publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+        }
+
+        SpideringConfiguration spideringConfiguration = null;
+
+        if (spideringConfigurationId != null) {
+            spideringConfiguration = spideringConfigurationDAO.getSpideringConfigurationForId(spideringConfigurationId);
+        }
+
+        ResourceLoaderPluginConfiguration resourceLoaderPluginConfiguration = null;
+
+        if (resourceLoaderPluginConfigurationId != null) {
+            resourceLoaderPluginConfiguration = resourceLoaderPluginConfigurationDAO.getResourceLoaderPluginConfigurationForId(resourceLoaderPluginConfigurationId);
+        }
+
+        return noteDAO.searchNotes(null, null, timeSeries, activity, publishingConfiguration, spideringConfiguration, resourceLoaderPluginConfiguration, false);
     }
 
     /*

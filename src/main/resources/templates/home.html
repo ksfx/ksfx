@@ -5,7 +5,8 @@
 </head>
 <body>
     <header th:replace="layout :: site-header"/>
-    <h1>Welcome to KSFX</h1>
+
+    <th:block th:utext="${homepageContent}"></th:block>
 
     <footer th:replace="layout :: site-footer" />
 </body>

@@ -23,7 +23,7 @@
             <td th:text="${timeSeries.id}"></td>
             <td th:text="${timeSeries.name}"></td>
             <td th:text="${timeSeries.locator}"></td>
-            <td></td>
+            <td><a th:href="@{/admin/timeseriesimport/{id}(id=${timeSeries.id})}" class="fa fa-upload" alt="Import Data" title="Import Data"></a></td>
             <td><a th:href="@{/admin/timeseriesedit/{id}(id=${timeSeries.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
             <td><a th:attr="data-href=@{/admin/timeseriesdelete/{id}(id=${timeSeries.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>

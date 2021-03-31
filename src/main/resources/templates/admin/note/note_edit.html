@@ -5,7 +5,13 @@
 </head>
 <body>
 <header th:replace="layout :: site-header"/>
-<h1>KSFX - Edit Note</h1>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/admin/note/}">Notes</a></li>
+        <li class="breadcrumb-item active">Edit Note<span th:if="${note != null}" th:inline="text">: [[${note.title}]]</span></li>
+    </ol>
+</nav>
+<message th:replace="layout :: message"/>
 
 <div class="container">
     <div class="list-group">
@@ -43,6 +49,24 @@
                 <br />
                 <br />
                 <h3>Attached Files</h3>
+                <div id="noteFileFormDivLink" style="float:right">
+                    <a onclick="$('#noteFileFormDiv').toggle();" class="fa fa-plus" title="Add File"></a>
+                </div>
+                <div id="noteFileFormDiv" style="display:none">
+                    <form enctype="multipart/form-data" th:action="@{/admin/note/notefileupload}" method="post">
+                        <input type="hidden" name="noteId" th:value="${note.id}" />
+                        <div class="form-group">
+                            <label for="noteFile">File</label>
+                            <input class="form-control" type="file" name="noteFile" id="noteFile" />
+                        </div>
+                        <div class="form-group">
+                            <label for="noteFileComment">Comment</label>
+                            <textarea class="form-control"  id="noteFileComment" style="width:400px;height:300px" name="noteFileComment"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Upload File</button>
+                    </form>
+                    <br />
+                </div>
                 <table class="table table-striped table-responsive-md">
                     <thead>
                     <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','filename','comment','delete'} },sortables=${ {'id'} },names=${ {'ID','Filename','Comment','Delete'} },page=${noteFilesPage},path='/admin/note/noteedit' + ${note.id})" />
@@ -52,12 +76,26 @@
                         <td th:text="${note.id}"></td>
                         <td><a th:href="@{/admin/note/notefiledownload/{id}(id=${note.id})}" th:inline="text">[[${note.fileName}]]</a></td>
                         <td th:text="${note.comment}"></td>
-                        <td><a th:href="@{/admin/note/notefiledelete/{id}(id=${note.id})}" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+                        <td><a th:attr="data-href=@{/admin/note/notefiledelete/{id}(id=${note.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
                     </tr>
                     </tbody>
                 </table>
 
                 <h3>Related Notes</h3>
+                <div id="noteNoteFormDivLink" style="float:right">
+                    <a onclick="$('#noteNoteFormDiv').toggle();" class="fa fa-plus" title="Add Related Note"></a>
+                </div>
+                <div id="noteNoteFormDiv" style="display:none">
+                    <form th:action="@{/admin/note/relationadd}" method="post">
+                        <input type="hidden" name="noteId" th:value="${note.id}" />
+                        <div class="form-group">
+                            <label for="relatedNoteId">Related Note ID</label>
+                            <input type="text" class="form-control" id="relatedNoteId" name="relatedNoteId" />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Related Note</button>
+                    </form>
+                    <br />
+                </div>
                 <table class="table table-striped table-responsive-md">
                     <thead>
                         <th style="width:90%">Name</th>
@@ -65,13 +103,27 @@
                     </thead>
                     <tbody>
                         <tr th:each="noteNote : ${note.noteNotes}">
-                            <td th:text="${noteNote.relatedNote.name}"></td>
+                            <td th:text="${noteNote.relatedNote.title}"></td>
                             <td><a th:attr="data-href=@{/admin/note/notenotedelete/{notenoteid}(notenoteid=${noteNote.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
                         </tr>
                     </tbody>
                 </table>
 
                 <h3>Related Activities</h3>
+                <div id="noteActivityFormDivLink" style="float:right">
+                    <a onclick="$('#noteActivityFormDiv').toggle();" class="fa fa-plus" title="Add Activity"></a>
+                </div>
+                <div id="noteActivityFormDiv" style="display:none">
+                    <form th:action="@{/admin/note/relationadd}" method="post">
+                        <input type="hidden" name="noteId" th:value="${note.id}" />
+                        <div class="form-group">
+                            <label for="activityId">Activity ID</label>
+                            <input type="text" class="form-control" id="activityId" name="activityId" />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Activity Relation</button>
+                    </form>
+                    <br />
+                </div>
                 <table class="table table-striped table-responsive-md">
                     <thead>
                         <th style="width:80%">Name</th>
@@ -91,6 +143,20 @@
                 </table>
 
                 <h3>Related Time Series</h3>
+                <div id="noteTimeSeriesFormDivLink" style="float:right">
+                    <a onclick="$('#noteTimeSeriesFormDiv').toggle();" class="fa fa-plus" title="Add Related Time Series"></a>
+                </div>
+                <div id="noteTimeSeriesFormDiv" style="display:none">
+                    <form th:action="@{/admin/note/relationadd}" method="post">
+                        <input type="hidden" name="noteId" th:value="${note.id}" />
+                        <div class="form-group">
+                            <label for="timeSeriesId">Related Time Series ID</label>
+                            <input type="text" class="form-control" id="timeSeriesId" name="timeSeriesId" />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Related Time Series</button>
+                    </form>
+                    <br />
+                </div>
                 <table class="table table-striped table-responsive-md">
                     <thead>
                     <th style="width:80%">Name</th>
@@ -110,6 +176,20 @@
                 </table>
 
                 <h3>Related Spidering Configurations</h3>
+                <div id="noteSpideringConfigurationFormDivLink" style="float:right">
+                    <a onclick="$('#noteSpideringConfigurationFormDiv').toggle();" class="fa fa-plus" title="Add Related Spidering Configuration"></a>
+                </div>
+                <div id="noteSpideringConfigurationFormDiv" style="display:none">
+                    <form th:action="@{/admin/note/relationadd}" method="post">
+                        <input type="hidden" name="noteId" th:value="${note.id}" />
+                        <div class="form-group">
+                            <label for="spideringConfigurationId">Related Spidering Configuration ID</label>
+                            <input type="text" class="form-control" id="spideringConfigurationId" name="spideringConfigurationId" />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Related Spidering Configuration</button>
+                    </form>
+                    <br />
+                </div>
                 <table class="table table-striped table-responsive-md">
                     <thead>
                     <th style="width:80%">Name</th>
@@ -129,6 +209,20 @@
                 </table>
 
                 <h3>Related Publishing Configurations</h3>
+                <div id="notePublishingConfigurationFormDivLink" style="float:right">
+                    <a onclick="$('#notePublishingConfigurationFormDiv').toggle();" class="fa fa-plus" title="Add Related Publishing Configuration"></a>
+                </div>
+                <div id="notePublishingConfigurationFormDiv" style="display:none">
+                    <form th:action="@{/admin/note/relationadd}" method="post">
+                        <input type="hidden" name="noteId" th:value="${note.id}" />
+                        <div class="form-group">
+                            <label for="timeSeriesId">Related Publishing Configuration ID</label>
+                            <input type="text" class="form-control" id="publishingConfigurationId" name="publishingConfigurationId" />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Related Publishing Configuration</button>
+                    </form>
+                    <br />
+                </div>
                 <table class="table table-striped table-responsive-md">
                     <thead>
                     <th style="width:80%">Name</th>
@@ -148,6 +242,20 @@
                 </table>
 
                 <h3>Related Resource Loader Plugins</h3>
+                <div id="noteResourceLoaderPluginFormDivLink" style="float:right">
+                    <a onclick="$('#noteResourceLoaderPluginFormDiv').toggle();" class="fa fa-plus" title="Add Related Ressource Loader Plugin"></a>
+                </div>
+                <div id="noteResourceLoaderPluginFormDiv" style="display:none">
+                    <form th:action="@{/admin/note/relationadd}" method="post">
+                        <input type="hidden" name="noteId" th:value="${note.id}" />
+                        <div class="form-group">
+                            <label for="timeSeriesId">Related Resource Loader Plugin ID</label>
+                            <input type="text" class="form-control" id="resourceLoaderPluginConfigurationId" name="resourceLoaderPluginConfigurationId" />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Related Resource Loader Plugin</button>
+                    </form>
+                    <br />
+                </div>
                 <table class="table table-striped table-responsive-md">
                     <thead>
                     <th style="width:80%">Name</th>

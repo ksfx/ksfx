@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Notes</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/admin/}">Admin</a></li>
+        <li class="breadcrumb-item">Import Data</li>
+        <li class="breadcrumb-item active"><a th:href="@{/dataexplorer/{timeSeriesId}(timeSeriesId=${timeSeries.id})}">Time Series: [[${timeSeries.name}]]</a></li>
+    </ol>
+</nav>
+
+<div class="container">
+    <div class="list-group">
+        <div class="list-group-item">
+<h3>1. Upload CSV File</h3>
+    <form enctype="multipart/form-data" th:action="@{/admin/timeseriesimport}" method="post">
+        <input type="hidden" name="timeSeriesId" th:value="${timeSeries.id}" />
+        <div class="form-group">
+            <label for="uploadFile">File</label>
+            <input class="form-control" type="file" name="uploadFile" id="uploadFile" />
+        </div>
+        <div class="form-group">
+            <label for="csvSeparator">CSV Separator</label>
+            <input type="text" class="form-control" id="csvSeparator" name="csvSeparator" value=";"/>
+        </div>
+        <div class="form-group">
+            <label for="csvQuoteChar">CSV Quote Char</label>
+            <input type="text" class="form-control" id="csvQuoteChar" name="csvQuoteChar"/>
+        </div>
+        <button type="submit" class="btn btn-primary">Upload File</button>
+    </form>
+
+
+<th:block th:if="${dataImportModel != null }">
+    <h3>2. Configure Import</h3>
+    <div id="import-holder">
+        <div class="import-lines">
+            <th:block th:if="${dataImportModel.getImportedLines() != null}">
+                <form id="importForm" th:object="${dataImportModel}" th:action="@{/admin/timeseriesimportexecute}" method="post">
+                    <input type="hidden" th:field="*{timeSeriesId}" th:value="${timeSeries.id}" />
+
+                    <div class="form-group">
+                        <label for="dateFormat">Date Format</label>
+                        <input type="text" id="dateFormat" class="form-control" th:field="*{dateFormat}" placeholder="(E.g. yyyy-MM-dd)"/>
+                    </div>
+
+                    <table class="table table-striped table-responsive-md">
+                        <tr>
+                            <th class="t-ignore-line">Ignore Line</th>
+                            <th:block th:each="i, statIndex: ${#numbers.sequence(0, dataImportModel.getMaxRowLength() - 1)}">
+                                <th>
+                                    <select class="form-control" th:field="*{mappedFields[__${statIndex.index}__].id}">
+                                        <option th:value="0" text=""></option>
+                                        <option th:each="importableField : ${allImportableFields}"
+                                                th:value="${importableField.id}"
+                                                th:text="${importableField.name}">
+                                            Importable Fields
+                                        </option>
+                                    </select>
+                                </th>
+                            </th:block>
+                        </tr>
+
+                        <th:block th:each="importedLine, statIndex : ${dataImportModel.importedLines}">
+                            <tr>
+                                <td>
+                                    <input type="checkbox" th:field="*{ignoredLines}" th:value="${statIndex.index}" />
+                                </td>
+                                <th:block th:utext="${dataImportModel.getHtmlForImportedLine(importedLine)}"></th:block>
+                            </tr>
+                        </th:block>
+                    </table>
+                        <button type="submit" class="btn btn-primary">Import Data</button>
+                </form>
+            </th:block>
+        </div>
+    </div>
+</th:block>
+
+<th:block th:if="${importLog != null}">
+    <h3>3. Import Log</h3>
+    <pre th:utext="${importLog}">
+
+    </pre>
+</th:block>
+        </div>
+    </div>
+</div>
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

@@ -6,35 +6,35 @@
 <body>
 <h1 th:inline="text">Notes for: [[${name}]]</h1>
 
-<div class="layout-grid-col-holder">
-
-    <div class="layout-grid-col2">
         <div class="actions">
-            <a target="_parent" href="${getCreateNewNoteLink()}" class="glyphicon glyphicon-plus" alt="Add Note For Entity" title="Add Note For Entity"></a>
+            <a target="_parent" th:href="@{/admin/note/createnoteforentity(${entityType} + 'Id'=${entityId})}" class="fa fa-plus" alt="Add Note For Entity" title="Add Note For Entity"></a>
         </div>
-        <div th:if="${mainNotes != null}">
-            <t:loop source="mainNotes" value="note">
-                <h3>${note.title}</h3>
-                <div><pre><t:outputraw value="note.content" /></pre></div>
-                <t:pagelink target="_parent" page="admin/note/managenote" context="note.id" class="glyphicon glyphicon-eye-open" alt="View Note" title="View Note"></t:pagelink>
+        <th:block th:if="${mainNotes != null}">
+            <div th:each="note : ${mainNotes}">
+                <h3 th:inline="text">[[${note.title}]]</h3>
+                <div><pre th:utext="${note.content}"></pre></div>
+                <a target="_parent" th:href="@{/admin/note/noteedit/{id}(id=${note.id})}" class="fa fa-pencil" alt="Edit Note" title="Edit Note"></a>
                 <hr />
-            </t:loop>
-            <t:parameter name="else">
-                No notes available!
-            </t:parameter>
-        </div>
+            </div>
+        </th:block>
 
-        <t:if test="notes">
+        <th:block th:if="${relatedNotes != null}">
             <h2>Further Related Notes</h2>
-            <t:grid source="notes" row="note" exclude="content,created,lastUpdated,id">
-                <t:parameter name="titleCell">
-                    <t:pagelink target="_parent" page="admin/note/managenote" context="note.id">${note.title}</t:pagelink>
-                </t:parameter>
-            </t:grid>
-        </t:if>
+            <table class="table table-striped table-responsive-md" style="width:100%">
+                <thead>
+                <tr>
+                    <th>Title</th>
+                </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="note : ${relatedNotes}">
+                        <td>
+                        <a target="_parent" th:href="@{/admin/note/noteedit/{id}(id=${note.id})}" th:inline="text">[[${note.title}]]</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </th:block>
 
-    </div>
-
-</div>
 </body>
 </html>
