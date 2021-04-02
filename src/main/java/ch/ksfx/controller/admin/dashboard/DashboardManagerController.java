@@ -1,5 +1,6 @@
 package ch.ksfx.controller.admin.dashboard;
 
+import ch.ksfx.controller.dashboard.DashboardController;
 import ch.ksfx.dao.GenericDataStoreDAO;
 import ch.ksfx.model.GenericDataStore;
 import org.springframework.stereotype.Controller;
@@ -13,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/admin/dashboardmanager")
 public class DashboardManagerController
 {
-    private final String DASHBOARD_CONTENT_KEY = "DASHBOARD_CONTENT";
     private GenericDataStoreDAO genericDataStoreDAO;
 
     public DashboardManagerController(GenericDataStoreDAO genericDataStoreDAO)
@@ -24,10 +24,10 @@ public class DashboardManagerController
     @GetMapping("/")
     public String editDashboardContent(Model model)
     {
-        GenericDataStore genericDataStore = genericDataStoreDAO.getGenericDataStoreForKey(DASHBOARD_CONTENT_KEY);
+        GenericDataStore genericDataStore = genericDataStoreDAO.getGenericDataStoreForKey(DashboardController.DASHBOARD_CONTENT_KEY);
 
         if (genericDataStore == null) {
-            genericDataStore = new GenericDataStore(DASHBOARD_CONTENT_KEY, "");
+            genericDataStore = new GenericDataStore(DashboardController.DASHBOARD_CONTENT_KEY, "");
         }
 
         model.addAttribute("dashboardContent", genericDataStore.getDataValue());
@@ -38,10 +38,10 @@ public class DashboardManagerController
     @PostMapping("/")
     public String editDashboardContent(@RequestParam(value = "content", required = true) String content)
     {
-        GenericDataStore genericDataStore = genericDataStoreDAO.getGenericDataStoreForKey(DASHBOARD_CONTENT_KEY);
+        GenericDataStore genericDataStore = genericDataStoreDAO.getGenericDataStoreForKey(DashboardController.DASHBOARD_CONTENT_KEY);
 
         if (genericDataStore == null) {
-            genericDataStore = new GenericDataStore(DASHBOARD_CONTENT_KEY, "");
+            genericDataStore = new GenericDataStore(DashboardController.DASHBOARD_CONTENT_KEY, "");
         }
 
         genericDataStore.setDataValue(content);

@@ -1,5 +1,8 @@
 package ch.ksfx.controller.dashboard;
 
+import ch.ksfx.controller.HomeController;
+import ch.ksfx.dao.GenericDataStoreDAO;
+import ch.ksfx.model.GenericDataStore;
 import ch.ksfx.services.lucene.IndexService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -9,17 +12,25 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/dashboard")
 public class DashboardController
 {
-    private IndexService indexService;
+    public static final String DASHBOARD_CONTENT_KEY = "DASHBOARD_CONTENT";
 
-    public DashboardController(IndexService indexService)
+    private GenericDataStoreDAO genericDataStoreDAO;
+
+    public DashboardController(GenericDataStoreDAO genericDataStoreDAO)
     {
-        this.indexService = indexService;
+        this.genericDataStoreDAO = genericDataStoreDAO;
     }
 
     @RequestMapping("/")
     public String index(Model model)
     {
-        model.addAttribute("indexService", indexService);
+        GenericDataStore genericDataStore = genericDataStoreDAO.getGenericDataStoreForKey(DashboardController.DASHBOARD_CONTENT_KEY);
+
+        if (genericDataStore == null) {
+            genericDataStore = new GenericDataStore(DashboardController.DASHBOARD_CONTENT_KEY, "");
+        }
+
+        model.addAttribute("dashboardContent", genericDataStore.getDataValue());
 
         return "dashboard/dashboard";
     }

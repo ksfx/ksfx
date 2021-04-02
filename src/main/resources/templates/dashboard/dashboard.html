@@ -11,7 +11,7 @@
         </ol>
     </nav>
 
-    Index Queue Size: <span th:inline="text">[[${indexService.currentQueueSize}]]</span>
+    <th:block th:utext="${dashboardContent}"></th:block>
 
     <footer th:replace="layout :: site-footer" />
 </body>
