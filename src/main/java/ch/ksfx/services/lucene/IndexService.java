@@ -20,8 +20,10 @@ package ch.ksfx.services.lucene;
 import ch.ksfx.dao.ObservationDAO;
 import ch.ksfx.dao.TimeSeriesDAO;
 import ch.ksfx.model.TimeSeries;
+import ch.ksfx.services.configurationdatabase.LiquibaseProvider;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import ch.ksfx.services.SystemEnvironment;
+import liquibase.integration.spring.SpringLiquibase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -43,7 +45,7 @@ public class IndexService
     private Logger logger = LoggerFactory.getLogger(IndexService.class);
 
 
-	public IndexService(SystemEnvironment systemEnvironment, @Lazy ObservationDAO observationDAO, SystemLogger systemLogger, TimeSeriesDAO timeSeriesDAO)
+	public IndexService(SpringLiquibase springLiquibase, SystemEnvironment systemEnvironment, @Lazy ObservationDAO observationDAO, SystemLogger systemLogger, TimeSeriesDAO timeSeriesDAO)
 	{
         this.systemEnvironment = systemEnvironment;
         this.observationDAO = observationDAO;

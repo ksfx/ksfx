@@ -18,7 +18,9 @@
 package ch.ksfx.services.systemlogger;
 
 import ch.ksfx.model.logger.LogMessage;
+import ch.ksfx.services.configurationdatabase.LiquibaseProvider;
 import ch.ksfx.util.StacktraceUtil;
+import liquibase.integration.spring.SpringLiquibase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -31,7 +33,7 @@ public class SystemLogger
     private AsynchronousLogWriter asynchronousLogWriter;
     private Logger logger = LoggerFactory.getLogger(SystemLogger.class);
 
-    public SystemLogger()
+    public SystemLogger(SpringLiquibase springLiquibase)
     {
         this.asynchronousLogWriter = new AsynchronousLogWriter();
 

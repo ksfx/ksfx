@@ -19,6 +19,7 @@ package ch.ksfx.services.lucene;
 
 import ch.ksfx.dao.ObservationDAO;
 import ch.ksfx.model.Observation;
+import ch.ksfx.services.configurationdatabase.LiquibaseProvider;
 import ch.ksfx.util.DateFormatUtil;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import ch.ksfx.services.SystemEnvironment;

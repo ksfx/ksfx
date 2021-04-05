@@ -6,6 +6,7 @@
    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd
    http://www.liquibase.org/xml/ns/dbchangelog
    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd">
+    <include file="20111110112922_create_schema.sql" relativeToChangelogFile="true"/>
     <changeSet author="kstarosta" id="201801042053">
         <createTable tableName="ksfxuser">
             <column autoIncrement="true" name="id" type="BIGINT">
