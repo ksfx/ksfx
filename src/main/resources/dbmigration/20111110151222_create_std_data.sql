@@ -1,3 +1,6 @@
+-- liquibase formatted sql
+-- changeset kstarosta:20111110151222
+
 INSERT INTO `url_fragment_finder` (`id`,`name`) VALUES (1,'RegEx');
 INSERT INTO `url_fragment_finder` (`id`,`name`) VALUES (2,'XPath');
 INSERT INTO `url_fragment_finder` (`id`,`name`) VALUES (3,'String');

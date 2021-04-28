@@ -25,6 +25,7 @@
 	</properties>
 
 	<dependencies>
+
 		<!-- Spring Boot Dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -141,6 +142,11 @@
 			<version>8.8.1</version>
 			<!-- <version>5.3.0</version> -->
 		</dependency>
+		<dependency>
+			<groupId>javax.mail</groupId>
+			<artifactId>mail</artifactId>
+			<version>1.4.4</version>
+		</dependency>
 
 		<!-- Bean validation only works with Validator on CP -->
 		<dependency>
@@ -190,6 +196,22 @@
 			<groupId>net.sf.opencsv</groupId>
 			<artifactId>opencsv</artifactId>
 			<version>1.8</version>
+		</dependency>
+		<dependency>
+			<groupId>com.syncthemall</groupId>
+			<artifactId>boilerpipe</artifactId>
+			<version>1.2.2</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>xml-apis</artifactId>
+					<groupId>xml-apis</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency> <!-- Only needed because of xml-apis dependencies of boilerpipe... -->
+			<groupId>xml-apis</groupId>
+			<artifactId>xml-apis</artifactId>
+			<version>1.4.01</version>
 		</dependency>
 		<!-- End Dependencies for Publishing Strategies, Activities, Spidering etc. -->
 

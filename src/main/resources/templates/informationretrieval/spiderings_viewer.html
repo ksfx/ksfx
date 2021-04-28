@@ -43,7 +43,7 @@
                 </span>
             </td>
             <td>
-                <a th:href="@{/activity/activityedit/{id}(id=${spidering.id})}" class="fa fa-trash-o" alt="Delete" title="Delete"></a>
+                <a th:attr="data-href=@{/informationretrieval/spideringdeletespidering/{id}(id=${spidering.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a>
             </td>
         </tr>
         </tbody>

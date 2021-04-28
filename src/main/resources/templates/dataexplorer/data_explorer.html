@@ -8,11 +8,12 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item">Data Explorer</li>
-        <li class="breadcrumb-item active" th:inline="text">[[${timeSeries.name}]] &nbsp;&nbsp;<a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/noteviewer/(timeSeriesId=${timeSeries.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-info"></a></li>
+        <li class="breadcrumb-item active" th:inline="text" th:if="${timeSeries != null}">[[${timeSeries.name}]] &nbsp;&nbsp;<a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/noteviewer/(timeSeriesId=${timeSeries.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-info"></a></li>
     </ol>
 </nav>
 
 <div class="container-fluid">
+    <th:block th:if="${timeSeries != null}">
     <div class="row">
         <div class="col" style="max-width:500px;">
             <div style="width:450px;overflow:hidden">
@@ -55,6 +56,12 @@
             </div>
         </div>
     </div>
+    </th:block>
+    <th:block th:unless="${timeSeries != null}">
+        <div>
+            You have no time series yet, you can create one <a th:href="@{/admin/timeseries}">here</a>
+        </div>
+    </th:block>
 </div>
 
 <script>

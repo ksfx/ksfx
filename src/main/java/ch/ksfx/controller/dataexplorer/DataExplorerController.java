@@ -51,7 +51,11 @@ public class DataExplorerController
         String seriesNameSearch = (String) request.getSession().getAttribute("seriesNameSearch");
 
         if (timeSeriesId == null) {
-            timeSeriesId = 1;
+            TimeSeries ts = timeSeriesDAO.getFirstTimeSeriesInDatabase();
+
+            if (ts != null) {
+                timeSeriesId = ts.getId().intValue();
+            }
         }
 
         if (openNodes == null) {
@@ -70,12 +74,16 @@ public class DataExplorerController
             seriesNameSearch = "";
         }
 
-        Page<Observation> observationsPage = observationDAO.getObservationsForPageableAndTimeSSeriesId(pageable, timeSeriesId);
-
         model.addAttribute("seriesNameSearch", seriesNameSearch);
         model.addAttribute("searchActive", searchActive);
-        model.addAttribute("timeSeries", timeSeriesDAO.getTimeSeriesForId(timeSeriesId.longValue()));
-        model.addAttribute("observationsPage", observationsPage);
+
+        if (timeSeriesId != null) {
+            model.addAttribute("timeSeries", timeSeriesDAO.getTimeSeriesForId(timeSeriesId.longValue()));
+
+            Page<Observation> observationsPage = observationDAO.getObservationsForPageableAndTimeSSeriesId(pageable, timeSeriesId);
+            model.addAttribute("observationsPage", observationsPage);
+        }
+
         model.addAttribute("browser", seriesBrowser.getMarkupForNode(openNodes, filteredSeriesNames));
         model.addAttribute("dateFormatUtil", new DateFormatUtil());
 

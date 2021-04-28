@@ -27,7 +27,7 @@ import java.util.List;
 public interface ObservationDAO
 {
 	public Observation getFirstObservationForTimeSeriesId(Integer timeSeriesId);
-//    public Observation getLastObservationForTimeSeriesId(Integer timeSeriesId);
+    public Observation getLastObservationForTimeSeriesId(Integer timeSeriesId);
     public void saveObservation(Observation observation);
     public Observation getObservationForTimeSeriesIdObservationTimeAndSourceId(Integer timeSeriesId, Date observationTime, String sourceId);
 //    public List<Observation> getObservations();

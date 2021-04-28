@@ -126,17 +126,18 @@ public class CassandraObservationDAO implements ObservationDAO
         return null;
     }
 
-    /*
     @Override
     public Observation getLastObservationForTimeSeriesId(Integer timeSeriesId)
     {
         try {
-            Select select = QueryBuilder.selectFrom("observation_store", "observation").all().whereColumn("time_series_id").isEqualTo(QueryBuilder.bindMarker()).limit(1);
+            Select select = QueryBuilder.selectFrom("observation_store", "observation").all().whereColumn("time_series_id").isEqualTo(QueryBuilder.bindMarker());
+            select = select.orderBy("observation_time", ClusteringOrder.DESC);
+            select = select.limit(1);
+
             PreparedStatement statement = simpleSession.prepare(select.build());
+            ResultSet results = simpleSession.execute(statement.bind(timeSeriesId));
 
-            ResultSet resultSet = simpleSession.execute(statement.bind(timeSeriesId));
-
-            List<Row> rows = resultSet.all();
+            List<Row> rows = results.all();
 
             if (rows != null && rows.size() > 0) {
                 Observation o = new Observation();
@@ -158,7 +159,6 @@ public class CassandraObservationDAO implements ObservationDAO
 
         return null;
     }
-     */
 
     @Override
     public Observation getObservationForTimeSeriesIdObservationTimeAndSourceId(Integer timeSeriesId, Date observationTime, String sourceId)

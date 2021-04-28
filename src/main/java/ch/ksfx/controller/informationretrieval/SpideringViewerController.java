@@ -78,4 +78,14 @@ public class SpideringViewerController
 
         return "redirect:/informationretrieval/spideringsviewer/" + spidering.getSpideringConfiguration().getId();
     }
+
+    @GetMapping("/spideringdeletespidering/{spideringId}")
+    public String deleteSpidering(@PathVariable(value = "spideringId", required = true) Long spideringId)
+    {
+        Spidering spidering = spideringDAO.getSpideringForId(spideringId);
+
+        spideringDAO.delete(spidering);
+
+        return "redirect:/informationretrieval/spideringsviewer/" + spidering.getSpideringConfiguration().getId();
+    }
 }
