@@ -178,6 +178,17 @@
 			</exclusions>
 		</dependency>
 		<dependency>
+			<groupId>commons-net</groupId>
+			<artifactId>commons-net</artifactId>
+			<version>3.5</version>
+			<exclusions>
+				<exclusion>
+					<groupId>commons-logging</groupId>
+					<artifactId>commons-logging</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
 			<groupId>org.jfree</groupId>
 			<artifactId>jfreechart</artifactId>
 			<version>1.0.19</version>
@@ -207,6 +218,11 @@
 					<groupId>xml-apis</groupId>
 				</exclusion>
 			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.github.jbytecode</groupId>
+			<artifactId>RCaller</artifactId>
+			<version>3.0.2</version>
 		</dependency>
 		<dependency> <!-- Only needed because of xml-apis dependencies of boilerpipe... -->
 			<groupId>xml-apis</groupId>

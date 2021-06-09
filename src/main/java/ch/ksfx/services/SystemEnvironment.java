@@ -29,9 +29,9 @@ import java.io.File;
 @Service
 public class SystemEnvironment
 {
-    public static final String HOME_DIRECTORY = "ksfxSpringHome";
+    public static final String HOME_DIRECTORY = "ksfxHome";
 
-    public static final String DEFAULT_NAME = "ksfxSpring";
+    public static final String DEFAULT_NAME = "ksfx";
 
     public static final String FILE_SEPARATOR = System.getProperty("file.separator");
 
