@@ -8,6 +8,7 @@ import ch.ksfx.model.publishing.PublishingResource;
 import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.util.StacktraceUtil;
 import groovy.lang.GroovyClassLoader;
+import org.quartz.CronExpression;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
@@ -125,6 +126,14 @@ public class PublishingController
 
         if (publishingConfigurationOld != null && publishingConfigurationOld.getLockedForEditing() == true && publishingConfiguration.getLockedForEditing() == true) {
             bindingResult.rejectValue("lockedForEditing","publishingConfiguration.lockedForEditing","This publishing configuration is locked, please unlock it first!");
+        }
+
+        if (publishingConfiguration.getCronSchedule() != null && !publishingConfiguration.getCronSchedule().isEmpty()) {
+            try {
+                CronExpression cronExpression = new CronExpression(publishingConfiguration.getCronSchedule());
+            } catch (Exception e) {
+                bindingResult.rejectValue("cronSchedule", "publishingConfiguration.cronSchedule", "Cron Schedule not valid");
+            }
         }
 
         try {

@@ -37,6 +37,14 @@
                     <label for="embedInLayout" class="form-check-label">Embed in Layout</label>
                 </div>
                 <div class="form-group">
+                    <label for="layoutIntegration">Layout Integration</label>
+                    <select class="form-control" id="layoutIntegration" th:field="*{layoutIntegration}">
+                        <option th:value="NONE" text="">NONE</option>
+                        <option th:value="publishing_viewer_layout_integration_full.html">FULL (publishing_viewer_layout_integration_full.html)</option>
+                        <option th:value="publishing_viewer_layout_integration_minimal.html">MINIMAL [CSS/JS] (publishing_viewer_layout_integration_minimal.html)</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label for="publishingStrategy">Strategy</label>
                     <div class="text-danger" th:if="${#fields.hasErrors('publishingStrategy')}" th:errors="*{publishingStrategy}">Groovy code not valid</div>
                     <textarea class="form-control" id="publishingStrategy" th:field="*{publishingStrategy}" style="height:600px" />

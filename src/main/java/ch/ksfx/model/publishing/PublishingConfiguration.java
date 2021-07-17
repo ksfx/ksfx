@@ -38,6 +38,9 @@ public class PublishingConfiguration
     private boolean lockedForEditing;
     private boolean lockedForCacheUpdate;
     private String publishingVisibility;
+    private boolean allowInternalLoad;
+	private String cronSchedule;
+	private boolean cronScheduleEnabled;
     private List<PublishingConfigurationCacheData> publishingConfigurationCacheDatas;
 
     @Id
@@ -173,7 +176,35 @@ public class PublishingConfiguration
     {
         this.publishingVisibility = publishingVisibility;
     }
-    
+
+	public boolean getAllowInternalLoad() {
+		return allowInternalLoad;
+	}
+
+	public void setAllowInternalLoad(boolean allowInternalLoad) {
+		this.allowInternalLoad = allowInternalLoad;
+	}
+
+	public String getCronSchedule()
+	{
+		return cronSchedule;
+	}
+
+	public void setCronSchedule(String cronSchedule)
+	{
+		this.cronSchedule = cronSchedule;
+	}
+
+	public boolean getCronScheduleEnabled()
+	{
+		return cronScheduleEnabled;
+	}
+
+	public void setCronScheduleEnabled(boolean cronScheduleEnabled)
+	{
+		this.cronScheduleEnabled = cronScheduleEnabled;
+	}
+
 	@OneToMany(mappedBy = "publishingConfiguration")
 	public List<PublishingConfigurationCacheData> getPublishingConfigurationCacheDatas()
 	{

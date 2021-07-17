@@ -17,6 +17,7 @@
         <div class="list-group-item">
             <form id="activityForm" action="#" th:action="@{/publishing/publishingconfigurationedit}" th:object="${publishingConfiguration}" method="post">
                 <input type="hidden" th:field="*{id}" />
+                <input type="hidden" th:field="*{cronScheduleEnabled}" />
                 <div class="form-group">
                     <label for="name">Name</label>
                     <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
@@ -26,6 +27,11 @@
                     <label for="uri">URI</label>
                     <div class="text-danger" th:if="${#fields.hasErrors('uri')}" th:errors="*{uri}">URI not valid</div>
                     <input type="text" class="form-control" id="uri" th:field="*{uri}" />
+                </div>
+                <div class="form-group">
+                    <label class="control-label" for="cronSchedule">Cron Schedule</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('cronSchedule')}" th:errors="*{cronSchedule}">Cron Schedule not valid</div>
+                    <input type="text" class="form-control" id="cronSchedule" th:field="*{cronSchedule}" />
                 </div>
                 <div class="form-group">
                     <label for="publishingCategory">Category</label>
@@ -48,6 +54,7 @@
                     <select class="form-control" id="layoutIntegration" th:field="*{layoutIntegration}">
                         <option th:value="NONE" text="">NONE</option>
                         <option th:value="publishing_viewer_layout_integration_full.html">FULL (publishing_viewer_layout_integration_full.html)</option>
+                        <option th:value="publishing_viewer_layout_integration_minimal.html">MINIMAL [CSS/JS] (publishing_viewer_layout_integration_minimal.html)</option>
                     </select>
                 </div>
                 <div class="form-check">
@@ -61,12 +68,17 @@
                     <label for="lockedForCacheUpdate" class="form-check-label">Locked for Cache Update</label>
                 </div>
                 <div class="form-group">
-                    <label for="publishingVisibility">Category</label>
+                    <label for="publishingVisibility">Publishing Visibility</label>
                     <select class="form-control" id="publishingVisibility" th:field="*{publishingVisibility}">
                         <option value="Intern" text="">Intern</option>
                         <option value="Cache for All" text="">Cache for All</option>
                         <option value="Public" text="">Public</option>
                     </select>
+                </div>
+                <div class="form-check">
+                    <div class="text-danger" th:if="${#fields.hasErrors('allowInternalLoad')}" th:errors="*{allowInternalLoad}">Allow internal load error</div>
+                    <input type="checkbox" class="form-check-input" id="allowInternalLoad" th:field="*{allowInternalLoad}" />
+                    <label for="allowInternalLoad" class="form-check-label">Always Allow Load from 127.0.0.1 (required for background load and scheduled autoload)</label>
                 </div>
                 <div class="form-group">
                     <label for="publishingStrategy">Publishing Strategy</label>

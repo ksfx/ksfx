@@ -69,25 +69,27 @@ public class PublicationViewerController
         }
 
         if (StringUtils.isNumeric(stringContext)) { //Request by ID
-            return preparePublishingConfigurationForId(Long.parseLong(stringContext), fromCache, uriParameters, response, model);
+            return preparePublishingConfigurationForId(Long.parseLong(stringContext), fromCache, uriParameters, request, response, model);
         } else if (!stringContext.contains("-")) { //Request by URL / Name
             PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForUri(stringContext);
-            return preparePublishingConfigurationForId(publishingConfiguration.getId(), fromCache, uriParameters, response, model);
+            return preparePublishingConfigurationForId(publishingConfiguration.getId(), fromCache, uriParameters, request, response, model);
         } else { //Request for additional publishing resource
             String[] parts = StringUtils.split(stringContext, "-");
-            return preparePublishingResourceForConfigurationLocatorAndResourceLocator(parts[0], parts[1], fromCache, uriParameters, response, model);
+            return preparePublishingResourceForConfigurationLocatorAndResourceLocator(parts[0], parts[1], fromCache, uriParameters, request, response, model);
         }
 
         //return "Hello World " + request.getRequestURL() + " --> Path variables: " + pathVariables.toString() + " --> URI Parameters " + uriParameters;
     }
 
-    public Object preparePublishingConfigurationForId(Long publishingConfigurationId, Integer fromCache, List<String> uriParameters, ServletResponse servletResponse, Model model)
+    public Object preparePublishingConfigurationForId(Long publishingConfigurationId, Integer fromCache, List<String> uriParameters, HttpServletRequest request, ServletResponse servletResponse, Model model)
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
 
-        if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
-            if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
-                return "You are not authorized to view this page";
+        if (!publishingConfiguration.getAllowInternalLoad() || !request.getRemoteAddr().equals("127.0.0.1")) {
+            if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
+                if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
+                    return "You are not authorized to view this page";
+                }
             }
         }
 
@@ -156,11 +158,12 @@ public class PublicationViewerController
 
             //byteArrayInputStream.reset();
 
-            if (contentType.contains("text") && publishingConfiguration.getEmbedInLayout()) {
+            if (contentType.contains("text") && publishingConfiguration.getLayoutIntegration() != null && !publishingConfiguration.getLayoutIntegration().trim().isEmpty() && !publishingConfiguration.getLayoutIntegration().equals("NONE")) {
+            //if (contentType.contains("text") && publishingConfiguration.getEmbedInLayout()) {
                 model.addAttribute("content", new String(cacheData));
                 model.addAttribute("pageHeaderTitle", publishingConfiguration.getName());
 
-                return "publishing/publishing_viewer_template";
+                return "publishing/" + publishingConfiguration.getLayoutIntegration();
             } else { // Binary image etc...
                 servletResponse.setContentType(contentType);
 
@@ -194,13 +197,15 @@ public class PublicationViewerController
         }
     }
 
-    public Object preparePublishingResourceForConfigurationLocatorAndResourceLocator(String configurationLocator, String resourceLocator, Integer fromCache, List<String> uriParameters, ServletResponse servletResponse, Model model)
+    public Object preparePublishingResourceForConfigurationLocatorAndResourceLocator(String configurationLocator, String resourceLocator, Integer fromCache, List<String> uriParameters, HttpServletRequest request, ServletResponse servletResponse, Model model)
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForUri(configurationLocator);
 
-        if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
-            if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
-                return "You are not authorized to view this page";
+        if (!publishingConfiguration.getAllowInternalLoad() || !request.getRemoteAddr().equals("127.0.0.1")) {
+            if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
+                if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
+                    return "You are not authorized to view this page";
+                }
             }
         }
 
@@ -268,11 +273,12 @@ public class PublicationViewerController
                 publishingResourceDAO.saveOrUpdatePublishingResourceCacheData(prcd);
             }
 
-            if (contentType.contains("text") && publishingResource.getEmbedInLayout()) {
+            if (contentType.contains("text") && publishingResource.getLayoutIntegration() != null && !publishingResource.getLayoutIntegration().trim().isEmpty() && !publishingResource.getLayoutIntegration().equals("NONE")) {
+//            if (contentType.contains("text") && publishingResource.getEmbedInLayout()) {
                 model.addAttribute("content", new String(cacheData));
                 model.addAttribute("pageHeaderTitle", publishingConfiguration.getName());
 
-                return "publishing/publishing_viewer_template";
+                return "publishing/" + publishingResource.getLayoutIntegration();
             } else { // Binary image etc...
                 servletResponse.setContentType(contentType);
 
