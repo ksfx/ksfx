@@ -34,6 +34,7 @@ public class PublishingConfiguration
 	private byte[] cacheData;
 //	private String contentType;
 	private boolean embedInLayout;
+	private String layoutIntegration;
     private boolean lockedForEditing;
     private boolean lockedForCacheUpdate;
     private String publishingVisibility;
@@ -134,7 +135,15 @@ public class PublishingConfiguration
 	{
 		this.embedInLayout = embedInLayout;
 	}
-    
+
+	public String getLayoutIntegration() {
+		return layoutIntegration;
+	}
+
+	public void setLayoutIntegration(String layoutIntegration) {
+		this.layoutIntegration = layoutIntegration;
+	}
+
 	public boolean getLockedForEditing()
 	{
 		return lockedForEditing;

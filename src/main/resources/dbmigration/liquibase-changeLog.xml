@@ -13,4 +13,5 @@
     <include file="20170911222222_update_importable_field.sql" relativeToChangelogFile="true"/>
     <include file="20180207202222_debug_spidering.sql" relativeToChangelogFile="true"/>
     <include file="20210403205317_new_spring_security_entities_user_role.xml" relativeToChangelogFile="true"/>
+    <include file="20210717140122_publishing_layout_embeddings.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

@@ -47,6 +47,8 @@ public class PublicationViewerController
     {
         List<String> pathVariables = extractPathVariables(request);
 
+        System.out.println("HTTP Servlet Request Remote IP: " + request.getRemoteAddr());
+
         Integer fromCache = 0;
         String stringContext = "";
 
@@ -66,12 +68,12 @@ public class PublicationViewerController
             }
         }
 
-        if (StringUtils.isNumeric(stringContext)) {
+        if (StringUtils.isNumeric(stringContext)) { //Request by ID
             return preparePublishingConfigurationForId(Long.parseLong(stringContext), fromCache, uriParameters, response, model);
-        } else if (!stringContext.contains("-")) {
+        } else if (!stringContext.contains("-")) { //Request by URL / Name
             PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForUri(stringContext);
             return preparePublishingConfigurationForId(publishingConfiguration.getId(), fromCache, uriParameters, response, model);
-        } else {
+        } else { //Request for additional publishing resource
             String[] parts = StringUtils.split(stringContext, "-");
             return preparePublishingResourceForConfigurationLocatorAndResourceLocator(parts[0], parts[1], fromCache, uriParameters, response, model);
         }
@@ -93,11 +95,11 @@ public class PublicationViewerController
             PublishingConfigurationCacheData pccd = publishingConfiguration.getPublishingConfigurationCacheDataForUriParameter(uriParameters.toString());
 
 
-            if (pccd.getContentType().contains("text") && publishingConfiguration.getEmbedInLayout()) {
+            if (pccd.getContentType().contains("text") && publishingConfiguration.getLayoutIntegration() != null && !publishingConfiguration.getLayoutIntegration().trim().isEmpty() && !publishingConfiguration.getLayoutIntegration().equals("NONE")) {
                 model.addAttribute("content", new String(pccd.getCacheData()));
                 model.addAttribute("pageHeaderTitle", publishingConfiguration.getName());
 
-                return "publishing/publishing_viewer_template";
+                return "publishing/" + publishingConfiguration.getLayoutIntegration();
             } else { // Binary image etc...
                 servletResponse.setContentType(pccd.getContentType());
 
@@ -207,11 +209,11 @@ public class PublicationViewerController
         if (fromCache == 1) {
             PublishingResourceCacheData prcd = publishingResource.getPublishingResourceCacheDataForUriParameter(uriParameters.toString());
 
-            if (prcd.getContentType().contains("text") && publishingResource.getEmbedInLayout()) {
+            if (prcd.getContentType().contains("text") && publishingResource.getLayoutIntegration() != null && !publishingResource.getLayoutIntegration().trim().isEmpty() && !publishingResource.getLayoutIntegration().equals("NONE")) {
                 model.addAttribute("content", new String(prcd.getCacheData()));
                 model.addAttribute("pageHeaderTitle", publishingConfiguration.getName());
 
-                return "publishing/publishing_viewer_template";
+                return "publishing/" + publishingResource.getLayoutIntegration();
             } else { // Binary image etc...
 
                 servletResponse.setContentType(prcd.getContentType());

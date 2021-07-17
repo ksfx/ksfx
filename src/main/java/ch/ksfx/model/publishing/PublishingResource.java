@@ -33,6 +33,7 @@ public class PublishingResource
 //	private String contentType;
 	private List<PublishingResourceCacheData> publishingResourceCacheDatas;
     private boolean embedInLayout;
+    private String layoutIntegration;
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -134,6 +135,14 @@ public class PublishingResource
     {
         this.embedInLayout = embedInLayout;
     }
+
+	public String getLayoutIntegration() {
+		return layoutIntegration;
+	}
+
+	public void setLayoutIntegration(String layoutIntegration) {
+		this.layoutIntegration = layoutIntegration;
+	}
 }
  
 
