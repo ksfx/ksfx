@@ -17,14 +17,18 @@
 
 package ch.ksfx.services.scheduler;
 
+import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.dao.spidering.SpideringConfigurationDAO;
 import ch.ksfx.dao.spidering.SpideringDAO;
 import ch.ksfx.model.activity.Activity;
+import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.spidering.SpideringConfiguration;
 import ch.ksfx.services.activity.ActivityInstanceJob;
 import ch.ksfx.services.configurationdatabase.ConfigurationDatabaseProvider;
+import ch.ksfx.services.publishing.PublicationJob;
+import ch.ksfx.services.publishing.PublicationLoaderRunner;
 import ch.ksfx.services.spidering.SpideringJob;
 import ch.ksfx.services.activity.ActivityInstanceRunner;
 import ch.ksfx.services.systemlogger.SystemLogger;
@@ -51,20 +55,26 @@ import static org.quartz.TriggerBuilder.newTrigger;
 public class SchedulerService
 {
     private ConfigurationDatabaseProvider configurationDatabaseProvider;
-    private SpideringConfigurationDAO spideringConfigurationDAO;
+
     private SchedulerFactory schedulerFactory;
     private Scheduler scheduler;
     private SystemLogger systemLogger;
     private SystemEnvironment systemEnvironment;
+
+    private SpideringConfigurationDAO spideringConfigurationDAO;
     private SpideringRunner spideringRunner;
     private SpideringDAO spideringDAO;
+
     private ActivityDAO activityDAO;
     private ActivityInstanceDAO activityInstanceDAO;
     private ActivityInstanceRunner activityInstanceRunner;
 
+    private PublishingConfigurationDAO publishingConfigurationDAO;
+    private PublicationLoaderRunner publicationLoaderRunner;
+
     private Logger logger = LoggerFactory.getLogger(SchedulerService.class);
 
-    public SchedulerService(ConfigurationDatabaseProvider configurationDatabaseProvider, SystemLogger systemLogger, SystemEnvironment systemEnvironment, SpideringRunner spideringRunner, SpideringDAO spideringDAO, SpideringConfigurationDAO spideringConfigurationDAO, ActivityDAO activityDAO, ActivityInstanceDAO activityInstanceDAO, ActivityInstanceRunner activityInstanceRunner)
+    public SchedulerService(ConfigurationDatabaseProvider configurationDatabaseProvider, SystemLogger systemLogger, SystemEnvironment systemEnvironment, SpideringRunner spideringRunner, SpideringDAO spideringDAO, SpideringConfigurationDAO spideringConfigurationDAO, ActivityDAO activityDAO, ActivityInstanceDAO activityInstanceDAO, ActivityInstanceRunner activityInstanceRunner, PublishingConfigurationDAO publishingConfigurationDAO, PublicationLoaderRunner publicationLoaderRunner)
     {
         this.configurationDatabaseProvider = configurationDatabaseProvider;
         this.systemLogger = systemLogger;
@@ -75,6 +85,8 @@ public class SchedulerService
         this.activityDAO = activityDAO;
         this.activityInstanceDAO = activityInstanceDAO;
         this.activityInstanceRunner = activityInstanceRunner;
+        this.publishingConfigurationDAO = publishingConfigurationDAO;
+        this.publicationLoaderRunner = publicationLoaderRunner;
     }
 
     @PostConstruct
@@ -90,6 +102,7 @@ public class SchedulerService
 
             startSpideringSchedules();
             startActivitySchedules();
+            startPublicationSchedules();
 
         } catch (Exception e) {
             systemLogger.logMessage("FATAL","Error while starting scheduler service", e);
@@ -168,7 +181,30 @@ public class SchedulerService
         try {
             scheduler.scheduleJob(spideringJob, trigger);
         } catch (SchedulerException e) {
-            systemLogger.logMessage("FATAL","Could not schedule Spidering job", e);
+            systemLogger.logMessage("FATAL","Could not schedule Actvity job", e);
+        }
+    }
+
+    public void schedulePublication(PublishingConfiguration publishingConfiguration)
+    {
+        JobDetail publicationJob = newJob(PublicationJob.class)
+                .withIdentity("PublishingConfiguration" + publishingConfiguration.getId().toString(), "Publications")
+                .build();
+
+        Trigger trigger = newTrigger()
+                .withIdentity("PublishingConfiguration" + publishingConfiguration.getId().toString() + "Trigger")
+                .withSchedule(cronSchedule(publishingConfiguration.getCronSchedule()))
+                .build();
+
+        publicationJob.getJobDataMap().put("publishingConfigurationDAO", publishingConfigurationDAO);
+        publicationJob.getJobDataMap().put("publishingConfigurationId", publishingConfiguration.getId());
+        publicationJob.getJobDataMap().put("publicationLoaderRunner", publicationLoaderRunner);
+        publicationJob.getJobDataMap().put("systemLogger", systemLogger);
+
+        try {
+            scheduler.scheduleJob(publicationJob, trigger);
+        } catch (SchedulerException e) {
+            systemLogger.logMessage("FATAL","Could not schedule Publication job", e);
         }
     }
 
@@ -225,6 +261,15 @@ public class SchedulerService
 
         for (Activity activity : activities) {
             scheduleActivity(activity);
+        }
+    }
+
+    private void startPublicationSchedules()
+    {
+        List<PublishingConfiguration> publishingConfigurations = publishingConfigurationDAO.getScheduledPublishingConfigurations();
+
+        for (PublishingConfiguration publishingConfiguration : publishingConfigurations) {
+            schedulePublication(publishingConfiguration);
         }
     }
 }

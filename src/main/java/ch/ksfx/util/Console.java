@@ -28,8 +28,7 @@ import ch.ksfx.model.activity.ActivityInstance;
 public class Console
 {
         private static final ThreadLocal<Long> publishingConfigurationId = new ThreadLocal<Long>();
-        private static final ThreadLocal<Long> activityInstanceId = new
-ThreadLocal<Long>();
+        private static final ThreadLocal<Long> activityInstanceId = new ThreadLocal<Long>();
        
         public static void startConsole(PublishingConfiguration publishingConfiguration)
         {

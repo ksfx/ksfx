@@ -40,6 +40,7 @@ public interface PublishingConfigurationDAO
     public void deletePublishingCategory(PublishingCategory publishingCategory);
     public void appendConsole(Long publishingConfigurationId, String dataToAppend);
     public PublishingConfiguration getPublishingConfigurationForUri(String uri);
+    public List<PublishingConfiguration> getScheduledPublishingConfigurations();
     
    	public void saveOrUpdatePublishingConfigurationCacheData(PublishingConfigurationCacheData publishingConfigurationCacheData);
 	public PublishingConfigurationCacheData getPublishingConfigurationCacheDataForPublishingConfigurationAndUriParameter(PublishingConfiguration publishingConfiguration, String uriParameter);

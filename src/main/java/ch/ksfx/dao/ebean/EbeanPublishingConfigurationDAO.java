@@ -18,6 +18,7 @@
 package ch.ksfx.dao.ebean;
 
 import ch.ksfx.dao.PublishingConfigurationDAO;
+import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.publishing.PublishingCategory;
 import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.note.NotePublishingConfiguration;
@@ -159,8 +160,13 @@ public class EbeanPublishingConfigurationDAO implements PublishingConfigurationD
     {
 		return Ebean.find(PublishingConfiguration.class).where().eq("uri", uri).findUnique();
     }
-    
-    	
+
+    @Override
+    public List<PublishingConfiguration> getScheduledPublishingConfigurations()
+    {
+        return Ebean.find(PublishingConfiguration.class).where().eq("cronScheduleEnabled",true).findList();
+    }
+
 	@Override
 	public void saveOrUpdatePublishingConfigurationCacheData(PublishingConfigurationCacheData publishingConfigurationCacheData)
 	{

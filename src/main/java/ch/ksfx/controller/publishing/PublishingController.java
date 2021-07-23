@@ -3,12 +3,18 @@ package ch.ksfx.controller.publishing;
 import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
 import ch.ksfx.dao.publishing.PublishingSharedDataDAO;
+import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingResource;
+import ch.ksfx.model.spidering.Spidering;
 import ch.ksfx.services.ServiceProvider;
+import ch.ksfx.services.publishing.PublicationLoad;
+import ch.ksfx.services.publishing.PublicationLoaderRunner;
+import ch.ksfx.services.scheduler.SchedulerService;
 import ch.ksfx.util.StacktraceUtil;
 import groovy.lang.GroovyClassLoader;
 import org.quartz.CronExpression;
+import org.quartz.SchedulerException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
@@ -22,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
+import java.util.Date;
 import java.util.stream.Collectors;
 
 @Controller
@@ -32,13 +39,17 @@ public class PublishingController
     private PublishingResourceDAO publishingResourceDAO;
     private PublishingSharedDataDAO publishingSharedDataDAO;
     private ServiceProvider serviceProvider;
+    private PublicationLoaderRunner publicationLoaderRunner;
+    private SchedulerService schedulerService;
 
-    public PublishingController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO, PublishingSharedDataDAO publishingSharedDataDAO, ServiceProvider serviceProvider)
+    public PublishingController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO, PublishingSharedDataDAO publishingSharedDataDAO, ServiceProvider serviceProvider, PublicationLoaderRunner publicationLoaderRunner, SchedulerService schedulerService)
     {
         this.publishingConfigurationDAO = publishingConfigurationDAO;
         this.publishingResourceDAO = publishingResourceDAO;
         this.publishingSharedDataDAO = publishingSharedDataDAO;
         this.serviceProvider = serviceProvider;
+        this.publicationLoaderRunner = publicationLoaderRunner;
+        this.schedulerService = schedulerService;
     }
 
     @GetMapping("/")
@@ -46,9 +57,20 @@ public class PublishingController
     {
         Page<PublishingConfiguration> publishingConfigurationsPage = publishingConfigurationDAO.getPublishingConfigutationsForPageableAndPublishingCategory(pageable, null);
 
+        model.addAttribute("publicationLoaderRunner", publicationLoaderRunner);
         model.addAttribute("publishingConfigurationsPage", publishingConfigurationsPage);
 
         return "publishing/publishing";
+    }
+
+    @GetMapping({"/publishingconfigurationgeneratepublication/{id}"})
+    public String publishingConfigurationGeneratePublication(@PathVariable(value = "id", required = true) Long publishingConfigurationId)
+    {
+        PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+
+        publicationLoaderRunner.loadPublication(publishingConfiguration);
+
+        return "redirect:/publishing/";
     }
 
     @GetMapping({"/publishingconfigurationedit", "/publishingconfigurationedit/{id}"})
@@ -243,5 +265,31 @@ public class PublishingController
         publishingResourceDAO.deletePublishingResource(publishingResource);
 
         return "redirect:/publishing/publishingconfigurationedit/" + publishingResource.getPublishingConfiguration().getId();
+    }
+
+    @GetMapping({"/publishingconfigurationschedule/{id}"})
+    public String publishingConfigurationSchedule(@PathVariable(value = "id", required = true) Long publishingConfigurationId)
+    {
+        PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+        publishingConfiguration.setCronScheduleEnabled(true);
+
+        publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
+
+        schedulerService.schedulePublication(publishingConfiguration);
+
+        return "redirect:/publishing/";
+    }
+
+    @GetMapping({"/publishingconfigurationdeleteschedule/{id}"})
+    public String publishingConfigurationDeleteSchedule(@PathVariable(value = "id", required = true) Long publishingConfigurationId) throws SchedulerException
+    {
+        PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+        publishingConfiguration.setCronScheduleEnabled(false);
+
+        schedulerService.deleteJob("PublishingConfiguration" + publishingConfiguration.getId().toString(),"Publications");
+
+        publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
+
+        return "redirect:/publishing/";
     }
 }

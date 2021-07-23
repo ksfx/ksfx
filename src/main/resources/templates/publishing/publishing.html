@@ -16,7 +16,7 @@
     <div style="float:right"><a th:href="@{/publishing/publishingconfigurationedit}" class="fa fa-plus fa-2x" title="Add Publishing Configuration" alt="Add Publishing Configuration"></a>&nbsp;&nbsp;&nbsp;</div>
     <table class="table table-striped table-responsive-md">
         <thead>
-        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','info','generate','generatefromcache','console','edit','delete'} },sortables=${ {'id','name'} },names=${ {'ID','Name','Info','Generate Report','Generate Report From Cache','Console','Edit','Delete'} },page=${publishingConfigurationsPage},path='/publishing')" />
+        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','info','generate','generatefromcache','generateinbackground','console','schedule','edit','delete'} },sortables=${ {'id','name'} },names=${ {'ID','Name','Info','Generate Report','Generate Report From Cache','Generate in BG','Console','Schedule','Edit','Delete'} },page=${publishingConfigurationsPage},path='/publishing')" />
         </thead>
         <tbody>
         <tr th:each="publishingConfiguration : ${publishingConfigurationsPage.content}">
@@ -25,7 +25,19 @@
             <td><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/noteviewer/(publishingConfigurationId=${publishingConfiguration.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-info"></a></td>
             <td><a th:href="@{/publishing/publicationviewer/0/{uri}(uri=${publishingConfiguration.uri})}" class="fa fa-play" alt="Generate Publication" title="Generate Publication"></a></td>
             <td><a th:href="@{/publishing/publicationviewer/1/{uri}(uri=${publishingConfiguration.uri})}" class="fa fa-cloud-download" alt="View From Cache" title="View From Cache"></a></td>
+            <td>
+                <th:block th:if="!${publishingConfiguration.lockedForCacheUpdate}">
+                    <a th:if="!${publicationLoaderRunner.isPublicationRunning(publishingConfiguration)}" th:href="@{/publishing/publishingconfigurationgeneratepublication/{id}(id=${publishingConfiguration.id})}" class="fa fa-play" alt="Generate Publication in Background" title="Generate Publication in Background"></a>
+                    <span th:unless="!${publicationLoaderRunner.isPublicationRunning(publishingConfiguration)}" th:inline="text" class="fa fa-spinner fa-pulse fa-2x fa-fw"></span>
+                </th:block>
+            </td>
             <td><a href="#" onclick="$('#console-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/console/publishingConfiguration/{id}(id=${publishingConfiguration.id})}" data-toggle="modal" data-target="#consoleModal" class="fa fa-terminal"></a></td>
+            <td>
+                <th:block th:if="${!#strings.isEmpty(publishingConfiguration.cronSchedule)}">
+                    <span th:if="${publishingConfiguration.cronScheduleEnabled}"><a th:href="@{/publishing/publishingconfigurationdeleteschedule/{id}(id=${publishingConfiguration.id})}" class="fa fa-stop" alt="Disable Scheduling" title="Disable Scheduling"></a></span>
+                    <span th:unless="${publishingConfiguration.cronScheduleEnabled}"><a th:href="@{/publishing/publishingconfigurationschedule/{id}(id=${publishingConfiguration.id})}" class="fa fa-clock-o" alt="Enable Scheduling" title="Enable Scheduling"></a></span>
+                </th:block>
+            </td>
             <td><a th:href="@{/publishing/publishingconfigurationedit/{id}(id=${publishingConfiguration.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
             <td><a th:attr="data-href=@{/publishing/publishingconfigurationdelete/{id}(id=${publishingConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>
