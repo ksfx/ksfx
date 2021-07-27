@@ -10,6 +10,9 @@ import ch.ksfx.util.GenericResponse;
 import ch.ksfx.util.PublishingDataShare;
 import groovy.lang.GroovyClassLoader;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -94,20 +97,22 @@ public class PublicationViewerController
 
         if (!publishingConfiguration.getAllowInternalLoad() || (!request.getRemoteAddr().equals("127.0.0.1") || requestHeaderNames.contains("x-forwarded-for"))) {
             if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
-                if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
-                    return "You are not authorized to view this page";
+                if ((SecurityContextHolder.getContext().getAuthentication() instanceof AnonymousAuthenticationToken) && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
+                    return new ResponseEntity(HttpStatus.FORBIDDEN);
                 } else {
                     System.out.println("Load from cache allowed, no authentication required");
-                    System.out.println("Security Context Authentication: " + SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
-                    System.out.println("Publishing visibility: " + publishingConfiguration.getPublishingVisibility());
-                    System.out.println("Is visibility cache for all? " + publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()));
-                    System.out.println("From cache " + fromCache);
+//                    System.out.println("Security Context Authentication: " + SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
+//                    System.out.println("Publishing visibility: " + publishingConfiguration.getPublishingVisibility());
+//                    System.out.println("Is visibility cache for all? " + publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()));
+//                    System.out.println("From cache " + fromCache);
+//                    System.out.println("Authentication " + SecurityContextHolder.getContext().getAuthentication());
                 }
             } else {
                 System.out.println("Public visibility, no authentication required");
             }
         } else {
             System.out.println("Internal load, no authentication required");
+//            System.out.println("Remote address: " + request.getRemoteAddr());
         }
 
         if (fromCache == 1) {
@@ -222,8 +227,8 @@ public class PublicationViewerController
 
         if (!publishingConfiguration.getAllowInternalLoad() || (!request.getRemoteAddr().equals("127.0.0.1") || requestHeaderNames.contains("x-forwarded-for"))) {
             if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
-                if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
-                    return "You are not authorized to view this page";
+                if ((SecurityContextHolder.getContext().getAuthentication() instanceof AnonymousAuthenticationToken) && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
+                    return new ResponseEntity(HttpStatus.FORBIDDEN);
                 }
             }
         }

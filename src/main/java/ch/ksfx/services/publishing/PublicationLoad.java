@@ -85,7 +85,7 @@ public class PublicationLoad implements Runnable
 
             List<String> initialPage = new ArrayList<String>();
 
-            initialPage.add("http://localhost:8080/publishing/publicationviewer/0/" + publishingConfiguration.getUri());
+            initialPage.add("http://127.0.0.1:8080/publishing/publicationviewer/0/" + publishingConfiguration.getUri());
 
             loadAndFind(initialPage);
 
@@ -201,7 +201,7 @@ public class PublicationLoad implements Runnable
                 Console.writeln("[!!!!PUBLICATION AUTO LOADER](" + new Date().toString() + ") Loading URL: " + link);
 
                 if (!link.startsWith("http")) {
-                    link = "http://localhost:8080/publishing/publicationviewer/0/" + link;
+                    link = "http://127.0.0.1:8080/publishing/publicationviewer/0/" + link;
                 }
 
                 pageContent = loadPage(link);
