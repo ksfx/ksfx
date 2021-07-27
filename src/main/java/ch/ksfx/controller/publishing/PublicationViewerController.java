@@ -98,6 +98,10 @@ public class PublicationViewerController
                     return "You are not authorized to view this page";
                 } else {
                     System.out.println("Load from cache allowed, no authentication required");
+                    System.out.println("Security Context Authentication: " + SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
+                    System.out.println("Publishing visibility: " + publishingConfiguration.getPublishingVisibility());
+                    System.out.println("Is visibility cache for all? " + publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()));
+                    System.out.println("From cache " + fromCache);
                 }
             } else {
                 System.out.println("Public visibility, no authentication required");
