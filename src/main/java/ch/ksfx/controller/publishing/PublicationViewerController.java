@@ -90,7 +90,9 @@ public class PublicationViewerController
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
 
-        if (!publishingConfiguration.getAllowInternalLoad() || !request.getRemoteAddr().equals("127.0.0.1")) {
+        List<String> requestHeaderNames = Collections.list(request.getHeaderNames());
+
+        if (!publishingConfiguration.getAllowInternalLoad() || (!request.getRemoteAddr().equals("127.0.0.1") || requestHeaderNames.contains("x-forwarded-for"))) {
             if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
                 if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
                     return "You are not authorized to view this page";
@@ -206,7 +208,9 @@ public class PublicationViewerController
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForUri(configurationLocator);
 
-        if (!publishingConfiguration.getAllowInternalLoad() || !request.getRemoteAddr().equals("127.0.0.1")) {
+        List<String> requestHeaderNames = Collections.list(request.getHeaderNames());
+
+        if (!publishingConfiguration.getAllowInternalLoad() || (!request.getRemoteAddr().equals("127.0.0.1") || requestHeaderNames.contains("x-forwarded-for"))) {
             if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
                 if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
                     return "You are not authorized to view this page";
