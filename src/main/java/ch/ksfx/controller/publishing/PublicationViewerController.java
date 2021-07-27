@@ -96,8 +96,14 @@ public class PublicationViewerController
             if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
                 if (!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
                     return "You are not authorized to view this page";
+                } else {
+                    System.out.println("Load from cache allowed, no authentication required");
                 }
+            } else {
+                System.out.println("Public visibility, no authentication required");
             }
+        } else {
+            System.out.println("Internal load, no authentication required");
         }
 
         if (fromCache == 1) {
