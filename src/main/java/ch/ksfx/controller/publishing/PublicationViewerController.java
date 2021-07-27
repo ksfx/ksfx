@@ -23,6 +23,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @Controller
@@ -48,6 +49,10 @@ public class PublicationViewerController
         List<String> pathVariables = extractPathVariables(request);
 
         System.out.println("HTTP Servlet Request Remote IP: " + request.getRemoteAddr());
+
+        for (String headerName : Collections.list(request.getHeaderNames())) {
+            System.out.println("HTTP Request:" + headerName + ": " + request.getHeader(headerName));
+        }
 
         Integer fromCache = 0;
         String stringContext = "";
