@@ -97,7 +97,7 @@ public class PublicationViewerController
 
         if (!publishingConfiguration.getAllowInternalLoad() || (!request.getRemoteAddr().equals("127.0.0.1") || requestHeaderNames.contains("x-forwarded-for"))) {
             if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
-                if ((SecurityContextHolder.getContext().getAuthentication() instanceof AnonymousAuthenticationToken) && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
+                if ((!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() || (SecurityContextHolder.getContext().getAuthentication() instanceof AnonymousAuthenticationToken)) && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
                     return new ResponseEntity(HttpStatus.FORBIDDEN);
                 } else {
                     System.out.println("Load from cache allowed, no authentication required");
@@ -227,7 +227,7 @@ public class PublicationViewerController
 
         if (!publishingConfiguration.getAllowInternalLoad() || (!request.getRemoteAddr().equals("127.0.0.1") || requestHeaderNames.contains("x-forwarded-for"))) {
             if (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.PUBLIC.toString())) {
-                if ((SecurityContextHolder.getContext().getAuthentication() instanceof AnonymousAuthenticationToken) && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
+                if ((!SecurityContextHolder.getContext().getAuthentication().isAuthenticated() || (SecurityContextHolder.getContext().getAuthentication() instanceof AnonymousAuthenticationToken)) && (publishingConfiguration.getPublishingVisibility() == null || !publishingConfiguration.getPublishingVisibility().equals(PublishingVisibility.CACHE_FOR_ALL.toString()) || fromCache == 0)) {
                     return new ResponseEntity(HttpStatus.FORBIDDEN);
                 }
             }

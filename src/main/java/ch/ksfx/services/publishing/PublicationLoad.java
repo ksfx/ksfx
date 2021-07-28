@@ -125,11 +125,12 @@ public class PublicationLoad implements Runnable
         return pageContent;
     }
 
-    private List<String> findLinksToFollow(String pageContent)
+    private List<String> findLinksToFollow(String parentLink, String pageContent)
     {
+        System.out.println("Searching for links to follow " + pageContent.contains("auto-load"));
         List<String> links = new ArrayList<String>();
 
-        String autoloadPatternToFind = "<[^>]+auto-load=['\"]\\s*true\\s*['\"][^>]+>";
+        String autoloadPatternToFind = "<[^>]*auto-load=['\"]\\s*true\\s*['\"][^>]*>";
 
         int flags = 0;
 
@@ -151,14 +152,14 @@ public class PublicationLoad implements Runnable
         Map<String, Integer> orderedUrls = new HashMap<String, Integer>();
 
         for (String hrefTag : hrefTags) {
-            String hrefPatternToFind = "<[^>]+(?:href|src)=['\"]\\s*([^'\"]+)";
+            String hrefPatternToFind = "<[^>]*(?:href|src)=['\"]\\s*([^'\"]+)";
             Pattern hrefPattern = Pattern.compile(hrefPatternToFind, flags);
             Matcher hrefMatcher = hrefPattern.matcher(hrefTag);
 
             if (hrefMatcher.find()) {
                 Integer order = Integer.MAX_VALUE;
 
-                String autoloadorderPatternToFind = "<[^>]+auto-load-order=['\"]\\s*([^'\"]+)";
+                String autoloadorderPatternToFind = "<[^>]*auto-load-order=['\"]\\s*([^'\"]+)";
                 Pattern autoloadorderPattern = Pattern.compile(autoloadorderPatternToFind, flags);
                 Matcher autoloadorderMatcher = autoloadorderPattern.matcher(hrefTag);
 
@@ -166,9 +167,15 @@ public class PublicationLoad implements Runnable
                     order = Integer.parseInt(autoloadorderMatcher.group(autoloadorderMatcher.groupCount()));
                 }
 
-                Console.writeln("Found link to follow: " + hrefMatcher.group(hrefMatcher.groupCount()) + " --> ORDER: " + order);
+                String link = hrefMatcher.group(hrefMatcher.groupCount());
 
-                orderedUrls.put(hrefMatcher.group(hrefMatcher.groupCount()), order);
+                if (!link.startsWith("http:")) {
+                    link = parentLink.substring(0,parentLink.lastIndexOf("/")) + "/" + link;
+                }
+
+                Console.writeln("Found link to follow: " + link + " --> ORDER: " + order);
+
+                orderedUrls.put(link, order);
             }
         }
 
@@ -200,9 +207,9 @@ public class PublicationLoad implements Runnable
             try {
                 Console.writeln("[!!!!PUBLICATION AUTO LOADER](" + new Date().toString() + ") Loading URL: " + link);
 
-                if (!link.startsWith("http")) {
-                    link = "http://127.0.0.1:8080/publishing/publicationviewer/0/" + link;
-                }
+ //               if (!link.startsWith("http")) {
+ //                   link = "http://127.0.0.1:8080/publishing/publicationviewer/0/" + link;
+ //               }
 
                 pageContent = loadPage(link);
 //                Console.writeln("[!!!!PUBLICATION AUTO LOADER](" + new Date().toString() + ") Found content: " + pageContent);
@@ -211,7 +218,7 @@ public class PublicationLoad implements Runnable
                 logger.error("Error in automated publication load, can't load page",e);
             }
 
-            List<String> linksToFollow = findLinksToFollow(pageContent);
+            List<String> linksToFollow = findLinksToFollow(link, pageContent);
 
             loadAndFind(linksToFollow);
         }

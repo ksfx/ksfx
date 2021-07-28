@@ -17,6 +17,7 @@
  <div class="list-group-item">
         <form id="activityForm" action="#" th:action="@{/activity/activityedit}" th:object="${activity}" method="post">
             <input type="hidden" th:field="*{id}" />
+            <input type="hidden" th:field="*{cronScheduleEnabled}" />
             <div class="form-group">
                 <label for="name">Name</label>
                 <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
