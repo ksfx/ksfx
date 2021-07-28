@@ -27,6 +27,7 @@ import ch.ksfx.util.Console;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.HtmlImage;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import org.slf4j.Logger;
@@ -121,9 +122,18 @@ public class PublicationLoad implements Runnable
         webClient.waitForBackgroundJavaScript(20000);
         webClient.getOptions().setTimeout(0);
 
+
         Page page = webClient.getPage(url);
 
-        String pageContent = page.getWebResponse().getContentAsString();
+        WebResponse webResponse = page.getWebResponse();
+
+        String pageContent = "";
+
+        if (webResponse.getContentType().contains("text")) {
+            pageContent = webResponse.getContentAsString();
+        } else {
+            Console.writeln("[!!!!PUBLICATION AUTO LOADER](" + new Date().toString() + ") No text content: " + webResponse.getContentType() + " -> " + url);
+        }
 
         return pageContent;
     }
