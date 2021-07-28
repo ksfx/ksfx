@@ -117,6 +117,7 @@ public class PublicationLoad implements Runnable
         webClient.getOptions().setThrowExceptionOnFailingStatusCode(false);
         webClient.getOptions().setMaxInMemory(-1);
         webClient.waitForBackgroundJavaScript(20000);
+        webClient.getOptions().setTimeout(0);
 
         HtmlPage page = webClient.getPage(url);
 
