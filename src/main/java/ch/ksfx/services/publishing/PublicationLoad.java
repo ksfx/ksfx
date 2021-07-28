@@ -25,7 +25,9 @@ import ch.ksfx.services.activity.RunningActivitiesCache;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import ch.ksfx.util.Console;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.html.HtmlImage;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,7 +121,7 @@ public class PublicationLoad implements Runnable
         webClient.waitForBackgroundJavaScript(20000);
         webClient.getOptions().setTimeout(0);
 
-        HtmlPage page = webClient.getPage(url);
+        Page page = webClient.getPage(url);
 
         String pageContent = page.getWebResponse().getContentAsString();
 
