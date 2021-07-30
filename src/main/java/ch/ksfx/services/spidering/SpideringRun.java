@@ -239,8 +239,8 @@ public class SpideringRun implements Runnable
 
             parsingRunner.runParsing(spidering);
         } catch (Throwable e) {
-            systemLogger.logMessage("FATAL_SPIDERING", "Error while spidering", e);
-            logger.error("Error while spidering",e);
+            systemLogger.logMessage("FATAL_SPIDERING", "Error while Spidering - Configuration: " + spidering.getSpideringConfiguration().getName() + " (" + spidering.getSpideringConfiguration().getId() + ")", e);
+            logger.error("Error while Spidering - Configuration: " + spidering.getSpideringConfiguration().getName() + " (" + spidering.getSpideringConfiguration().getId() + ")",e);
 
             spidering.setFinished(new Date());
             spideringDAO.saveOrUpdate(spidering);
