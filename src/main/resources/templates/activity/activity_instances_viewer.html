@@ -33,7 +33,7 @@
                 </div>
             </td>
             <td><a href="#" onclick="$('#console-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/console/activityInstance/{id}(id=${activityInstance.id})}" data-toggle="modal" data-target="#consoleModal" class="fa fa-terminal"></a></td>
-            <td><a th:href="@{/activity/activityedit/{id}(id=${activityInstance.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
+            <td><a th:attr="data-href=@{/activity/activityinstancedelete/{id}(id=${activityInstance.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>
         </tbody>
     </table>

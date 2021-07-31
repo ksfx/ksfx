@@ -257,4 +257,14 @@ public class ActivityController
 
         return "redirect:/activity/activityrunwithparameters/" + activityId;
     }
+
+    @GetMapping({"/activityinstancedelete/{activityInstanceId}"})
+    public String activityInstanceDelete(@PathVariable(value = "activityInstanceId", required = true) Long activityInstanceId)
+    {
+        ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
+
+        activityInstanceDAO.deleteActivityInstance(activityInstance);
+
+        return "redirect:/activity/activityinstances/" + activityInstance.getActivity().getId();
+    }
 }
