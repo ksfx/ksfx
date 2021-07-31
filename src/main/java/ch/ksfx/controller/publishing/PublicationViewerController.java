@@ -156,7 +156,7 @@ public class PublicationViewerController
 
             GenericResponse streamResponse = loadPublishingStrategy(publishingConfiguration.getPublishingStrategy(), uriParameters);
 
-            //systemLogger.logMessage("PUBLICATION", "Data can be cached: " + publishingConfiguration.getName());
+            systemLogger.logMessage("PUBLICATION", "Data can be cached: " + publishingConfiguration.getName());
 
             //ByteArrayInputStream byteArrayInputStream = (ByteArrayInputStream) inputStream;
             byte[] cacheData = streamResponse.getResponse(); //IOUtils.toByteArray(byteArrayInputStream);
