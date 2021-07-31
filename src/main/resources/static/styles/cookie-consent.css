@@ -1,0 +1,102 @@
+.cc-color-override-1545514927.cc-window {
+    color: rgb(0, 0, 0);
+    background-color: rgb(232, 232, 232);
+}
+
+.cc-floating.cc-theme-classic {
+    padding: 1.2em;
+    border-radius: 5px;
+}
+
+.cc-window.cc-floating {
+    padding: 2em;
+    max-width: 24em;
+    -ms-flex-direction: column;
+    flex-direction: column;
+}
+
+.cc-bottom {
+    bottom: 1em;
+}
+
+.cc-right {
+    right: 1em;
+}
+
+.cc-revoke, .cc-window {
+    position: fixed;
+    overflow: hidden;
+    box-sizing: border-box;
+    font-family: Helvetica,Calibri,Arial,sans-serif;
+    font-size: 16px;
+    line-height: 1.5em;
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-wrap: nowrap;
+    flex-wrap: nowrap;
+    z-index: 9999;
+}
+
+.cc-window {
+    opacity: 1;
+    transition: opacity 1s ease;
+}
+
+.cc-floating.cc-type-info.cc-theme-classic .cc-btn {
+    display: inline-block;
+}
+
+.cc-theme-classic .cc-btn:last-child {
+    min-width: 140px;
+}
+
+.cc-floating .cc-compliance>.cc-btn {
+    -ms-flex: 1;
+    flex: 1;
+}
+
+.cc-color-override-1545514927 .cc-btn {
+    color: rgb(255, 255, 255);
+    border-color: transparent;
+    background-color: rgb(77, 111, 131);
+}
+
+.cc-theme-classic .cc-btn {
+    border-radius: 5px;
+}
+
+.cc-btn {
+    display: block;
+    padding: .4em .8em;
+    font-size: .9em;
+    font-weight: 700;
+    border-width: 2px;
+    border-style: solid;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.cc-btn, .cc-close, .cc-link, .cc-revoke {
+    cursor: pointer;
+}
+
+.cc-compliance {
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-align: center;
+    align-items: center;
+    -ms-flex-line-pack: justify;
+    align-content: space-between;
+}
+
+.cc-window.cc-floating .cc-compliance {
+    -ms-flex: 1 0 auto;
+    flex: 1 0 auto;
+}
+
+.cc-floating.cc-type-info.cc-theme-classic .cc-compliance {
+    text-align: center;
+    display: inline;
+    -ms-flex: none;
+    flex: none;
+}
