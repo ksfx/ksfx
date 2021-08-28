@@ -106,6 +106,31 @@ public class DataExplorerController
         return "dataexplorer/observation_viewer";
     }
 
+    @GetMapping("/deleteobservation/{timeSeriesId}/{observationTime}/{sourceId}")
+    public String deleteObservation(@PathVariable(value = "timeSeriesId", required = true) String timeSeriesIdParam,
+                                  @PathVariable(value = "observationTime", required = true) String observationTimeParam,
+                                  @PathVariable(value = "sourceId", required = true) String sourceIdParam,
+                                  Model model)
+    {
+        Observation observation = observationDAO.getObservationForTimeSeriesIdObservationTimeAndSourceId(Integer.parseInt(timeSeriesIdParam), DateFormatUtil.parseISO8601TimeAndDateString(observationTimeParam), UriUtils.decode(sourceIdParam,
+                "UTF-8"));
+
+        observationDAO.deleteObservation(observation);
+
+        return "redirect:/dataexplorer/" + observation.getTimeSeriesId();
+    }
+
+    @GetMapping("/deletetimeseriesobservations/{timeSeriesId}")
+    public String deleteTimeSeriesObservations(@PathVariable(value = "timeSeriesId", required = true) Long timeSeriesId,
+                                    Model model)
+    {
+        TimeSeries timeSeries = timeSeriesDAO.getTimeSeriesForId(timeSeriesId);
+
+        observationDAO.deleteAllObservationsForTimeSeries(timeSeries);
+
+        return "redirect:/dataexplorer/" + timeSeries.getId();
+    }
+
     @GetMapping("/opennode/{node}")
     public String opennode(@PathVariable(value = "node", required = true) String node, Model model, HttpServletRequest request)
     {

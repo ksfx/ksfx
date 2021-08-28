@@ -32,6 +32,7 @@ import ch.ksfx.model.TimeSeries;
 //import com.datastax.driver.core.querybuilder.Select;
 
 import ch.ksfx.services.SystemEnvironment;
+import ch.ksfx.services.lucene.DeleteSeriesObservationsEvent;
 import ch.ksfx.services.lucene.IndexEvent;
 import ch.ksfx.services.lucene.IndexService;
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -40,6 +41,7 @@ import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.cql.*;
 import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder;
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
+import com.datastax.oss.driver.api.querybuilder.delete.Delete;
 import com.datastax.oss.driver.api.querybuilder.select.Select;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -371,38 +373,37 @@ public class CassandraObservationDAO implements ObservationDAO
     }
      */
 
-    /*
+
     public void deleteObservation(Observation observation)
     {
         try {
-            Statement delete = QueryBuilder.delete().from("observation").where(QueryBuilder.eq("time_series_id", observation.getTimeSeriesId())).and(QueryBuilder.eq("observation_time", observation.getObservationTime())).and(QueryBuilder.eq("source_id", observation.getSourceId()));
-
-            simpleSession.execute(delete);
+            Delete delete = QueryBuilder.deleteFrom("observation_store", "observation").whereColumn("time_series_id").isEqualTo(QueryBuilder.bindMarker()).whereColumn("source_id").isEqualTo(QueryBuilder.bindMarker()).whereColumn("observation_time").isEqualTo(QueryBuilder.bindMarker());
+            PreparedStatement statement = simpleSession.prepare(delete.build());
+            ResultSet results = simpleSession.execute(statement.bind(observation.getTimeSeriesId(),observation.getSourceId(),observation.getObservationTime().toInstant()));
             
-//            indexService.index(new IndexEvent(observation.getTimeSeriesId(), observation.getObservationTime(), observation.getSourceId(), true));
+            indexService.index(new IndexEvent(observation.getTimeSeriesId(), observation.getObservationTime(), observation.getSourceId(), true));
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         } finally {
         }
     }
-     */
 
-    /*
+
     public void deleteAllObservationsForTimeSeries(TimeSeries timeSeries)
     {
         try {
-            Statement delete = QueryBuilder.delete().from("observation").where(QueryBuilder.eq("time_series_id", timeSeries.getId()));
-            simpleSession.execute(delete);
-            
-//            indexService.index(new DeleteSeriesObservationsEvent(timeSeries.getId().intValue()));
+            Delete delete = QueryBuilder.deleteFrom("observation_store", "observation").whereColumn("time_series_id").isEqualTo(QueryBuilder.bindMarker());
+            PreparedStatement statement = simpleSession.prepare(delete.build());
+            ResultSet results = simpleSession.execute(statement.bind(timeSeries.getId().intValue()));
+
+            indexService.index(new DeleteSeriesObservationsEvent(timeSeries.getId().intValue()));
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         } finally {
         }
     }
-     */
 
     @Override
     public Page<Observation> getObservationsForPageableAndTimeSSeriesId(Pageable pageable, Integer timeSeriesId)

@@ -18,6 +18,7 @@
 package ch.ksfx.dao;
 
 import ch.ksfx.model.Observation;
+import ch.ksfx.model.TimeSeries;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -33,8 +34,8 @@ public interface ObservationDAO
 //    public List<Observation> getObservations();
     public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate);
     public Page<Observation> getObservationsForPageableAndTimeSSeriesId(Pageable pageable, Integer timeSeriesId);
-//    public void deleteObservation(Observation observation);
-//    public void deleteAllObservationsForTimeSeries(TimeSeries timeSeries);
+    public void deleteObservation(Observation observation);
+    public void deleteAllObservationsForTimeSeries(TimeSeries timeSeries);
 //    public List<Observation> queryObservationsSparse(Integer timeSeriesId, Date startDate, Date endDate);
     public List<Observation> queryObservations(Integer timeSeriesId, Date startDate, Date endDate, Integer limit);
 }

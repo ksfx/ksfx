@@ -289,8 +289,10 @@ public class PublicationViewerController
                 if (prcd == null) {
                     prcd = new PublishingResourceCacheData();
                     prcd.setPublishingResource(publishingResource);
-                    prcd.setUriParameter(uriParameters.toString());
                 }
+
+                //Tapestry backwards compatibility
+                prcd.setUriParameter(uriParameters.toString().replaceAll("\\$0020", " "));
 
                 prcd.setCacheData(cacheData);
                 prcd.setContentType(contentType);
