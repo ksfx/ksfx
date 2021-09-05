@@ -37,7 +37,8 @@
                 <div class="form-group">
                     <label for="content">Content</label>
                     <div class="text-danger" th:if="${#fields.hasErrors('content')}" th:errors="*{content}">Content code not valid</div>
-                    <textarea class="form-control" id="content" th:field="*{content}" style="height:600px" />
+                    <!-- <textarea class="form-control" id="content" style="height:600px" th:field="*{content}" /> -->
+                    <textarea id="content" th:field="*{content}"></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary">Submit</button>
@@ -279,5 +280,23 @@
 </div>
 
 <footer th:replace="layout :: site-footer" />
+
+<script>
+      $('#content').summernote({
+        placeholder: 'New note',
+        tabsize: 2,
+        height: 600,
+toolbar: [
+  ['style', ['style']],
+  ['font', ['bold', 'underline', 'clear']],
+  ['fontname', ['fontname']],
+  ['color', ['color']],
+  ['para', ['ul', 'ol', 'paragraph']],
+  ['table', ['table']],
+  ['insert', ['link', 'hr']],
+  ['view', ['fullscreen', 'codeview']],
+]
+      });
+    </script>
 </body>
 </html>
