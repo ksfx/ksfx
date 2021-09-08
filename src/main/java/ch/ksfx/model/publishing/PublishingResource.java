@@ -114,9 +114,6 @@ public class PublishingResource
 	@Transient
 	public PublishingResourceCacheData getPublishingResourceCacheDataForUriParameter(String uriParameter)
 	{
-		//Tapestry backwards comptibility
-		uriParameter = uriParameter.replaceAll("\\$0020", " ");
-
 		for (PublishingResourceCacheData publishingResourceCacheData : publishingResourceCacheDatas) {
 			if (publishingResourceCacheData.getUriParameter().equals(uriParameter)) {
 				return publishingResourceCacheData;

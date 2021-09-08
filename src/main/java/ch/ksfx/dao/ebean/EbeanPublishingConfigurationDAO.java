@@ -25,6 +25,7 @@ import ch.ksfx.model.note.NotePublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingConfigurationCacheData;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
+import io.ebean.SqlUpdate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -182,6 +183,15 @@ public class EbeanPublishingConfigurationDAO implements PublishingConfigurationD
 	{
 		return Ebean.find(PublishingConfigurationCacheData.class).where().eq("publishingConfiguration", publishingConfiguration).eq("uriParameter", uriParameter).findUnique();
 	}
+
+    @Override
+    public void deletePublishingConfigurationCacheDataForPublishingConfigurationAndUriParameter(PublishingConfiguration publishingConfiguration, String uriParameter)
+    {
+        SqlUpdate update = Ebean.createSqlUpdate("DELETE FROM publishing_configuration_cache_data WHERE publishing_configuration = :publishingConfigurationId AND uri_parameter = :uriParameter");
+        update.setParameter("publishingConfigurationId", publishingConfiguration.getId());
+        update.setParameter("uriParameter", uriParameter);
+        update.execute();
+    }
 	
 	@Override
 	public void deletePublishingConfigurationCacheData(PublishingConfigurationCacheData publishingConfigurationCacheData)

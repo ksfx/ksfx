@@ -22,6 +22,7 @@ import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingResource;
 import ch.ksfx.model.publishing.PublishingResourceCacheData;
 import io.ebean.Ebean;
+import io.ebean.SqlUpdate;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -88,7 +89,16 @@ public class EbeanPublishingResourceDAO implements PublishingResourceDAO
 	@Override
 	public PublishingResourceCacheData getPublishingResourceCacheDataForPublishingResourceAndUriParameter(PublishingResource publishingResource, String uriParameter)
 	{
-		return Ebean.find(PublishingResourceCacheData.class).where().eq("publishingResource", publishingResource).eq("uriParameter", uriParameter).findUnique();
+		return Ebean.find(PublishingResourceCacheData.class).where().eq("publishingResource", publishingResource).eq("uriParameter", uriParameter).setOrderBy("id DESC").setMaxRows(1).findUnique();
+	}
+
+	@Override
+	public void deletePublishingResourceCacheDataForPublishingResourceAndUriParameter(PublishingResource publishingResource, String uriParameter)
+	{
+		SqlUpdate update = Ebean.createSqlUpdate("DELETE FROM publishing_resource_cache_data WHERE publishing_resource = :publishingResourceId AND uri_parameter = :uriParameter");
+		update.setParameter("publishingResourceId", publishingResource.getId());
+		update.setParameter("uriParameter", uriParameter);
+		update.execute();
 	}
 	
 	@Override

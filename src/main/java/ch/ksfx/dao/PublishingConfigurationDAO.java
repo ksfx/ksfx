@@ -44,5 +44,6 @@ public interface PublishingConfigurationDAO
     
    	public void saveOrUpdatePublishingConfigurationCacheData(PublishingConfigurationCacheData publishingConfigurationCacheData);
 	public PublishingConfigurationCacheData getPublishingConfigurationCacheDataForPublishingConfigurationAndUriParameter(PublishingConfiguration publishingConfiguration, String uriParameter);
+	public void deletePublishingConfigurationCacheDataForPublishingConfigurationAndUriParameter(PublishingConfiguration publishingConfiguration, String uriParameter);
 	public void deletePublishingConfigurationCacheData(PublishingConfigurationCacheData publishingConfigurationCacheData);
 }

@@ -165,13 +165,13 @@ public class PublicationViewerController
             publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
 
             if (!publishingConfiguration.getLockedForCacheUpdate()) {
-                PublishingConfigurationCacheData pccd = publishingConfigurationDAO.getPublishingConfigurationCacheDataForPublishingConfigurationAndUriParameter(publishingConfiguration, uriParameters.toString());
+                 publishingConfigurationDAO.deletePublishingConfigurationCacheDataForPublishingConfigurationAndUriParameter(publishingConfiguration, uriParameters.toString());
 
-                if (pccd == null) {
-                    pccd = new PublishingConfigurationCacheData();
+                //if (pccd == null) {
+                    PublishingConfigurationCacheData pccd = new PublishingConfigurationCacheData();
                     pccd.setPublishingConfiguration(publishingConfiguration);
                     pccd.setUriParameter(uriParameters.toString());
-                }
+                //}
 
                 pccd.setCacheData(cacheData);
                 pccd.setContentType(contentType);
@@ -236,7 +236,8 @@ public class PublicationViewerController
         PublishingResource publishingResource = publishingResourceDAO.getPublishingResourceForPublishingConfigurationAndUri(publishingConfiguration, resourceLocator);
 
         if (fromCache == 1) {
-            PublishingResourceCacheData prcd = publishingResource.getPublishingResourceCacheDataForUriParameter(uriParameters.toString());
+            //Tapestry backwards comptibility
+            PublishingResourceCacheData prcd = publishingResource.getPublishingResourceCacheDataForUriParameter(uriParameters.toString().replaceAll("\\$0020", " "));
 
             if (prcd.getContentType().contains("text") && publishingResource.getLayoutIntegration() != null && !publishingResource.getLayoutIntegration().trim().isEmpty() && !publishingResource.getLayoutIntegration().equals("NONE")) {
                 model.addAttribute("content", new String(prcd.getCacheData()));
@@ -284,14 +285,18 @@ public class PublicationViewerController
             String contentType = streamResponse.getContentType();
 
             if (!publishingConfiguration.getLockedForCacheUpdate()) {
-                PublishingResourceCacheData prcd = publishingResourceDAO.getPublishingResourceCacheDataForPublishingResourceAndUriParameter(publishingResource, uriParameters.toString());
 
-                if (prcd == null) {
-                    prcd = new PublishingResourceCacheData();
+                publishingResourceDAO.deletePublishingResourceCacheDataForPublishingResourceAndUriParameter(publishingResource, uriParameters.toString().replaceAll("\\$0020", " "));
+
+//                PublishingResourceCacheData prcd = publishingResourceDAO.getPublishingResourceCacheDataForPublishingResourceAndUriParameter(publishingResource, uriParameters.toString());
+
+//                if (prcd == null) {
+                    PublishingResourceCacheData prcd = new PublishingResourceCacheData();
                     prcd.setPublishingResource(publishingResource);
-                }
+//                }
 
                 //Tapestry backwards compatibility
+                System.out.println("Saving URL parameter: " + uriParameters.toString().replaceAll("\\$0020", " "));
                 prcd.setUriParameter(uriParameters.toString().replaceAll("\\$0020", " "));
 
                 prcd.setCacheData(cacheData);

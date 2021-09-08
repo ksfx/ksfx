@@ -35,6 +35,7 @@ public interface PublishingResourceDAO
 	public PublishingResource getPublishingResourceForPublishingConfigurationAndUri(PublishingConfiguration publishingConfiguration, String uri);
 	public void saveOrUpdatePublishingResourceCacheData(PublishingResourceCacheData publishingResourceCacheData);
 	public PublishingResourceCacheData getPublishingResourceCacheDataForPublishingResourceAndUriParameter(PublishingResource publishingResource, String uriParameter);
+	public void deletePublishingResourceCacheDataForPublishingResourceAndUriParameter(PublishingResource publishingResource, String uriParameter);
 	public void deletePublishingResourceCacheData(PublishingResourceCacheData publishingResourceCacheData);
 }
  
