@@ -37,10 +37,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ObservationSearch
 {
@@ -134,15 +131,15 @@ public class ObservationSearch
 		TopDocs results = null;
 		
 		try {
-			 results = searcher.search(query, 1);
+			 results = searcher.search(query, Integer.MAX_VALUE);
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RuntimeException("Error in Lucene query GET TOTAL HITS");
 		}
 
-		System.out.println("Results: " + results.totalHits + " total hits value: " + results.totalHits.value);
+		System.out.println("Relation: " + results.totalHits.relation + " Results: " + results.totalHits + " total hits value: " + results.totalHits.value + " vs. results.scoreDocs.length" + results.scoreDocs.length);
 		
-		return new Long(results.totalHits.value).intValue(); //.value right???
+		return results.scoreDocs.length; //new Long(results.totalHits.value).intValue();
 	}
 	
 	public List<Observation> getObservations(Integer startIndex, Integer endIndex)
