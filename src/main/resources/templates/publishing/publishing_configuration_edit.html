@@ -135,7 +135,9 @@
                         <span th:attr="id='openpublishingSharedData' + ${publishingSharedData.id}"> <a href="javascript:void(0);" th:attr="shared-data-id=${publishingSharedData.id}" class='fa fa-plus' onclick="document.getElementById('publishingSharedData' + $(this).attr('shared-data-id')).style.display='block';document.getElementById('openpublishingSharedData' + $(this).attr('shared-data-id')).style.display='none';document.getElementById('closepublishingSharedData' + $(this).attr('shared-data-id')).style.display='inline';"></a></span>
                         <span th:attr="id='closepublishingSharedData' + ${publishingSharedData.id}" style='display:none'> <a href="javascript:void(0);" th:attr="shared-data-id=${publishingSharedData.id}" class='fa fa-minus' onclick="document.getElementById('publishingSharedData' + $(this).attr('shared-data-id')).style.display='none';document.getElementById('openpublishingSharedData' + $(this).attr('shared-data-id')).style.display='inline';document.getElementById('closepublishingSharedData' + $(this).attr('shared-data-id')).style.display='none';"></a></span>
                     </td>
-                    <td></td>
+                    <td>
+                        <a th:attr="data-href=@{/publishing/publishingshareddatadelete/{id}(id=${publishingSharedData.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a>
+                    </td>
                 </tr>
                 </tbody>
             </table>

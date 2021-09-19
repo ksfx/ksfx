@@ -4,8 +4,7 @@ import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
 import ch.ksfx.dao.publishing.PublishingSharedDataDAO;
 import ch.ksfx.model.activity.Activity;
-import ch.ksfx.model.publishing.PublishingConfiguration;
-import ch.ksfx.model.publishing.PublishingResource;
+import ch.ksfx.model.publishing.*;
 import ch.ksfx.model.spidering.Spidering;
 import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.services.publishing.PublicationLoad;
@@ -291,5 +290,38 @@ public class PublishingController
         publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
 
         return "redirect:/publishing/";
+    }
+
+    @GetMapping({"/publishingconfigurationpurgecaches/{id}"})
+    public String publishingConfigurationPurgeCaches(@PathVariable(value = "id", required = true) Long publishingConfigurationId)
+    {
+        PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+
+        if (!publishingConfiguration.getLockedForCacheUpdate()) {
+            publishingConfiguration.setConsole("");
+            publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
+
+            for (PublishingConfigurationCacheData pccd : publishingConfiguration.getPublishingConfigurationCacheDatas()) {
+                publishingConfigurationDAO.deletePublishingConfigurationCacheData(pccd);
+            }
+
+            for (PublishingResource publishingResourse : publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(publishingConfiguration)) {
+                for (PublishingResourceCacheData prcd : publishingResourse.getPublishingResourceCacheDatas()) {
+                    publishingResourceDAO.deletePublishingResourceCacheData(prcd);
+                }
+            }
+        }
+
+        return "redirect:/publishing/";
+    }
+
+    @GetMapping({"/publishingshareddatadelete/{id}"})
+    public String publishingSharedDataDelete(@PathVariable(value = "id", required = true) Long publishingSharedDataId)
+    {
+        PublishingSharedData publishingSharedData = publishingSharedDataDAO.getPublishingSharedDataForId(publishingSharedDataId);
+
+        publishingSharedDataDAO.deletePublishingSharedData(publishingSharedData);
+
+        return "redirect:/publishing/publishingconfigurationedit/" + publishingSharedData.getPublishingConfiguration().getId();
     }
 }
