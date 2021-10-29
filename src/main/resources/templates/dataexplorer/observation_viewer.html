@@ -18,6 +18,18 @@
 </div>
 <div style="padding-top:100px">
     <table>
+        <th:block th:each="complexValue : ${observation.complexValue}">
+            <th:block th:if="${complexValue.key} != 'mainText'">
+                <tr>
+                    <td th:text="${complexValue.key}">name</td>
+                    <td th:text="${complexValue.value}">value</td>
+                </tr>
+            </th:block>
+        </th:block>
+    </table>
+</div>
+<div style="padding-top:100px">
+    <table>
         <tr th:each="metadata : ${observation.metaData}">
             <td th:text="${metadata.key}">name</td>
             <td th:text="${metadata.value}">value</td>
