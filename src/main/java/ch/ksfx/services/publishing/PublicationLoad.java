@@ -135,6 +135,9 @@ public class PublicationLoad implements Runnable
             Console.writeln("[!!!!PUBLICATION AUTO LOADER](" + new Date().toString() + ") No text content: " + webResponse.getContentType() + " -> " + url);
         }
 
+        webClient.close();
+        webClient = null;
+
         return pageContent;
     }
 
