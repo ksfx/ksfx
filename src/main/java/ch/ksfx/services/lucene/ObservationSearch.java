@@ -36,6 +36,8 @@ import org.apache.lucene.store.FSDirectory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
 
@@ -45,6 +47,7 @@ public class ObservationSearch
 	private ObservationDAO observationDAO;
 	private Query query;
     private IndexSearcher searcher;
+    private IndexReader reader;
 
     public ObservationSearch(SystemEnvironment systemEnvironment, ObservationDAO observationDAO)
 	{
@@ -55,9 +58,9 @@ public class ObservationSearch
 	public void prepare(String allQuery, String scalarValueQuery, Map<String, String> complexValueQuery, Map<String, String> metaDataQuery, Date dateFrom, Date dateTo, String seriesId)
 	{
 		try {
-	        IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(systemEnvironment.getApplicationIndexfilePath())));
-	
+	        reader = DirectoryReader.open(FSDirectory.open(Paths.get(systemEnvironment.getApplicationIndexfilePath())));
 	        searcher = new IndexSearcher(reader);
+
 			Analyzer analyzer = new StandardAnalyzer();
 			
 			QueryParser parser = new QueryParser("catch_all", analyzer);
@@ -182,5 +185,15 @@ public class ObservationSearch
 		Page<Observation> page = new PageImpl<Observation>(preparedResults, pageable, getTotalHits());
 
 		return page;
+	}
+
+	public void closeSearch()
+	{
+		try {
+			reader.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Error in Lucene CLOSE READER", e);
+		}
 	}
 }
