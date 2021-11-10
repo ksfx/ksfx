@@ -33,6 +33,11 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -77,6 +82,8 @@ public class PublicationLoad implements Runnable
     @Override
     public void run()
     {
+        Thread.currentThread().setName("Publication Load - " + publishingConfiguration.getName());
+
         try {
             PublishingConfiguration pc = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfiguration.getId());
             pc.setConsole("");
@@ -135,6 +142,7 @@ public class PublicationLoad implements Runnable
             Console.writeln("[!!!!PUBLICATION AUTO LOADER](" + new Date().toString() + ") No text content: " + webResponse.getContentType() + " -> " + url);
         }
 
+        webResponse.cleanUp();
         webClient.close();
         webClient = null;
 
@@ -238,5 +246,44 @@ public class PublicationLoad implements Runnable
 
             loadAndFind(linksToFollow);
         }
+    }
+
+    public String loadStringFromUrl(String urlText)
+    {
+        String text = "";
+
+        BufferedReader inp = null;
+
+        try {
+
+            URL url = new URL(urlText);
+
+            // read text returned by server
+            inp = new BufferedReader(new InputStreamReader(url.openStream(),"UTF-8"));
+
+
+            String line;
+            while ((line = inp.readLine()) != null) {
+                text += "\r\n" + line;
+            }
+            inp.close();
+
+        }
+        catch (MalformedURLException e) {
+            systemLogger.logMessage("FATAL_PUBLICATION_LOAD", "Malformed URL: " + e.getMessage());
+//			Console.writeln();
+        }
+        catch (IOException e) {
+            systemLogger.logMessage("FATAL_PUBLICATION_LOAD", "I/O Error: " + e.getMessage());
+//			Console.writeln("I/O Error: " + e.getMessage());
+        } finally {
+            try {
+                inp.close();
+            } catch (Exception e) {
+                systemLogger.logMessage("FATAL_PUBLICATION_LOAD", "Error while closing inp stream " + e.getMessage());
+            }
+        }
+
+        return text;
     }
 }
