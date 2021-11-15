@@ -47,6 +47,10 @@ public class PublicationLoad implements Runnable
     private Logger logger = LoggerFactory.getLogger(PublicationLoad.class);
 
     private PublishingConfigurationDAO publishingConfigurationDAO;
+
+    private Integer numberOfLinksToFollow = 1;
+    private Integer numberOfFollowedLinks = 0;
+
 //    private ActivityExecutionDAO activityExecutionDAO;
 
 //    private PublishingStrategy publishingStrategy;
@@ -221,7 +225,8 @@ public class PublicationLoad implements Runnable
             String pageContent = "";
 
             try {
-                Console.writeln("[!!!!PUBLICATION AUTO LOADER](" + new Date().toString() + ") Loading URL: " + link);
+                numberOfFollowedLinks++;
+                Console.writeln("[!!!!PUBLICATION AUTO LOADER](" + new Date().toString() + ") Loading URL: " + link + " (" + numberOfFollowedLinks +" / " + numberOfLinksToFollow + ")");
 
  //               if (!link.startsWith("http")) {
  //                   link = "http://127.0.0.1:8080/publishing/publicationviewer/0/" + link;
@@ -235,6 +240,10 @@ public class PublicationLoad implements Runnable
             }
 
             List<String> linksToFollow = findLinksToFollow(link, pageContent);
+
+            if (linksToFollow != null) {
+                numberOfLinksToFollow += linksToFollow.size();
+            }
 
             loadAndFind(linksToFollow);
         }
