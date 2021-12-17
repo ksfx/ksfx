@@ -158,16 +158,16 @@
                 <a href="" class="pull-left">
                     <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
                         <th:block th:if="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                            <img th:src="@{/images/ksfx-header-dark.png}" />
+                            <a th:href="@{/}"><img th:src="@{/images/ksfx-header-dark.png}" /></a>
                         </th:block>
                     </th:block>
                     <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
                         <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                            <img th:src="@{/images/ksfx-header.png}" />
+                            <a th:href="@{/}"><img th:src="@{/images/ksfx-header.png}" /></a>
                         </th:block>
                     </th:block>
                     <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode')}" >
-                        <img th:src="@{/images/ksfx-header.png}" />
+                        <a th:href="@{/}"><img th:src="@{/images/ksfx-header.png}" /></a>
                     </th:block>
 
                 </a>

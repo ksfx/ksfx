@@ -23,6 +23,7 @@ import ch.ksfx.model.publishing.PublishingCategory;
 import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.note.NotePublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingConfigurationCacheData;
+import ch.ksfx.util.Console;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
 import io.ebean.SqlUpdate;
@@ -147,13 +148,26 @@ public class EbeanPublishingConfigurationDAO implements PublishingConfigurationD
     public void appendConsole(Long publishingConfigurationId, String dataToAppend)
     {
     	PublishingConfiguration publishingConfiguration = getPublishingConfigurationForId(publishingConfigurationId);
-    	publishingConfiguration.setConsole(((publishingConfiguration.getConsole() == null)?"":publishingConfiguration.getConsole()) + dataToAppend);
-    	saveOrUpdatePublishingConfiguration(publishingConfiguration);
-    	
-		//SqlUpdate update = Ebean.createSqlUpdate("UPDATE publishing_configuration SET console = CONCAT(console, :data) WHERE id = :id");
-        //update.setParameter("data", dataToAppend);
-        //update.setParameter("id", publishingConfigurationId);
-       	//update.execute();	
+
+    	String console = publishingConfiguration.getConsole();
+
+    	if (console == null) {
+            console = "";
+        }
+
+    	if (console.length() < Console.CONSOLE_LIMIT) {
+    	    console = console + dataToAppend;
+
+            publishingConfiguration.setConsole(console);
+            saveOrUpdatePublishingConfiguration(publishingConfiguration);
+        } else {
+    	    if (!console.endsWith("#####CONSOLE_ENDED")) {
+    	        console = console + "#####CONSOLE_ENDED";
+
+                publishingConfiguration.setConsole(console);
+                saveOrUpdatePublishingConfiguration(publishingConfiguration);
+            }
+        }
     }
     
     @Override

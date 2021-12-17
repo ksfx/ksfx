@@ -23,6 +23,7 @@ import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.model.activity.ActivityInstanceParameter;
 import ch.ksfx.model.activity.ActivityInstancePersistentData;
+import ch.ksfx.util.Console;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
 import org.springframework.data.domain.Page;
@@ -176,11 +177,25 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
     public void appendConsole(Long activityInstanceId, String dataToAppend)
     {
     	ActivityInstance activityInstance = getActivityInstanceForId(activityInstanceId);
-    	activityInstance.setConsole(((activityInstance.getConsole() == null)?"":activityInstance.getConsole()) + dataToAppend);
-    	saveOrUpdateActivityInstance(activityInstance);
-		//SqlUpdate update = Ebean.createSqlUpdate("UPDATE activity_instance SET console = CONCAT(console, :data) WHERE id = :id");
-        //update.setParameter("data", dataToAppend);
-        //update.setParameter("id", activityInstanceId);
-       	//update.execute();	
+
+        String console = activityInstance.getConsole();
+
+        if (console == null) {
+            console = "";
+        }
+
+        if (console.length() < Console.CONSOLE_LIMIT) {
+            console = console + dataToAppend;
+
+            activityInstance.setConsole(console);
+            saveOrUpdateActivityInstance(activityInstance);
+        } else {
+            if (!console.endsWith("#####CONSOLE_ENDED")) {
+                console = console + "#####CONSOLE_ENDED";
+
+                activityInstance.setConsole(console);
+                saveOrUpdateActivityInstance(activityInstance);
+            }
+        }
     }
 }
