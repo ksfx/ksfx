@@ -27,7 +27,7 @@ import ch.ksfx.model.activity.ActivityInstance;
 
 public class Console
 {
-        public static final Integer CONSOLE_LIMIT = 40000;
+        public static final Integer CONSOLE_LIMIT = 1000000;
 
         private static final ThreadLocal<Long> publishingConfigurationId = new ThreadLocal<Long>();
         private static final ThreadLocal<Long> activityInstanceId = new ThreadLocal<Long>();
