@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
 import java.util.Date;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Controller
@@ -323,5 +324,19 @@ public class PublishingController
         publishingSharedDataDAO.deletePublishingSharedData(publishingSharedData);
 
         return "redirect:/publishing/publishingconfigurationedit/" + publishingSharedData.getPublishingConfiguration().getId();
+    }
+
+    @GetMapping({"/publishingshareddatadeleteall/{id}"})
+    public String publishingSharedDataDeleteAll(@PathVariable(value = "id", required = true) Long publishingConfigurationId)
+    {
+        PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+
+        List<PublishingSharedData> publishingSharedDatas = publishingSharedDataDAO.getAllPublishingSharedDatasForPublishingConfiguration(publishingConfiguration);
+
+        for (PublishingSharedData publishingSharedData : publishingSharedDatas) {
+            publishingSharedDataDAO.deletePublishingSharedData(publishingSharedData);
+        }
+
+        return "redirect:/publishing/publishingconfigurationedit/" + publishingConfiguration.getId();
     }
 }

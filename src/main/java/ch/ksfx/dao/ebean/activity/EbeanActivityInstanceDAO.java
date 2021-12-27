@@ -184,18 +184,17 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
             console = "";
         }
 
-        if (console.length() < Console.CONSOLE_LIMIT) {
-            console = console + dataToAppend;
-
-            activityInstance.setConsole(console);
-            saveOrUpdateActivityInstance(activityInstance);
-        } else {
-            if (!console.endsWith("#####CONSOLE_ENDED")) {
-                console = console + "#####CONSOLE_ENDED";
-
-                activityInstance.setConsole(console);
-                saveOrUpdateActivityInstance(activityInstance);
+        if (console.length() > Console.CONSOLE_LIMIT) {
+            if (console.length() > dataToAppend.length()) {
+                console = "###TRUNCATED###" + '\n' + console.substring(dataToAppend.length());
+            } else {
+                console = "###TRUNCATED###" + '\n';
             }
         }
+
+        console = console + dataToAppend;
+
+        activityInstance.setConsole(console);
+        saveOrUpdateActivityInstance(activityInstance);
     }
 }

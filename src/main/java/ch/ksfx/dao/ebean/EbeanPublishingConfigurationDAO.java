@@ -155,19 +155,18 @@ public class EbeanPublishingConfigurationDAO implements PublishingConfigurationD
             console = "";
         }
 
-    	if (console.length() < Console.CONSOLE_LIMIT) {
-    	    console = console + dataToAppend;
-
-            publishingConfiguration.setConsole(console);
-            saveOrUpdatePublishingConfiguration(publishingConfiguration);
-        } else {
-    	    if (!console.endsWith("#####CONSOLE_ENDED")) {
-    	        console = console + "#####CONSOLE_ENDED";
-
-                publishingConfiguration.setConsole(console);
-                saveOrUpdatePublishingConfiguration(publishingConfiguration);
+        if (console.length() > Console.CONSOLE_LIMIT) {
+            if (console.length() > dataToAppend.length()) {
+                console = "###TRUNCATED###" + '\n' + console.substring(dataToAppend.length());
+            } else {
+                console = "###TRUNCATED###" + '\n';
             }
         }
+
+        console = console + dataToAppend;
+
+        publishingConfiguration.setConsole(console);
+        saveOrUpdatePublishingConfiguration(publishingConfiguration);
     }
     
     @Override

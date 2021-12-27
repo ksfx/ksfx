@@ -141,6 +141,9 @@
                 </tr>
                 </tbody>
             </table>
+            <div style="float:right">
+                <a th:attr="data-href=@{/publishing/publishingshareddatadeleteall/{id}(id=${publishingConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o fa-2x" alt="Delete all publishing shared datas" title="Delete all publishing shared datas"></a>
+            </div>
             </block>
         </div>
     </div>
