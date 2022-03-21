@@ -397,7 +397,7 @@
     <properties>
         <mysql-connector-release-version>8.0.16</mysql-connector-release-version>
         <cobertura-plugin-version>2.1</cobertura-plugin-version>
-        <tapestry-release-version>5.4.3</tapestry-release-version>
+        <tapestry-release-version>5.6.4</tapestry-release-version>
         <spring-security-version>3.0.2.RELEASE</spring-security-version>
         <spring-release-version>3.0.2.RELEASE</spring-release-version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
