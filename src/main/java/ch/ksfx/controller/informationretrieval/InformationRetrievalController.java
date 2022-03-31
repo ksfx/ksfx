@@ -261,6 +261,29 @@ public class InformationRetrievalController
         return "redirect:/informationretrieval/spideringconfigurationedit/" + spideringConfiguration.getId();
     }
 
+    @GetMapping({"/spideringconfigurationaddspideringpostactivity/{id}"})
+    public String spideringConfigurationAddSpideringPostActivity(@PathVariable(value = "id", required = true) Long spideringConfigurationId)
+    {
+        SpideringConfiguration spideringConfiguration = spideringConfigurationDAO.getSpideringConfigurationForId(spideringConfigurationId);
+
+        SpideringPostActivity spideringPostActivity = new SpideringPostActivity();
+        spideringPostActivity.setSpideringConfiguration(spideringConfiguration);
+
+        spideringPostActivityDAO.saveOrUpdate(spideringPostActivity);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + spideringConfiguration.getId();
+    }
+
+    @GetMapping({"/spideringconfigurationremovespideringpostactivity/{id}"})
+    public String onActionFromRemoveSpideringPostActivity(@PathVariable(value = "id", required = true) Long spideringPostActivityId)
+    {
+        SpideringPostActivity spideringPostActivity = spideringPostActivityDAO.getSpideringPostActivityForId(spideringPostActivityId);
+
+        spideringPostActivityDAO.deleteSpideringPostActivity(spideringPostActivity);
+
+        return "redirect:/informationretrieval/spideringconfigurationedit/" + spideringPostActivity.getSpideringConfiguration().getId();
+    }
+
     @GetMapping({"/spideringconfigurationremoveresourceconfiguration/{id}"})
     public String spideringConfigurationRemoveResourceConfiguration(@PathVariable(value = "id", required = true) Long resourceConfigurationId)
     {
