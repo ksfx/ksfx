@@ -16,4 +16,5 @@
     <include file="20210717140122_publishing_layout_embeddings.sql" relativeToChangelogFile="true"/>
     <include file="20210717213222_allow_internal_load.sql" relativeToChangelogFile="true"/>
     <include file="20210717220822_publishing_cron_schedule.sql" relativeToChangelogFile="true"/>
+    <include file="20220504220824_publishing_cache_title.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

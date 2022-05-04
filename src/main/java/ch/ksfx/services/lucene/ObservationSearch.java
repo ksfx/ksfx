@@ -74,7 +74,7 @@ public class ObservationSearch
 	        query = parser.parse(luceneQuery);
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new RuntimeException("Error in Lucene query PREPARE");
+			throw new RuntimeException("Error in Lucene query PREPARE", e);
 		}
 	}
 	

@@ -44,4 +44,9 @@ public class GenericResponse
     {
         return byteData;
     }
+
+    public String getFileName() throws IOException
+    {
+        return fileName;
+    }
 }

@@ -36,7 +36,8 @@
     <!--  -->
     <link rel="stylesheet" th:href="@{/styles/main.css}" />
         <!-- <meta th:include="this :: head" th:remove="tag"/> -->
-    <title>KSFX - Data Analysis Platform</title>
+        <title th:unless="${pageHeaderTitle != null}">KSFX - Data Analysis Platform</title>
+        <title th:if="${pageHeaderTitle != null}" th:inline="text">[[${pageHeaderTitle}]]</title>
     </head>
     <body>
 

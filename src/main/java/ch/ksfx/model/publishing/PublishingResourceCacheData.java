@@ -29,6 +29,7 @@ public class PublishingResourceCacheData
 	private String uriParameter;
 	private byte[] cacheData;
 	private String contentType;
+	private String fileNameOrPageTitle;
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -83,5 +84,15 @@ public class PublishingResourceCacheData
 	public void setContentType(String contentType)
 	{
 		this.contentType = contentType;
+	}
+
+	public String getFileNameOrPageTitle()
+	{
+		return fileNameOrPageTitle;
+	}
+
+	public void setFileNameOrPageTitle(String fileNameOrPageTitle)
+	{
+		this.fileNameOrPageTitle = fileNameOrPageTitle;
 	}
 }

@@ -121,7 +121,10 @@ public class PublicationViewerController
 
             if (pccd.getContentType().contains("text") && publishingConfiguration.getLayoutIntegration() != null && !publishingConfiguration.getLayoutIntegration().trim().isEmpty() && !publishingConfiguration.getLayoutIntegration().equals("NONE")) {
                 model.addAttribute("content", new String(pccd.getCacheData()));
-                model.addAttribute("pageHeaderTitle", publishingConfiguration.getName());
+
+                if (pccd.getFileNameOrPageTitle() != null && !pccd.getFileNameOrPageTitle().trim().isEmpty()) {
+                    model.addAttribute("pageHeaderTitle", pccd.getFileNameOrPageTitle());
+                }
 
                 return "publishing/" + publishingConfiguration.getLayoutIntegration();
             } else { // Binary image etc...
@@ -161,6 +164,7 @@ public class PublicationViewerController
             //ByteArrayInputStream byteArrayInputStream = (ByteArrayInputStream) inputStream;
             byte[] cacheData = streamResponse.getResponse(); //IOUtils.toByteArray(byteArrayInputStream);
             String contentType = streamResponse.getContentType();
+            String pageTitle = streamResponse.getFileName();
 
             publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
 
@@ -171,6 +175,7 @@ public class PublicationViewerController
                     PublishingConfigurationCacheData pccd = new PublishingConfigurationCacheData();
                     pccd.setPublishingConfiguration(publishingConfiguration);
                     pccd.setUriParameter(uriParameters.toString());
+                    pccd.setFileNameOrPageTitle(pageTitle);
                 //}
 
                 pccd.setCacheData(cacheData);
@@ -183,7 +188,10 @@ public class PublicationViewerController
             if (contentType.contains("text") && publishingConfiguration.getLayoutIntegration() != null && !publishingConfiguration.getLayoutIntegration().trim().isEmpty() && !publishingConfiguration.getLayoutIntegration().equals("NONE")) {
             //if (contentType.contains("text") && publishingConfiguration.getEmbedInLayout()) {
                 model.addAttribute("content", new String(cacheData));
-                model.addAttribute("pageHeaderTitle", publishingConfiguration.getName());
+
+                if (pageTitle != null && !pageTitle.trim().isEmpty()) {
+                    model.addAttribute("pageHeaderTitle", pageTitle);
+                }
 
                 return "publishing/" + publishingConfiguration.getLayoutIntegration();
             } else { // Binary image etc...
@@ -241,7 +249,10 @@ public class PublicationViewerController
 
             if (prcd.getContentType().contains("text") && publishingResource.getLayoutIntegration() != null && !publishingResource.getLayoutIntegration().trim().isEmpty() && !publishingResource.getLayoutIntegration().equals("NONE")) {
                 model.addAttribute("content", new String(prcd.getCacheData()));
-                model.addAttribute("pageHeaderTitle", publishingConfiguration.getName());
+
+                if (prcd.getFileNameOrPageTitle() != null && !prcd.getFileNameOrPageTitle().trim().isEmpty()) {
+                    model.addAttribute("pageHeaderTitle", prcd.getFileNameOrPageTitle());
+                }
 
                 return "publishing/" + publishingResource.getLayoutIntegration();
             } else { // Binary image etc...
@@ -283,6 +294,7 @@ public class PublicationViewerController
 //            ByteArrayInputStream byteArrayInputStream = (ByteArrayInputStream) inputStream;
             byte[] cacheData = streamResponse.getResponse();
             String contentType = streamResponse.getContentType();
+            String pageTitle = streamResponse.getFileName();
 
             if (!publishingConfiguration.getLockedForCacheUpdate()) {
 
@@ -293,6 +305,7 @@ public class PublicationViewerController
 //                if (prcd == null) {
                     PublishingResourceCacheData prcd = new PublishingResourceCacheData();
                     prcd.setPublishingResource(publishingResource);
+                    prcd.setFileNameOrPageTitle(pageTitle);
 //                }
 
                 //Tapestry backwards compatibility
@@ -307,7 +320,10 @@ public class PublicationViewerController
             if (contentType.contains("text") && publishingResource.getLayoutIntegration() != null && !publishingResource.getLayoutIntegration().trim().isEmpty() && !publishingResource.getLayoutIntegration().equals("NONE")) {
 //            if (contentType.contains("text") && publishingResource.getEmbedInLayout()) {
                 model.addAttribute("content", new String(cacheData));
-                model.addAttribute("pageHeaderTitle", publishingConfiguration.getName());
+
+                if (pageTitle != null && !pageTitle.trim().isEmpty()) {
+                    model.addAttribute("pageHeaderTitle", pageTitle);
+                }
 
                 return "publishing/" + publishingResource.getLayoutIntegration();
             } else { // Binary image etc...
