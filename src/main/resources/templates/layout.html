@@ -36,8 +36,19 @@
     <!--  -->
     <link rel="stylesheet" th:href="@{/styles/main.css}" />
         <!-- <meta th:include="this :: head" th:remove="tag"/> -->
+    
         <title th:unless="${pageHeaderTitle != null}">KSFX - Data Analysis Platform</title>
         <title th:if="${pageHeaderTitle != null}" th:inline="text">[[${pageHeaderTitle}]]</title>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9RPQWM1YK8"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-9RPQWM1YK8');
+    </script>
+
     </head>
     <body>
 

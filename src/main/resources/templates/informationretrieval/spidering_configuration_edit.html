@@ -258,21 +258,26 @@
 
 
                 <h4 style="width:100%">
-                    <b>Post Spidering Activities <a style="float:right;margin-top:10px" context="resourceConfiguration.id" class="fa fa-plus" alt="Add post spidering activity" title="Add post spidering activity"></a></b>
+                    <b>Post Spidering Activities <a th:href="@{/informationretrieval/spideringconfigurationaddspideringpostactivity/{spideringConfigurationId}(spideringConfigurationId=${spideringConfiguration.id})}" style="float:right;margin-top:8px" class="fa fa-plus" alt="Add Activity to execute after spidering" title="Add Activity to execute after spidering"></a></b>
                 </h4>
                 <div>
                     <th:block th:each="spideringPostActivity,spideringPostActivityStatus : ${spideringConfiguration.spideringPostActivities}">
                         <input type="hidden" th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].id}" />
                         <input type="hidden" th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].spideringConfiguration.id}" />
-                        <div class="form-group">
-                            <label for="postSpideringActivity">Activity</label>
-                            <select class="form-control" id="postSpideringActivity" th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].activity.id}">
-                                <option th:each="activity : ${allActivities}"
-                                        th:value="${activity.id}"
-                                        th:text="${activity.name}">
-                                    Post Spidering Activity
-                                </option>
-                            </select>
+                        <div class="form-row">
+                            <div class="form-group col-md-9">
+                                <!-- <label for="postSpideringActivity">Activity</label> -->
+                                <select class="form-control" id="postSpideringActivity" th:field="*{spideringPostActivities[__${spideringPostActivityStatus.index}__].activity.id}">
+                                    <option th:each="activity : ${allActivities}"
+                                            th:value="${activity.id}"
+                                            th:text="${activity.name}">
+                                        Post Spidering Activity
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <a th:href="@{/informationretrieval/spideringconfigurationremovespideringpostactivity/{spideringPostActivityId}(spideringPostActivityId=${spideringPostActivity.id})}" style="margin-top:10px" class="fa fa-minus" alt="Remove post spidering activity" title="Remove post spidering activity"></a>
+                            </div>
                         </div>
                     </th:block>
                 </div>
