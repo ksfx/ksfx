@@ -119,6 +119,7 @@ public class PublicationViewerController
             PublishingConfigurationCacheData pccd = publishingConfiguration.getPublishingConfigurationCacheDataForUriParameter(uriParameters.toString());
 
             if (pccd == null) {
+                model.addAttribute("pageHeaderTitle", "KSFX - Error While Loading Analysis");
                 return "publishing/error";
             }
 
@@ -251,6 +252,7 @@ public class PublicationViewerController
             PublishingResourceCacheData prcd = publishingResource.getPublishingResourceCacheDataForUriParameter(uriParameters.toString().replaceAll("\\$0020", " "));
 
             if (prcd == null) {
+                model.addAttribute("pageHeaderTitle", "KSFX - Error While Loading Analysis");
                 return "publishing/error";
             }
 
