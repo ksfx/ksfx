@@ -118,6 +118,9 @@ public class PublicationViewerController
         if (fromCache == 1) {
             PublishingConfigurationCacheData pccd = publishingConfiguration.getPublishingConfigurationCacheDataForUriParameter(uriParameters.toString());
 
+            if (pccd == null) {
+                return "publishing/error";
+            }
 
             if (pccd.getContentType().contains("text") && publishingConfiguration.getLayoutIntegration() != null && !publishingConfiguration.getLayoutIntegration().trim().isEmpty() && !publishingConfiguration.getLayoutIntegration().equals("NONE")) {
                 model.addAttribute("content", new String(pccd.getCacheData()));
