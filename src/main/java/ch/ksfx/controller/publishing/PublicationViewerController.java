@@ -247,6 +247,10 @@ public class PublicationViewerController
             //Tapestry backwards comptibility
             PublishingResourceCacheData prcd = publishingResource.getPublishingResourceCacheDataForUriParameter(uriParameters.toString().replaceAll("\\$0020", " "));
 
+            if (prcd == null) {
+                return "publishing/error";
+            }
+
             if (prcd.getContentType().contains("text") && publishingResource.getLayoutIntegration() != null && !publishingResource.getLayoutIntegration().trim().isEmpty() && !publishingResource.getLayoutIntegration().equals("NONE")) {
                 model.addAttribute("content", new String(prcd.getCacheData()));
 

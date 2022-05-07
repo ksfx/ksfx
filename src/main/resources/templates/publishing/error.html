@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Information Retrieval</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Error While Loading Analysis</li>
+    </ol>
+</nav>
+
+<div class="container">
+    <h1>Oooops! You weren't supposed to see this</h1>
+    <h4>The page you are looking for no longer exists or is currently being updated. Please come back later and navigate here from the <a th:href="@{/}">home page</a>.</h4>
+</div>
+
+
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>
