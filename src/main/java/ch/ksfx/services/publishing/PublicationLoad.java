@@ -121,7 +121,7 @@ public class PublicationLoad implements Runnable
     private String loadPage(String url) throws Exception
     {
         WebClient webClient = null;
-        webClient = new WebClient(BrowserVersion.FIREFOX_45);
+        webClient = new WebClient(BrowserVersion.BEST_SUPPORTED);
         webClient.getOptions().setJavaScriptEnabled(true);
         webClient.getCookieManager().setCookiesEnabled(true);
         webClient.getOptions().setRedirectEnabled(true);
