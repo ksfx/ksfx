@@ -24,6 +24,7 @@ import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.services.activity.ActivityInstanceRun;
 import ch.ksfx.services.activity.RunningActivitiesCache;
 import ch.ksfx.services.systemlogger.SystemLogger;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.ArrayBlockingQueue;
@@ -39,12 +40,14 @@ public class PublicationLoaderRunner
     private SystemLogger systemLogger;
     private ServiceProvider serviceProvider;
     private PublishingConfigurationDAO publishingConfigurationDAO;
+    private Environment environment;
 
-    public PublicationLoaderRunner(SystemLogger systemLogger, ServiceProvider serviceProvider, PublishingConfigurationDAO publishingConfigurationDAO)
+    public PublicationLoaderRunner(SystemLogger systemLogger, ServiceProvider serviceProvider, PublishingConfigurationDAO publishingConfigurationDAO, Environment environment)
     {
         this.systemLogger = systemLogger;
         this.serviceProvider = serviceProvider;
         this.publishingConfigurationDAO = publishingConfigurationDAO;
+        this.environment = environment;
 
         this.threadPoolExecutor = new ThreadPoolExecutor(2, 100, 100, TimeUnit.SECONDS, queue);
     }
@@ -61,7 +64,7 @@ public class PublicationLoaderRunner
 
     public void loadPublication(PublishingConfiguration publishingConfiguration)
     {
-        PublicationLoad publicationLoad = new PublicationLoad(systemLogger, serviceProvider, publishingConfiguration, publishingConfigurationDAO);
+        PublicationLoad publicationLoad = new PublicationLoad(systemLogger, serviceProvider, publishingConfiguration, publishingConfigurationDAO, environment);
         RunningPublicationsCache.runningPublications.put(publishingConfiguration.getId(), publicationLoad);
 
         threadPoolExecutor.execute(publicationLoad);

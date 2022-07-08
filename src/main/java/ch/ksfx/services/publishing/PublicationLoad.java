@@ -32,6 +32,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlImage;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -52,6 +53,7 @@ public class PublicationLoad implements Runnable
     private Logger logger = LoggerFactory.getLogger(PublicationLoad.class);
 
     private PublishingConfigurationDAO publishingConfigurationDAO;
+    private Environment environment;
 
     private Integer numberOfLinksToFollow = 1;
     private Integer numberOfFollowedLinks = 0;
@@ -60,12 +62,13 @@ public class PublicationLoad implements Runnable
 
 //    private PublishingStrategy publishingStrategy;
 
-    public PublicationLoad(SystemLogger systemLogger, ServiceProvider serviceProvider, PublishingConfiguration publishingConfiguration, PublishingConfigurationDAO publishingConfigurationDAO)
+    public PublicationLoad(SystemLogger systemLogger, ServiceProvider serviceProvider, PublishingConfiguration publishingConfiguration, PublishingConfigurationDAO publishingConfigurationDAO, Environment environment)
     {
         this.systemLogger = systemLogger;
         this.serviceProvider = serviceProvider;
         this.publishingConfiguration = publishingConfiguration;
         this.publishingConfigurationDAO = publishingConfigurationDAO;
+        this.environment = environment;
 
 //        this.activityInstance = activityInstance;
 //        activityInstanceDAO = new EbeanActivityInstanceDAO();
@@ -88,6 +91,14 @@ public class PublicationLoad implements Runnable
     {
         Thread.currentThread().setName("Publication Load - " + publishingConfiguration.getName());
 
+        String port = "8080";
+
+        if (environment.getProperty("local.server.port") != null) {
+            port = environment.getProperty("local.server.port");
+        }
+
+        System.out.println("Starting Autoload on Port: " + port);
+
         try {
             PublishingConfiguration pc = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfiguration.getId());
             pc.setConsole("");
@@ -99,7 +110,7 @@ public class PublicationLoad implements Runnable
 
             List<String> initialPage = new ArrayList<String>();
 
-            initialPage.add("http://127.0.0.1:8080/publishing/publicationviewer/0/" + publishingConfiguration.getUri());
+            initialPage.add("http://127.0.0.1:" + port + "/publishing/publicationviewer/0/" + publishingConfiguration.getUri());
 
             loadAndFind(initialPage);
 
