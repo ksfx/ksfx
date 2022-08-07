@@ -24,7 +24,9 @@
             <td th:text="${activityInstance.started}"></td>
             <td>
                 <span th:if="!${activityInstanceRunner.isActivityInstanceRunning(activityInstance)}" th:inline="text">[[${activityInstance.finished}]]</span>
-                <span th:unless="!${activityInstanceRunner.isActivityInstanceRunning(activityInstance)}" th:inline="text" class="fa fa-spinner fa-pulse fa-2x fa-fw"></span>
+                <span th:unless="!${activityInstanceRunner.isActivityInstanceRunning(activityInstance)}" th:inline="text" class="fa fa-spinner fa-pulse fa-2x fa-fw">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                <a th:href="@{/activity/activityinstanceterminate/{id}(id=${activityInstance.id})}" class="fa fa-ban"  title="Terminate activity" alt="Terminate activity"></a>
+
             </td>
             <td th:text="${activityInstance.approved}"></td>
             <td>

@@ -139,6 +139,15 @@ public class NoteController
         return "redirect:/admin/note/noteedit/" + noteFile.getNote().getId();
     }
 
+    @GetMapping("/notedelete/{noteId}")
+    public String noteDelete(@PathVariable(value = "noteId", required = true) Long noteId)
+    {
+        Note note = noteDAO.getNoteForId(noteId);
+        noteDAO.deleteNote(note);
+
+        return "redirect:/admin/note/";
+    }
+
     @PostMapping({"/relationadd"})
     public String relationAddSubmit(@RequestParam(name = "noteId", required = true) Long noteId,
                                     @RequestParam(name = "relatedNoteId", required = false) Long relatedNoteId,

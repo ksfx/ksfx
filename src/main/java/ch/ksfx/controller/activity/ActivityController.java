@@ -267,4 +267,14 @@ public class ActivityController
 
         return "redirect:/activity/activityinstances/" + activityInstance.getActivity().getId();
     }
+
+    @GetMapping({"/activityinstanceterminate/{activityInstanceId}"})
+    public String activityInstanceTerminate(@PathVariable(value = "activityInstanceId", required = true) Long activityInstanceId)
+    {
+        ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
+
+        activityInstanceRunner.terminateActivity(activityInstance);
+
+        return "redirect:/activity/activityinstances/" + activityInstance.getActivity().getId();
+    }
 }
