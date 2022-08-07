@@ -26,7 +26,7 @@
             <td th:text="${note.created}"></td>
             <td th:text="${note.lastUpdated}"></td>
             <td><a th:href="@{/admin/note/noteedit/{id}(id=${note.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
-            <td><a th:attr="data-href=@{/activity/notedelete/{id}(id=${note.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+            <td><a th:attr="data-href=@{/admin/note/notedelete/{id}(id=${note.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>
         </tbody>
     </table>
