@@ -49,7 +49,7 @@ public class PublicationLoaderRunner
         this.publishingConfigurationDAO = publishingConfigurationDAO;
         this.environment = environment;
 
-        this.threadPoolExecutor = new ThreadPoolExecutor(2, 100, 100, TimeUnit.SECONDS, queue);
+        this.threadPoolExecutor = new ThreadPoolExecutor(100, 100, 100, TimeUnit.SECONDS, queue);
     }
 
     public boolean isPublicationRunning(PublishingConfiguration publishingConfiguration)

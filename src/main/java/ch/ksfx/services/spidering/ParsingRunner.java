@@ -40,7 +40,7 @@ public class ParsingRunner
         this.systemLogger = systemLogger;
         this.serviceProvider = serviceProvider;
 
-        this.threadPoolExecutor = new ThreadPoolExecutor(2, 100, 100, TimeUnit.SECONDS, queue);
+        this.threadPoolExecutor = new ThreadPoolExecutor(100, 100, 100, TimeUnit.SECONDS, queue);
     }
 
     public void runParsing(Spidering spidering)
