@@ -2,6 +2,9 @@ package ch.ksfx.controller.admin.user;
 
 import ch.ksfx.dao.user.UserDAO;
 import ch.ksfx.model.user.User;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +35,14 @@ public class ChangePasswordController
     public String changePasswordSubmit(@RequestParam(value = "password", required = true) String password,
                                        @RequestParam(value = "reTypePassword", required = true) String reTypePassword)
     {
+
+        if (SecurityContextHolder.getContext() != null && SecurityContextHolder.getContext().getAuthentication() != null && SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && !(SecurityContextHolder.getContext().getAuthentication() instanceof AnonymousAuthenticationToken) && SecurityContextHolder.getContext().getAuthentication().getPrincipal() != null) {
+            User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            System.out.println("Current User: " + currentUser.toString());
+            System.out.println("Current User ID: " + currentUser.getId());
+        }
+
         if (password != null && reTypePassword != null && password.equals(reTypePassword)) {
             System.out.println("CHANGE PASSWORD");
 
