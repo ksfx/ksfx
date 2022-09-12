@@ -7,6 +7,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,7 +34,8 @@ public class ChangePasswordController
 
     @PostMapping("/changepassword")
     public String changePasswordSubmit(@RequestParam(value = "password", required = true) String password,
-                                       @RequestParam(value = "reTypePassword", required = true) String reTypePassword)
+                                       @RequestParam(value = "reTypePassword", required = true) String reTypePassword,
+                                       Model model)
     {
 
         if (SecurityContextHolder.getContext() != null && SecurityContextHolder.getContext().getAuthentication() != null && SecurityContextHolder.getContext().getAuthentication().isAuthenticated() && !(SecurityContextHolder.getContext().getAuthentication() instanceof AnonymousAuthenticationToken) && SecurityContextHolder.getContext().getAuthentication().getPrincipal() != null) {
@@ -41,16 +43,22 @@ public class ChangePasswordController
 
             System.out.println("Current User: " + currentUser.toString());
             System.out.println("Current User ID: " + currentUser.getId());
-        }
 
-        if (password != null && reTypePassword != null && password.equals(reTypePassword)) {
-            System.out.println("CHANGE PASSWORD");
+            if (password != null && password.length() > 4 && reTypePassword != null && password.equals(reTypePassword)) {
+                System.out.println("CHANGE PASSWORD");
 
-            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+                BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-            User user = userDAO.getUser(ADMIN_USER);
-            user.setPassword(encoder.encode(password));
-            userDAO.save(user);
+                User user = userDAO.getUser(currentUser.getId());
+                user.setPassword(encoder.encode(password));
+                userDAO.save(user);
+
+                model.addAttribute("success", "Password changed");
+            } else {
+                model.addAttribute("error", "Password could not be changed, make sure it has more than 4 chars and that both passwords match");
+            }
+        } else {
+            model.addAttribute("error", "Password could not be changed, make sure it has more than 4 chars");
         }
 
         return "admin/user/change_password";
