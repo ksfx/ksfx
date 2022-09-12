@@ -3,6 +3,7 @@ package ch.ksfx.controller.activity;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.model.activity.Activity;
+import ch.ksfx.model.activity.ActivityCategory;
 import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.model.activity.ActivityInstanceParameter;
 import ch.ksfx.services.ServiceProvider;
@@ -50,13 +51,38 @@ public class ActivityController
     }
 
     @GetMapping("/")
-    public String activityIndex(Pageable pageable, Model model)
+    public String activityIndex(Pageable pageable, Model model, HttpServletRequest request)
     {
-        Page<Activity> activitiesPage = activityDAO.getActivitiesForPageableAndActivityCategory(pageable, null);
+        String selectedActivityCategory = null;
+        ActivityCategory activityCategory = null;
+
+        if (request.getSession().getAttribute("selectedActivityCategory") != null) {
+            selectedActivityCategory = (String) request.getSession().getAttribute("selectedActivityCategory");
+        }
+
+        if (selectedActivityCategory != null && selectedActivityCategory.equals("0")) {
+            selectedActivityCategory = null;
+        }
+
+        if (selectedActivityCategory != null) {
+            activityCategory = activityDAO.getActivityCategoryForId(Long.parseLong(selectedActivityCategory));
+        }
+
+        Page<Activity> activitiesPage = activityDAO.getActivitiesForPageableAndActivityCategory(pageable, activityCategory);
 
         model.addAttribute("activitiesPage", activitiesPage);
+        model.addAttribute("activityCategories", activityDAO.getAllActivityCategories());
+        model.addAttribute("selectedActivityCategory", selectedActivityCategory);
 
         return "activity/activity";
+    }
+
+    @PostMapping("/selectactivitycategory")
+    public String selectTag(@RequestParam(name = "selectedActivityCategory") String selectedActivityCategory, HttpServletRequest request)
+    {
+        request.getSession().setAttribute("selectedActivityCategory", selectedActivityCategory);
+
+        return "redirect:/activity/";
     }
 
     @GetMapping("/activityinstances/{activityid}")
