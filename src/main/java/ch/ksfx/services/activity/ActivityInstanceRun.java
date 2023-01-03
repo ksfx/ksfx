@@ -96,4 +96,9 @@ public class ActivityInstanceRun implements Runnable
             Console.endConsole();
         }
     }
+
+    public ActivityInstance getActivityInstance()
+    {
+        return activityInstance;
+    }
 }

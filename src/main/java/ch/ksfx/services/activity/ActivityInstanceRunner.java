@@ -17,6 +17,7 @@
 
 package ch.ksfx.services.activity;
 
+import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.services.systemlogger.SystemLogger;
@@ -46,6 +47,17 @@ public class ActivityInstanceRunner
     public boolean isActivityInstanceRunning(ActivityInstance activityInstance)
     {
         return RunningActivitiesCache.runningActivities.containsKey(activityInstance.getId());
+    }
+
+    public boolean isActivityRunning(Activity activity)
+    {
+        for (ActivityInstanceRun air : RunningActivitiesCache.runningActivities.values()) {
+            if (activity != null && activity.getId() != null && air.getActivityInstance() != null && air.getActivityInstance().getId() != null && air.getActivityInstance().getActivity() != null && air.getActivityInstance().getActivity().getId().equals(activity.getId())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void runActivity(ActivityInstance activityInstance)
