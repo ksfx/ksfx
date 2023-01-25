@@ -87,11 +87,15 @@ public class ActivityInstanceRun implements Runnable
             systemLogger.logMessage("FATAL_ACTIVITY","Error while executing activity", e);
             logger.error("Error while executing activity",e);
         } finally {
+            RunningActivitiesCache.runningActivities.remove(activityInstance.getId());
+
+            systemLogger.logMessage("ACTIVITY_DEBUG", "Finishing ActivityInstance... ");
+            systemLogger.logMessage("ACTIVITY_DEBUG", "...with id: " + activityInstance.getId());
+            systemLogger.logMessage("ACTIVITY_DEBUG", "Currently running activity instances: " + RunningActivitiesCache.runningActivities.keySet().toString());
+
         	activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstance.getId());
             activityInstance.setFinished(new Date());
             activityInstanceDAO.saveOrUpdateActivityInstance(activityInstance);
-
-            RunningActivitiesCache.runningActivities.remove(activityInstance.getId());
             
             Console.endConsole();
         }
