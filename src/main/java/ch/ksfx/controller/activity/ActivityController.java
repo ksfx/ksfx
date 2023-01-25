@@ -73,6 +73,7 @@ public class ActivityController
         model.addAttribute("activitiesPage", activitiesPage);
         model.addAttribute("activityCategories", activityDAO.getAllActivityCategories());
         model.addAttribute("selectedActivityCategory", selectedActivityCategory);
+        model.addAttribute("activityInstanceRunner",activityInstanceRunner);
 
         return "activity/activity";
     }

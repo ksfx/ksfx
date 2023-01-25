@@ -36,7 +36,7 @@
 
     <table class="table table-striped table-responsive-md">
         <thead>
-        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','info','run','runwithparameters','schedule','edit','delete'} },sortables=${ {'id','name'} },names=${ {'ID','Name','Info','Run','with Parameters','Schedule','Edit','Delete'} },page=${activitiesPage},path='/activity')" />
+        <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','name','info','run','runwithparameters','State','schedule','edit','delete'} },sortables=${ {'id','name'} },names=${ {'ID','Name','Info','Run','with Parameters','State','Schedule','Edit','Delete'} },page=${activitiesPage},path='/activity')" />
         </thead>
         <tbody>
         <tr th:each="activity : ${activitiesPage.content}">
@@ -45,6 +45,10 @@
             <td><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/noteviewer/(activityId=${activity.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-info"></a></td>
             <td><a th:href="@{/activity/activityrun/{id}(id=${activity.id})}" class="fa fa-play" alt="Run" title="Run"></a></td>
             <td><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/activity/activityrunwithparameters/{id}(id=${activity.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-forward"></a></td>
+            <td>
+                <span th:unless="!${activityInstanceRunner.isActivityRunning(activity)}" th:inline="text" class="fa fa-spinner fa-pulse fa-2x fa-fw"></span>
+                <span th:if="!${activityInstanceRunner.isActivityRunning(activity)}" th:inline="text">-</span>
+            </td>
             <td>
                 <th:block th:if="${!#strings.isEmpty(activity.cronSchedule)}">
                     <span th:if="${activity.cronScheduleEnabled}"><a th:href="@{/activity/activitydeleteschedule/{id}(id=${activity.id})}" class="fa fa-stop" alt="Disable Scheduling" title="Disable Scheduling"></a></span>
