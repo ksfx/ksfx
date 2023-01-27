@@ -60,6 +60,17 @@ public class ActivityInstanceRunner
         return false;
     }
 
+    public boolean isActivityRunning(Long activityId)
+    {
+        for (ActivityInstanceRun air : RunningActivitiesCache.runningActivities.values()) {
+            if (activityId != null && air.getActivityInstance() != null && air.getActivityInstance().getId() != null && air.getActivityInstance().getActivity() != null && air.getActivityInstance().getActivity().getId().equals(activityId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void runActivity(ActivityInstance activityInstance)
     {
         if (activityInstance.getApproved() || activityInstance.getActivity().getActivityApprovalStrategy().getName().equalsIgnoreCase("none")) {
