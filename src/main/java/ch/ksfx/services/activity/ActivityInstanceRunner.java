@@ -23,6 +23,8 @@ import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +60,19 @@ public class ActivityInstanceRunner
         }
 
         return false;
+    }
+
+    public List<ActivityInstance> getRunningInstancesForActivity(Activity activity)
+    {
+        List<ActivityInstance> runningInstances = new ArrayList<ActivityInstance>();
+
+        for (ActivityInstanceRun air : RunningActivitiesCache.runningActivities.values()) {
+            if (activity != null && activity.getId() != null && air.getActivityInstance() != null && air.getActivityInstance().getId() != null && air.getActivityInstance().getActivity() != null && air.getActivityInstance().getActivity().getId().equals(activity.getId())) {
+                runningInstances.add(air.getActivityInstance());
+            }
+        }
+
+        return runningInstances;
     }
 
     public boolean isActivityRunning(Long activityId)
