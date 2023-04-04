@@ -62,6 +62,17 @@ public class ActivityInstanceRunner
         return false;
     }
 
+    public boolean isActivityRunning(Long activityId)
+    {
+        for (ActivityInstanceRun air : RunningActivitiesCache.runningActivities.values()) {
+            if (activityId != null && air.getActivityInstance() != null && air.getActivityInstance().getId() != null && air.getActivityInstance().getActivity() != null && air.getActivityInstance().getActivity().getId().equals(activityId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public List<ActivityInstance> getRunningInstancesForActivityId(Long activityId)
     {
         List<ActivityInstance> runningInstances = new ArrayList<ActivityInstance>();
@@ -73,13 +84,6 @@ public class ActivityInstanceRunner
         }
 
         return runningInstances;
-    }
-
-    public boolean isActivityRunning(Long activityId)
-    {
-
-
-        return false;
     }
 
     public void runActivity(ActivityInstance activityInstance)
