@@ -58,13 +58,7 @@ public class CassandraObservationDAO implements ObservationDAO
     private SystemEnvironment systemEnvironment;
     private IndexService indexService;
 
-    CqlSession simpleSession = CqlSession.builder()
-            .withConfigLoader(DriverConfigLoader.programmaticBuilder()
-                    .withDuration(DefaultDriverOption.REQUEST_TIMEOUT, Duration.ofMillis(100000))
-                    .withDuration(DefaultDriverOption.CONNECTION_CONNECT_TIMEOUT, Duration.ofMillis(100000))
-                    .build())
-            .withKeyspace("observation_store")
-            .build();
+    CqlSession simpleSession = null;
 
     PreparedStatement insertObservationStatement = null;
 
@@ -72,11 +66,30 @@ public class CassandraObservationDAO implements ObservationDAO
 
     public CassandraObservationDAO(TimeSeriesDAO timeSeriesDAO, SystemEnvironment systemEnvironment, IndexService indexService)
     {
-		this.systemEnvironment = systemEnvironment;
-		this.indexService = indexService;
-        this.timeSeriesDAO = timeSeriesDAO;
+        try {
+            simpleSession = CqlSession.builder()
+                    .withConfigLoader(DriverConfigLoader.programmaticBuilder()
+                            .withDuration(DefaultDriverOption.REQUEST_TIMEOUT, Duration.ofMillis(100000))
+                            .withDuration(DefaultDriverOption.CONNECTION_CONNECT_TIMEOUT, Duration.ofMillis(100000))
+                            .build())
+                    .withKeyspace("observation_store")
+                    .build();
 
-        insertObservationStatement = simpleSession.prepare("INSERT INTO observation (time_series_id, observation_time, source_id, scalar_value, complex_value, meta_data) VALUES (?,?,?,?,?,?);");
+            this.systemEnvironment = systemEnvironment;
+            this.indexService = indexService;
+            this.timeSeriesDAO = timeSeriesDAO;
+
+            insertObservationStatement = simpleSession.prepare("INSERT INTO observation (time_series_id, observation_time, source_id, scalar_value, complex_value, meta_data) VALUES (?,?,?,?,?,?);");
+        } catch (Exception e) {
+            System.out.println("!!!!!!!!!!!!!!!!!!! WARNING CASSANDRA WON'T BE AVAILABLE !!!!!!!!!!!!!!!!!!!");
+            System.out.println("!!!!!!!!!!!!!!!!!!! WARNING CASSANDRA WON'T BE AVAILABLE !!!!!!!!!!!!!!!!!!!");
+            System.out.println("!!!!!!!!!!!!!!!!!!! WARNING CASSANDRA WON'T BE AVAILABLE !!!!!!!!!!!!!!!!!!!");
+            System.out.println("!!!!!!!!!!!!!!!!!!! WARNING CASSANDRA WON'T BE AVAILABLE !!!!!!!!!!!!!!!!!!!");
+            System.out.println("!!!!!!!!!!!!!!!!!!! WARNING CASSANDRA WON'T BE AVAILABLE !!!!!!!!!!!!!!!!!!!");
+            System.out.println("!!!!!!!!!!!!!!!!!!! WARNING CASSANDRA WON'T BE AVAILABLE !!!!!!!!!!!!!!!!!!!");
+            System.out.println("!!!!!!!!!!!!!!!!!!! WARNING CASSANDRA WON'T BE AVAILABLE !!!!!!!!!!!!!!!!!!!");
+            System.out.println("!!!!!!!!!!!!!!!!!!! WARNING CASSANDRA WON'T BE AVAILABLE !!!!!!!!!!!!!!!!!!!");
+        }
     }
 
     @Override
