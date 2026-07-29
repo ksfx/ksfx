@@ -21,6 +21,7 @@ import ch.ksfx.dao.activity.ActivityExecutionDAO;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.activity.ActivityExecution;
 import ch.ksfx.services.ServiceProvider;
+import ch.ksfx.services.git.ActivityGitRepositoryService;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import groovy.lang.GroovyClassLoader;
 import org.springframework.stereotype.Repository;
@@ -43,12 +44,26 @@ public class EbeanActivityExecutionDAO implements ActivityExecutionDAO
     public ActivityExecution getActivityExecution(Activity activity)
     {
         try {
-            if (activity.getGroovyCode() == null || activity.getGroovyCode().isEmpty()) {
+            String groovyCode = activity.getGroovyCode();
+
+            if (activity.getGitPath() != null) {
+                ActivityGitRepositoryService activityGitRepositoryService = (ActivityGitRepositoryService) serviceProvider.getService(ActivityGitRepositoryService.class);
+
+                if (activityGitRepositoryService.isActive()) {
+                    try {
+                        groovyCode = activityGitRepositoryService.readActivitySource(activity.getGitPath());
+                    } catch (Exception e) {
+                        systemLogger.logMessage("WARN", "Could not read activity source from Git, falling back to cached groovyCode", e);
+                    }
+                }
+            }
+
+            if (groovyCode == null || groovyCode.isEmpty()) {
                 throw new IllegalArgumentException("Activity has no code");
             }
 
             GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
-            Class clazz = groovyClassLoader.parseClass(activity.getGroovyCode());
+            Class clazz = groovyClassLoader.parseClass(groovyCode);
 
             Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
 

@@ -12,6 +12,7 @@
 </nav>
 
 <div class="container">
+<div th:if="${gitSyncWarning}" class="alert alert-warning" th:text="${gitSyncWarning}"></div>
 <form id="selectTagForm" action="#" th:action="@{/activity/selectactivitycategory}" method="post" onchange="this.submit();">
     <div class="form-group">
         <label for="selectedActivityCategory">Filter Category</label>

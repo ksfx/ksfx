@@ -16,11 +16,13 @@
 </div>
 
 <div class="container">
+    <div th:if="${gitSyncWarning}" class="alert alert-warning" th:text="${gitSyncWarning}"></div>
     <div class="list-group">
         <div class="list-group-item">
             <form id="publishingResourceForm" action="#" th:action="@{/publishing/publishingresourceedit/{publishingConfigurationId}(publishingConfigurationId=${publishingConfiguration.id})}" th:object="${publishingResource}" method="post">
                 <input type="hidden" th:field="*{id}" />
                 <input type="hidden" th:field="*{publishingConfiguration.id}" />
+                <input type="hidden" th:field="*{gitPath}" />
                 <div class="form-group">
                     <label for="title">Title</label>
                     <div class="text-danger" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">Title not valid</div>

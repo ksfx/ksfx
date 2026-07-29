@@ -7,6 +7,7 @@ import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.publishing.*;
 import ch.ksfx.model.spidering.Spidering;
 import ch.ksfx.services.ServiceProvider;
+import ch.ksfx.services.git.ActivityGitRepositoryService;
 import ch.ksfx.services.publishing.PublicationLoad;
 import ch.ksfx.services.publishing.PublicationLoaderRunner;
 import ch.ksfx.services.scheduler.SchedulerService;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.validation.Valid;
 import java.io.BufferedReader;
@@ -28,7 +30,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -41,8 +45,9 @@ public class PublishingController
     private ServiceProvider serviceProvider;
     private PublicationLoaderRunner publicationLoaderRunner;
     private SchedulerService schedulerService;
+    private ActivityGitRepositoryService activityGitRepositoryService;
 
-    public PublishingController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO, PublishingSharedDataDAO publishingSharedDataDAO, ServiceProvider serviceProvider, PublicationLoaderRunner publicationLoaderRunner, SchedulerService schedulerService)
+    public PublishingController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO, PublishingSharedDataDAO publishingSharedDataDAO, ServiceProvider serviceProvider, PublicationLoaderRunner publicationLoaderRunner, SchedulerService schedulerService, ActivityGitRepositoryService activityGitRepositoryService)
     {
         this.publishingConfigurationDAO = publishingConfigurationDAO;
         this.publishingResourceDAO = publishingResourceDAO;
@@ -50,6 +55,7 @@ public class PublishingController
         this.serviceProvider = serviceProvider;
         this.publicationLoaderRunner = publicationLoaderRunner;
         this.schedulerService = schedulerService;
+        this.activityGitRepositoryService = activityGitRepositoryService;
     }
 
     @GetMapping("/")
@@ -80,6 +86,15 @@ public class PublishingController
 
         if (publishingConfigurationId != null) {
             publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+
+            if (publishingConfiguration.getGitPath() != null && activityGitRepositoryService.isActive()) {
+                try {
+                    activityGitRepositoryService.sync();
+                    publishingConfiguration.setPublishingStrategy(activityGitRepositoryService.readActivitySource(publishingConfiguration.getGitPath()));
+                } catch (Exception e) {
+                    model.addAttribute("gitSyncWarning", "Konnte nicht mit Git synchronisieren, zeige zwischengespeicherten Stand: " + e.getMessage());
+                }
+            }
         } else {
             InputStream inputStream = null;
             String demoPublishingStrategy = null;
@@ -133,6 +148,45 @@ public class PublishingController
             publishingConfiguration.setPublishingCategory(null);
         }
 
+        if (activityGitRepositoryService.isActive()) {
+            try {
+                if (publishingConfiguration.getGitPath() == null) {
+                    String slug = activityGitRepositoryService.uniqueSlug(
+                            activityGitRepositoryService.slugify(publishingConfiguration.getName()),
+                            ActivityGitRepositoryService.REPORTS_DIRECTORY);
+                    publishingConfiguration.setGitPath(ActivityGitRepositoryService.REPORTS_DIRECTORY + "/" + slug + ".groovy");
+                    activityGitRepositoryService.writeActivitySource(publishingConfiguration.getGitPath(), publishingConfiguration.getPublishingStrategy(), "Create report: " + publishingConfiguration.getName());
+                } else {
+                    Set<String> siblingPaths = new HashSet<>();
+                    for (PublishingConfiguration other : publishingConfigurationDAO.getAllPublishingConfigurations()) {
+                        if (!other.getId().equals(publishingConfiguration.getId()) && other.getGitPath() != null) {
+                            siblingPaths.add(other.getGitPath());
+                        }
+                    }
+
+                    String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.REPORTS_DIRECTORY, publishingConfiguration.getName(), publishingConfiguration.getGitPath(), siblingPaths);
+
+                    if (!desiredPath.equals(publishingConfiguration.getGitPath())) {
+                        activityGitRepositoryService.renameAndWriteActivitySource(publishingConfiguration.getGitPath(), desiredPath, publishingConfiguration.getPublishingStrategy(), "Rename report: " + publishingConfiguration.getName());
+                        publishingConfiguration.setGitPath(desiredPath);
+                    } else {
+                        activityGitRepositoryService.writeActivitySource(publishingConfiguration.getGitPath(), publishingConfiguration.getPublishingStrategy(), "Update report: " + publishingConfiguration.getName());
+                    }
+                }
+            } catch (Exception e) {
+                bindingResult.rejectValue("publishingStrategy", "publishingConfiguration.publishingStrategy", "Konnte nicht ins Git-Repository schreiben: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
+
+                model.addAttribute("allPublishingCategories", publishingConfigurationDAO.getAllPublishingCategories());
+
+                if (publishingConfiguration.getId() != null) {
+                    model.addAttribute("publishingResources", publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(publishingConfiguration));
+                    model.addAttribute("publishingSharedDataPage", publishingSharedDataDAO.getPublishingSharedDataForPageableAndPublishingConfiguration(pageable, publishingConfiguration));
+                }
+
+                return "publishing/publishing_configuration_edit";
+            }
+        }
+
         publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
 
         return "redirect:/publishing/publishingconfigurationedit/" + publishingConfiguration.getId();
@@ -170,9 +224,38 @@ public class PublishingController
     }
 
     @GetMapping("/publishingconfigurationdelete/{id}")
-    public String publishingConfigurationDelete(@PathVariable(value = "id", required = false) Long publishingConfigurationId)
+    public String publishingConfigurationDelete(@PathVariable(value = "id", required = false) Long publishingConfigurationId, RedirectAttributes redirectAttributes)
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+
+        // deleting the configuration cascades (DB foreign key) to its resources without going
+        // through publishingResourceDAO, so their git files have to be cleaned up here too
+        if (activityGitRepositoryService.isActive()) {
+            try {
+                activityGitRepositoryService.sync();
+
+                boolean deletedAny = false;
+
+                if (publishingConfiguration.getGitPath() != null) {
+                    activityGitRepositoryService.deleteFile(publishingConfiguration.getGitPath());
+                    deletedAny = true;
+                }
+
+                for (PublishingResource publishingResource : publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(publishingConfiguration)) {
+                    if (publishingResource.getGitPath() != null) {
+                        activityGitRepositoryService.deleteFile(publishingResource.getGitPath());
+                        deletedAny = true;
+                    }
+                }
+
+                if (deletedAny) {
+                    activityGitRepositoryService.commitAndPush("Delete report: " + publishingConfiguration.getName());
+                }
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("gitSyncWarning", "Konnte Datei(en) nicht aus Git löschen: " + e.getMessage());
+            }
+        }
+
         publishingConfigurationDAO.deletePublishingConfiguration(publishingConfiguration);
 
         return "redirect:/publishing/";
@@ -185,6 +268,15 @@ public class PublishingController
 
         if (publishingResourceId != null) {
             publishingResource = publishingResourceDAO.getPublishingResourceForId(publishingResourceId);
+
+            if (publishingResource.getGitPath() != null && activityGitRepositoryService.isActive()) {
+                try {
+                    activityGitRepositoryService.sync();
+                    publishingResource.setPublishingStrategy(activityGitRepositoryService.readActivitySource(publishingResource.getGitPath()));
+                } catch (Exception e) {
+                    model.addAttribute("gitSyncWarning", "Konnte nicht mit Git synchronisieren, zeige zwischengespeicherten Stand: " + e.getMessage());
+                }
+            }
         } else {
             InputStream inputStream = null;
             String demoPublishingResource = null;
@@ -233,6 +325,41 @@ public class PublishingController
             return "publishing/publishing_resource_edit";
         }
 
+        if (activityGitRepositoryService.isActive()) {
+            try {
+                if (publishingResource.getGitPath() == null) {
+                    String slug = activityGitRepositoryService.uniqueSlug(
+                            activityGitRepositoryService.slugify(publishingResource.getTitle()),
+                            ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY);
+                    publishingResource.setGitPath(ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY + "/" + slug + ".groovy");
+                    activityGitRepositoryService.writeActivitySource(publishingResource.getGitPath(), publishingResource.getPublishingStrategy(), "Create report resource: " + publishingResource.getTitle());
+                } else {
+                    Set<String> siblingPaths = new HashSet<>();
+                    for (PublishingResource other : publishingResourceDAO.getAllPublishingResources()) {
+                        if (!other.getId().equals(publishingResource.getId()) && other.getGitPath() != null) {
+                            siblingPaths.add(other.getGitPath());
+                        }
+                    }
+
+                    String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY, publishingResource.getTitle(), publishingResource.getGitPath(), siblingPaths);
+
+                    if (!desiredPath.equals(publishingResource.getGitPath())) {
+                        activityGitRepositoryService.renameAndWriteActivitySource(publishingResource.getGitPath(), desiredPath, publishingResource.getPublishingStrategy(), "Rename report resource: " + publishingResource.getTitle());
+                        publishingResource.setGitPath(desiredPath);
+                    } else {
+                        activityGitRepositoryService.writeActivitySource(publishingResource.getGitPath(), publishingResource.getPublishingStrategy(), "Update report resource: " + publishingResource.getTitle());
+                    }
+                }
+            } catch (Exception e) {
+                bindingResult.rejectValue("publishingStrategy", "publishingResource.publishingStrategy", "Konnte nicht ins Git-Repository schreiben: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
+
+                PublishingConfiguration publishingConfigurationForError = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+                model.addAttribute("publishingConfiguration", publishingConfigurationForError);
+
+                return "publishing/publishing_resource_edit";
+            }
+        }
+
         publishingResourceDAO.saveOrUpdatePublishingResource(publishingResource);
 
         return "redirect:/publishing/publishingresourceedit/" + publishingResource.getPublishingConfiguration().getId() + "/" + publishingResource.getId();
@@ -258,9 +385,17 @@ public class PublishingController
     }
 
     @GetMapping({"/publishingresourcedelete/{publishingResourceId}"})
-    public String publishingResourceDelete(@PathVariable(value = "publishingResourceId", required = false) Long publishingResourceId)
+    public String publishingResourceDelete(@PathVariable(value = "publishingResourceId", required = false) Long publishingResourceId, RedirectAttributes redirectAttributes)
     {
         PublishingResource publishingResource = publishingResourceDAO.getPublishingResourceForId(publishingResourceId);
+
+        if (publishingResource.getGitPath() != null && activityGitRepositoryService.isActive()) {
+            try {
+                activityGitRepositoryService.deleteAndPush(publishingResource.getGitPath(), "Delete report resource: " + publishingResource.getTitle());
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("gitSyncWarning", "Konnte Datei nicht aus Git löschen: " + e.getMessage());
+            }
+        }
 
         publishingResourceDAO.deletePublishingResource(publishingResource);
 

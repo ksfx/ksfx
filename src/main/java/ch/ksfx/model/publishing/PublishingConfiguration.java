@@ -41,6 +41,7 @@ public class PublishingConfiguration
     private boolean allowInternalLoad;
 	private String cronSchedule;
 	private boolean cronScheduleEnabled;
+	private String gitPath;
     private List<PublishingConfigurationCacheData> publishingConfigurationCacheDatas;
 
     @Id
@@ -203,6 +204,16 @@ public class PublishingConfiguration
 	public void setCronScheduleEnabled(boolean cronScheduleEnabled)
 	{
 		this.cronScheduleEnabled = cronScheduleEnabled;
+	}
+
+	public String getGitPath()
+	{
+		return gitPath;
+	}
+
+	public void setGitPath(String gitPath)
+	{
+		this.gitPath = gitPath;
 	}
 
 	@OneToMany(mappedBy = "publishingConfiguration")

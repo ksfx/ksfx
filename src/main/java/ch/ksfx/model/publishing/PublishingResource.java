@@ -34,6 +34,7 @@ public class PublishingResource
 	private List<PublishingResourceCacheData> publishingResourceCacheDatas;
     private boolean embedInLayout;
     private String layoutIntegration;
+	private String gitPath;
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -139,6 +140,16 @@ public class PublishingResource
 
 	public void setLayoutIntegration(String layoutIntegration) {
 		this.layoutIntegration = layoutIntegration;
+	}
+
+	public String getGitPath()
+	{
+		return gitPath;
+	}
+
+	public void setGitPath(String gitPath)
+	{
+		this.gitPath = gitPath;
 	}
 }
  

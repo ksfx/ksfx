@@ -8,6 +8,7 @@ import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.model.activity.ActivityInstanceParameter;
 import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.services.activity.ActivityInstanceRunner;
+import ch.ksfx.services.git.ActivityGitRepositoryService;
 import ch.ksfx.services.scheduler.SchedulerService;
 import ch.ksfx.util.StacktraceUtil;
 import groovy.lang.GroovyClassLoader;
@@ -19,12 +20,15 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -36,18 +40,21 @@ public class ActivityController
     private ActivityInstanceRunner activityInstanceRunner;
     private ServiceProvider serviceProvider;
     private SchedulerService schedulerService;
+    private ActivityGitRepositoryService activityGitRepositoryService;
 
     public ActivityController(ActivityDAO activityDAO,
                               ActivityInstanceDAO activityInstanceDAO,
                               ActivityInstanceRunner activityInstanceRunner,
                               ServiceProvider serviceProvider,
-                              SchedulerService schedulerService)
+                              SchedulerService schedulerService,
+                              ActivityGitRepositoryService activityGitRepositoryService)
     {
         this.activityDAO = activityDAO;
         this.activityInstanceDAO = activityInstanceDAO;
         this.activityInstanceRunner = activityInstanceRunner;
         this.serviceProvider = serviceProvider;
         this.schedulerService = schedulerService;
+        this.activityGitRepositoryService = activityGitRepositoryService;
     }
 
     @GetMapping("/")
@@ -105,6 +112,15 @@ public class ActivityController
 
         if (activityId != null) {
             activity = activityDAO.getActivityForId(activityId);
+
+            if (activity.getGitPath() != null && activityGitRepositoryService.isActive()) {
+                try {
+                    activityGitRepositoryService.sync();
+                    activity.setGroovyCode(activityGitRepositoryService.readActivitySource(activity.getGitPath()));
+                } catch (Exception e) {
+                    model.addAttribute("gitSyncWarning", "Konnte nicht mit Git synchronisieren, zeige zwischengespeicherten Stand: " + e.getMessage());
+                }
+            }
         } else {
             InputStream inputStream = null;
             String activityDemo = null;
@@ -147,6 +163,41 @@ public class ActivityController
 
         if (activity.getActivityCategory().getId() == 0) {
             activity.setActivityCategory(null);
+        }
+
+        if (activityGitRepositoryService.isActive()) {
+            try {
+                if (activity.getGitPath() == null) {
+                    String slug = activityGitRepositoryService.uniqueSlug(
+                            activityGitRepositoryService.slugify(activity.getName()),
+                            ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
+                    activity.setGitPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY + "/" + slug + ".groovy");
+                    activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
+                } else {
+                    Set<String> siblingPaths = new HashSet<>();
+                    for (Activity other : activityDAO.getAllActivities()) {
+                        if (!other.getId().equals(activity.getId()) && other.getGitPath() != null) {
+                            siblingPaths.add(other.getGitPath());
+                        }
+                    }
+
+                    String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY, activity.getName(), activity.getGitPath(), siblingPaths);
+
+                    if (!desiredPath.equals(activity.getGitPath())) {
+                        activityGitRepositoryService.renameAndWriteActivitySource(activity.getGitPath(), desiredPath, activity.getGroovyCode(), "Rename activity: " + activity.getName());
+                        activity.setGitPath(desiredPath);
+                    } else {
+                        activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Update activity: " + activity.getName());
+                    }
+                }
+            } catch (Exception e) {
+                bindingResult.rejectValue("groovyCode", "activity.groovyCode", "Konnte nicht ins Git-Repository schreiben: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
+
+                model.addAttribute("allActivityApprovalStrategies", activityDAO.getAllActivityApprovalStrategies());
+                model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategories());
+
+                return "activity/activity_edit";
+            }
         }
 
         activityDAO.saveOrUpdateActivity(activity);
@@ -215,9 +266,17 @@ public class ActivityController
     }
 
     @GetMapping({"/activitydelete/{id}"})
-    public String activityDelete(@PathVariable(value = "id", required = true) Long activityId)
+    public String activityDelete(@PathVariable(value = "id", required = true) Long activityId, RedirectAttributes redirectAttributes)
     {
         Activity activity = activityDAO.getActivityForId(activityId);
+
+        if (activity.getGitPath() != null && activityGitRepositoryService.isActive()) {
+            try {
+                activityGitRepositoryService.deleteAndPush(activity.getGitPath(), "Delete activity: " + activity.getName());
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("gitSyncWarning", "Konnte Datei nicht aus Git löschen: " + e.getMessage());
+            }
+        }
 
         activityDAO.deleteActivity(activity);
 

@@ -40,6 +40,7 @@ public class Activity
     private String cronSchedule;
     private boolean cronScheduleEnabled = false;
     private String groovyCode;
+    private String gitPath;
 
     @Deprecated
     private boolean requiresApproval = false;
@@ -100,6 +101,16 @@ public class Activity
     public void setGroovyCode(String groovyCode)
     {
         this.groovyCode = groovyCode;
+    }
+
+    public String getGitPath()
+    {
+        return gitPath;
+    }
+
+    public void setGitPath(String gitPath)
+    {
+        this.gitPath = gitPath;
     }
 
     public boolean getRequiresApproval()

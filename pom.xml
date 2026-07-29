@@ -88,6 +88,11 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.junit.platform</groupId>
+			<artifactId>junit-platform-launcher</artifactId>
+			<scope>test</scope>
+		</dependency>
         <dependency>
             <groupId>org.thymeleaf.extras</groupId>
             <artifactId>thymeleaf-extras-springsecurity4</artifactId>
@@ -149,11 +154,25 @@
 			<artifactId>groovy-all</artifactId>
 			<version>3.0.7</version>
 			<type>pom</type>
+			<exclusions>
+				<!-- pulls in org.testng:testng, which makes Surefire's provider
+				     auto-detection pick the TestNG provider over JUnit and silently
+				     run 0 tests -->
+				<exclusion>
+					<groupId>org.codehaus.groovy</groupId>
+					<artifactId>groovy-testng</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.quartz-scheduler</groupId>
 			<artifactId>quartz</artifactId>
 			<version>2.3.2</version>
+		</dependency>
+		<dependency> <!-- Git-backed Activity source storage -->
+			<groupId>org.eclipse.jgit</groupId>
+			<artifactId>org.eclipse.jgit</artifactId>
+			<version>5.13.3.202401111512-r</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.lucene</groupId>
@@ -277,6 +296,8 @@
 
 
 	<build>
+		<finalName>${project.artifactId}</finalName>
+		<defaultGoal>spring-boot:run</defaultGoal>
 		<plugins>
 			<plugin>
 				<groupId>io.ebean</groupId>

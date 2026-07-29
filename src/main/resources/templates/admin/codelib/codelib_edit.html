@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit Code Lib</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/admin/}">Admin</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/admin/codelib/}">Code Libs</a></li>
+        <li class="breadcrumb-item active">Edit Code Lib</li>
+    </ol>
+</nav>
+
+<div class="container">
+ <div th:if="${gitSyncWarning}" class="alert alert-warning" th:text="${gitSyncWarning}"></div>
+ <div class="list-group">
+ <div class="list-group-item">
+        <form id="codeLibForm" action="#" th:action="@{/admin/codelib/edit}" th:object="${codeLib}" method="post">
+            <input type="hidden" th:field="*{id}" />
+            <input type="hidden" th:field="*{gitPath}" />
+            <div class="form-group">
+                <label for="name">Name</label>
+                <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
+                <input type="text" class="form-control" id="name" th:field="*{name}" />
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <input type="text" class="form-control" id="description" th:field="*{description}" />
+            </div>
+            <div class="form-group">
+                <label for="groovyCode">Groovy Code</label>
+                <div class="text-danger" th:if="${#fields.hasErrors('groovyCode')}" th:errors="*{groovyCode}">Groovy code not valid</div>
+                <textarea class="form-control" id="groovyCode" th:field="*{groovyCode}" style="height:600px" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <a th:href="@{/admin/codelib/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+        </form>
+</div>
+</div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

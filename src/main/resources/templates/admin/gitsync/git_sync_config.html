@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - GIT Sync</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/admin/}">Admin</a></li>
+        <li class="breadcrumb-item active">KSFX - GIT Sync</li>
+    </ol>
+</nav>
+
+<div class="container">
+    <div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+    <div class="list-group">
+        <div class="list-group-item">
+            <form id="gitSyncConfigForm" action="#" th:action="@{/admin/gitsync/}" th:object="${gitSyncConfig}" method="post">
+                <input type="hidden" th:field="*{id}" />
+                <div class="form-group">
+                    <label for="repoUrl">Repository URL</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('repoUrl')}" th:errors="*{repoUrl}">Repository URL not valid</div>
+                    <input type="text" class="form-control" id="repoUrl" th:field="*{repoUrl}" placeholder="https://github.com/org/private-activities.git" />
+                </div>
+                <div class="form-group">
+                    <label for="branch">Branch</label>
+                    <input type="text" class="form-control" id="branch" th:field="*{branch}" placeholder="master" />
+                </div>
+                <div class="form-group">
+                    <label for="accessToken">Access Token</label>
+                    <input type="text" class="form-control" id="accessToken" th:field="*{accessToken}" />
+                </div>
+                <div class="form-group">
+                    <label for="localClonePath">Local Clone Path</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('localClonePath')}" th:errors="*{localClonePath}">Local Clone Path not valid</div>
+                    <input type="text" class="form-control" id="localClonePath" th:field="*{localClonePath}" placeholder="/var/ksfx/activity-repo" />
+                </div>
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
+                    <label class="form-check-label" for="enabled">Enabled</label>
+                </div>
+                <div class="form-group" th:if="${gitSyncConfig.lastSyncedAt}">
+                    <p>Last synced: <span th:text="${gitSyncConfig.lastSyncedAt}"></span> (commit <span th:text="${gitSyncConfig.lastSyncedCommit}"></span>)</p>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a th:href="@{/admin/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+            </form>
+        </div>
+        <div class="list-group-item">
+            <form action="#" th:action="@{/admin/gitsync/test}" method="post" style="display:inline">
+                <button type="submit" class="btn btn-secondary">Verbindung testen</button>
+            </form>
+            <form action="#" th:action="@{/admin/gitsync/migrate}" method="post" style="display:inline">
+                <button type="submit" class="btn btn-secondary">Alle Activities, Code Libs &amp; Reports nach Git migrieren</button>
+            </form>
+            <form action="#" th:action="@{/admin/gitsync/unlink}" method="post" style="display:inline" onsubmit="return confirm('Alle Activities, Code Libs und Reports von Git l&#246;sen (gitPath l&#246;schen, Quelltext bleibt erhalten) und lokalen Clone entfernen?');">
+                <button type="submit" class="btn btn-outline-danger">Unlink (alles von Git l&ouml;sen)</button>
+            </form>
+            <form action="#" th:action="@{/admin/gitsync/reconcile}" method="post" style="display:inline" onsubmit="return confirm('L&#246;schungen/Umbenennungen aus KSFX ins Git-Repository nachziehen (verwaiste Git-Dateien werden gel&#246;scht)?');">
+                <button type="submit" class="btn btn-secondary">Reconciliation ausf&uuml;hren</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

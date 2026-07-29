@@ -4,6 +4,7 @@ import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
 import ch.ksfx.model.publishing.*;
 import ch.ksfx.services.ServiceProvider;
+import ch.ksfx.services.git.ActivityGitRepositoryService;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import ch.ksfx.util.Console;
 import ch.ksfx.util.GenericResponse;
@@ -37,13 +38,15 @@ public class PublicationViewerController
     private PublishingResourceDAO publishingResourceDAO;
     private ServiceProvider serviceProvider;
     private SystemLogger systemLogger;
+    private ActivityGitRepositoryService activityGitRepositoryService;
 
-    public PublicationViewerController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO, ServiceProvider serviceProvider, SystemLogger systemLogger)
+    public PublicationViewerController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO, ServiceProvider serviceProvider, SystemLogger systemLogger, ActivityGitRepositoryService activityGitRepositoryService)
     {
         this.publishingConfigurationDAO = publishingConfigurationDAO;
         this.publishingResourceDAO = publishingResourceDAO;
         this.serviceProvider = serviceProvider;
         this.systemLogger = systemLogger;
+        this.activityGitRepositoryService = activityGitRepositoryService;
     }
 
     @GetMapping("/publicationviewer/**")
@@ -161,7 +164,7 @@ public class PublicationViewerController
             Console.startConsole(publishingConfiguration);
             PublishingDataShare.startShare(publishingConfiguration);
 
-            GenericResponse streamResponse = loadPublishingStrategy(publishingConfiguration.getPublishingStrategy(), uriParameters);
+            GenericResponse streamResponse = loadPublishingStrategy(resolveGroovySource(publishingConfiguration.getGitPath(), publishingConfiguration.getPublishingStrategy()), uriParameters);
 
             systemLogger.logMessage("PUBLICATION", "Data can be cached: " + publishingConfiguration.getName());
 
@@ -295,7 +298,7 @@ public class PublicationViewerController
             Console.startConsole(publishingConfiguration);
             PublishingDataShare.startShare(publishingConfiguration);
 
-            GenericResponse streamResponse = loadPublishingStrategy(publishingResource.getPublishingStrategy(), uriParameters);
+            GenericResponse streamResponse = loadPublishingStrategy(resolveGroovySource(publishingResource.getGitPath(), publishingResource.getPublishingStrategy()), uriParameters);
 //            InputStream inputStream = streamResponse.getStream();
 
             systemLogger.logMessage("PUBLICATION", "Data can be cached: " + publishingResource.getTitle());
@@ -378,6 +381,20 @@ public class PublicationViewerController
         }
 
         return Arrays.asList(StringUtils.split(pathVariablesUrl,'/'));
+    }
+
+    /** Reads the Groovy source from Git when gitPath is set and Git is active, falling back to the DB-cached value on failure. */
+    private String resolveGroovySource(String gitPath, String dbGroovyCode)
+    {
+        if (gitPath != null && activityGitRepositoryService.isActive()) {
+            try {
+                return activityGitRepositoryService.readActivitySource(gitPath);
+            } catch (Exception e) {
+                systemLogger.logMessage("WARN", "Could not read publishing strategy source from Git, falling back to cached value", e);
+            }
+        }
+
+        return dbGroovyCode;
     }
 
     public GenericResponse loadPublishingStrategy(String publishingStrategyCode) throws Exception

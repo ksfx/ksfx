@@ -17,4 +17,10 @@
     <include file="20210717213222_allow_internal_load.sql" relativeToChangelogFile="true"/>
     <include file="20210717220822_publishing_cron_schedule.sql" relativeToChangelogFile="true"/>
     <include file="20220504220824_publishing_cache_title.sql" relativeToChangelogFile="true"/>
+    <include file="20260729120000_activity_git_repository.sql" relativeToChangelogFile="true"/>
+    <include file="20260729130000_activity_library.sql" relativeToChangelogFile="true"/>
+    <include file="20260729140000_rename_activity_library_to_library.sql" relativeToChangelogFile="true"/>
+    <include file="20260729150000_rename_library_to_code_lib.sql" relativeToChangelogFile="true"/>
+    <include file="20260729160000_rename_activity_repository_config_to_git_sync_config.sql" relativeToChangelogFile="true"/>
+    <include file="20260729170000_publishing_git_path.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

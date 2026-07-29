@@ -13,6 +13,7 @@
 </nav>
 
 <div class="container">
+ <div th:if="${gitSyncWarning}" class="alert alert-warning" th:text="${gitSyncWarning}"></div>
  <div class="list-group">
  <div class="list-group-item">
         <form id="activityForm" action="#" th:action="@{/activity/activityedit}" th:object="${activity}" method="post">
