@@ -25,6 +25,7 @@ import ch.ksfx.model.CodeLib;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingResource;
+import ch.ksfx.services.systemlogger.SystemLogger;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.springframework.stereotype.Service;
 
@@ -43,18 +44,21 @@ public class GitSyncMigrationService
     private final PublishingConfigurationDAO publishingConfigurationDAO;
     private final PublishingResourceDAO publishingResourceDAO;
     private final ActivityGitRepositoryService activityGitRepositoryService;
+    private final SystemLogger systemLogger;
 
     public GitSyncMigrationService(ActivityDAO activityDAO,
                                     CodeLibDAO codeLibDAO,
                                     PublishingConfigurationDAO publishingConfigurationDAO,
                                     PublishingResourceDAO publishingResourceDAO,
-                                    ActivityGitRepositoryService activityGitRepositoryService)
+                                    ActivityGitRepositoryService activityGitRepositoryService,
+                                    SystemLogger systemLogger)
     {
         this.activityDAO = activityDAO;
         this.codeLibDAO = codeLibDAO;
         this.publishingConfigurationDAO = publishingConfigurationDAO;
         this.publishingResourceDAO = publishingResourceDAO;
         this.activityGitRepositoryService = activityGitRepositoryService;
+        this.systemLogger = systemLogger;
     }
 
     public String migrateAllToGit() throws GitAPIException, IOException
@@ -161,8 +165,12 @@ public class GitSyncMigrationService
             activityGitRepositoryService.commitAndPush("Initial migration of activity, code lib and report scripts from database");
         }
 
-        return migratedActivities + " Activity/-ies, " + migratedCodeLibs + " Code Lib(s), "
+        String message = migratedActivities + " Activity/-ies, " + migratedCodeLibs + " Code Lib(s), "
                 + migratedReports + " Report(s) and " + migratedReportResources + " Report Resource(s) migrated.";
+
+        systemLogger.logMessage("GITSYNC", "Migrate: " + message);
+
+        return message;
     }
 
     /**
@@ -219,7 +227,11 @@ public class GitSyncMigrationService
 
         activityGitRepositoryService.deleteLocalClone();
 
-        return unlinkedActivities + " Activity/-ies, " + unlinkedCodeLibs + " Code Lib(s), "
+        String message = unlinkedActivities + " Activity/-ies, " + unlinkedCodeLibs + " Code Lib(s), "
                 + unlinkedReports + " Report(s) and " + unlinkedReportResources + " Report Resource(s) unlinked from Git, local clone removed.";
+
+        systemLogger.logMessage("GITSYNC", "Unlink: " + message);
+
+        return message;
     }
 }

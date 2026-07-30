@@ -25,6 +25,7 @@ import ch.ksfx.model.CodeLib;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingResource;
+import ch.ksfx.services.systemlogger.SystemLogger;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.springframework.stereotype.Service;
 
@@ -35,18 +36,22 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Makes Git mirror KSFX's database exactly for filenames/existence - the database is the master
- * for which entries exist and what they're named. Git remains the master for the actual source
- * code content (see {@link ActivityGitRepositoryService}). Concretely, for each of
- * Activity/CodeLib/PublishingConfiguration/PublishingResource:
+ * Reconciles KSFX's database against Git, but the two sides are the master for different things:
  * <ul>
- *     <li>a git file with no matching live gitPath is deleted (the KSFX row was deleted)</li>
- *     <li>a live entity whose name/title no longer matches its gitPath's slug gets its file
- *     renamed (collision-aware against sibling entities' current paths - a slug freed up by
- *     another rename/delete in the same run is reclaimed)</li>
- *     <li>a live entity whose file is missing from git gets it recreated from the DB-cached
- *     source</li>
+ *     <li><b>KSFX is the master for existence and naming</b> - a git file with no matching live
+ *     gitPath is deleted (the KSFX row was deleted); a live entity whose name/title no longer
+ *     matches its gitPath's slug gets its file renamed (collision-aware against sibling entities'
+ *     current paths - a slug freed up by another rename/delete in the same run is reclaimed); a
+ *     live entity whose file is missing from git gets it recreated from the DB-cached source
+ *     (nothing else to recreate it from in that specific case).</li>
+ *     <li><b>Git is the master for source code content</b> - whenever a live entity's file still
+ *     exists in git (whether or not it needed a rename), its current git content is pulled back
+ *     into the DB cache field (groovyCode/publishingStrategy), overwriting whatever was cached
+ *     there. This is what lets code be authored directly in Git (e.g. by an agent) and picked up
+ *     by KSFX without ever touching the KSFX editor - reconciliation is the "bring the DB cache
+ *     up to date" action for that workflow.</li>
  * </ul>
+ * See {@link ActivityGitRepositoryService} for the underlying git plumbing.
  */
 @Service
 public class GitSyncReconciliationService
@@ -56,18 +61,21 @@ public class GitSyncReconciliationService
     private final PublishingConfigurationDAO publishingConfigurationDAO;
     private final PublishingResourceDAO publishingResourceDAO;
     private final ActivityGitRepositoryService activityGitRepositoryService;
+    private final SystemLogger systemLogger;
 
     public GitSyncReconciliationService(ActivityDAO activityDAO,
                                          CodeLibDAO codeLibDAO,
                                          PublishingConfigurationDAO publishingConfigurationDAO,
                                          PublishingResourceDAO publishingResourceDAO,
-                                         ActivityGitRepositoryService activityGitRepositoryService)
+                                         ActivityGitRepositoryService activityGitRepositoryService,
+                                         SystemLogger systemLogger)
     {
         this.activityDAO = activityDAO;
         this.codeLibDAO = codeLibDAO;
         this.publishingConfigurationDAO = publishingConfigurationDAO;
         this.publishingResourceDAO = publishingResourceDAO;
         this.activityGitRepositoryService = activityGitRepositoryService;
+        this.systemLogger = systemLogger;
     }
 
     public String reconcile() throws GitAPIException, IOException
@@ -81,14 +89,15 @@ public class GitSyncReconciliationService
         reconcileReports(result);
         reconcileReportResources(result);
 
-        if (result.total() > 0) {
+        if (result.gitChanges() > 0) {
             activityGitRepositoryService.commitAndPush("Reconciliation: sync Git with KSFX entries (deletes/renames)");
         }
 
         StringBuilder message = new StringBuilder();
         message.append(result.deleted.size()).append(" Datei(en) gelöscht, ")
                 .append(result.renamed.size()).append(" umbenannt, ")
-                .append(result.recreated.size()).append(" wiederhergestellt.");
+                .append(result.recreated.size()).append(" wiederhergestellt, ")
+                .append(result.contentUpdated.size()).append(" Code-Cache(s) aus Git aktualisiert.");
 
         if (!result.deleted.isEmpty()) {
             message.append(" Gelöscht: ").append(String.join(", ", result.deleted)).append(".");
@@ -101,6 +110,12 @@ public class GitSyncReconciliationService
         if (!result.recreated.isEmpty()) {
             message.append(" Wiederhergestellt: ").append(String.join(", ", result.recreated)).append(".");
         }
+
+        if (!result.contentUpdated.isEmpty()) {
+            message.append(" Code aktualisiert: ").append(String.join(", ", result.contentUpdated)).append(".");
+        }
+
+        systemLogger.logMessage("GITSYNC", "Reconciliation: " + message);
 
         return message.toString();
     }
@@ -128,11 +143,14 @@ public class GitSyncReconciliationService
             siblingPaths.remove(activity.getGitPath());
 
             String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY, activity.getName(), activity.getGitPath(), siblingPaths);
+            String resolvedContent = reconcileEntityFile(activity.getGitPath(), desiredPath, activity.getGroovyCode(), result);
 
-            reconcileEntityFile(activity.getGitPath(), desiredPath, activity.getGroovyCode(), result);
+            boolean pathChanged = !desiredPath.equals(activity.getGitPath());
+            boolean contentChanged = !resolvedContent.equals(activity.getGroovyCode());
 
-            if (!desiredPath.equals(activity.getGitPath())) {
+            if (pathChanged || contentChanged) {
                 activity.setGitPath(desiredPath);
+                activity.setGroovyCode(resolvedContent);
                 activityDAO.saveOrUpdateActivity(activity);
             }
 
@@ -163,11 +181,14 @@ public class GitSyncReconciliationService
             siblingPaths.remove(codeLib.getGitPath());
 
             String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.LIBS_DIRECTORY, codeLib.getName(), codeLib.getGitPath(), siblingPaths);
+            String resolvedContent = reconcileEntityFile(codeLib.getGitPath(), desiredPath, codeLib.getGroovyCode(), result);
 
-            reconcileEntityFile(codeLib.getGitPath(), desiredPath, codeLib.getGroovyCode(), result);
+            boolean pathChanged = !desiredPath.equals(codeLib.getGitPath());
+            boolean contentChanged = !resolvedContent.equals(codeLib.getGroovyCode());
 
-            if (!desiredPath.equals(codeLib.getGitPath())) {
+            if (pathChanged || contentChanged) {
                 codeLib.setGitPath(desiredPath);
+                codeLib.setGroovyCode(resolvedContent);
                 codeLibDAO.saveOrUpdateCodeLib(codeLib);
             }
 
@@ -198,11 +219,14 @@ public class GitSyncReconciliationService
             siblingPaths.remove(report.getGitPath());
 
             String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.REPORTS_DIRECTORY, report.getName(), report.getGitPath(), siblingPaths);
+            String resolvedContent = reconcileEntityFile(report.getGitPath(), desiredPath, report.getPublishingStrategy(), result);
 
-            reconcileEntityFile(report.getGitPath(), desiredPath, report.getPublishingStrategy(), result);
+            boolean pathChanged = !desiredPath.equals(report.getGitPath());
+            boolean contentChanged = !resolvedContent.equals(report.getPublishingStrategy());
 
-            if (!desiredPath.equals(report.getGitPath())) {
+            if (pathChanged || contentChanged) {
                 report.setGitPath(desiredPath);
+                report.setPublishingStrategy(resolvedContent);
                 publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(report);
             }
 
@@ -233,11 +257,14 @@ public class GitSyncReconciliationService
             siblingPaths.remove(resource.getGitPath());
 
             String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY, resource.getTitle(), resource.getGitPath(), siblingPaths);
+            String resolvedContent = reconcileEntityFile(resource.getGitPath(), desiredPath, resource.getPublishingStrategy(), result);
 
-            reconcileEntityFile(resource.getGitPath(), desiredPath, resource.getPublishingStrategy(), result);
+            boolean pathChanged = !desiredPath.equals(resource.getGitPath());
+            boolean contentChanged = !resolvedContent.equals(resource.getPublishingStrategy());
 
-            if (!desiredPath.equals(resource.getGitPath())) {
+            if (pathChanged || contentChanged) {
                 resource.setGitPath(desiredPath);
+                resource.setPublishingStrategy(resolvedContent);
                 publishingResourceDAO.saveOrUpdatePublishingResource(resource);
             }
 
@@ -256,15 +283,36 @@ public class GitSyncReconciliationService
         }
     }
 
-    private void reconcileEntityFile(String currentGitPath, String desiredGitPath, String cachedSource, Result result) throws IOException
+    /**
+     * Ensures the file exists at desiredGitPath (recreating it from cachedSource if it was
+     * missing - KSFX is the master for existence, there's nothing else to recreate it from; or
+     * moving it there if it was at a different path - the move itself doesn't touch content).
+     * Returns the content that should now be cached in the DB: freshly read from Git if the file
+     * already existed (Git is the master for content), or cachedSource itself if the file had to
+     * be recreated from it.
+     */
+    private String reconcileEntityFile(String currentGitPath, String desiredGitPath, String cachedSource, Result result) throws IOException
     {
         if (!activityGitRepositoryService.fileExists(currentGitPath)) {
-            activityGitRepositoryService.writeFile(desiredGitPath, cachedSource != null ? cachedSource : "");
+            String content = cachedSource != null ? cachedSource : "";
+            activityGitRepositoryService.writeFile(desiredGitPath, content);
             result.recreated.add(desiredGitPath);
-        } else if (!desiredGitPath.equals(currentGitPath)) {
+
+            return content;
+        }
+
+        if (!desiredGitPath.equals(currentGitPath)) {
             activityGitRepositoryService.moveFile(currentGitPath, desiredGitPath);
             result.renamed.add(currentGitPath + " -> " + desiredGitPath);
         }
+
+        String gitContent = activityGitRepositoryService.readActivitySource(desiredGitPath);
+
+        if (!gitContent.equals(cachedSource)) {
+            result.contentUpdated.add(desiredGitPath);
+        }
+
+        return gitContent;
     }
 
     private static class Result
@@ -272,8 +320,10 @@ public class GitSyncReconciliationService
         List<String> deleted = new ArrayList<>();
         List<String> renamed = new ArrayList<>();
         List<String> recreated = new ArrayList<>();
+        List<String> contentUpdated = new ArrayList<>();
 
-        int total()
+        /** Git-side changes only - contentUpdated is DB-side (pulled from Git) and needs no commit. */
+        int gitChanges()
         {
             return deleted.size() + renamed.size() + recreated.size();
         }

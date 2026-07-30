@@ -5,6 +5,7 @@ import ch.ksfx.model.GitSyncConfig;
 import ch.ksfx.services.git.ActivityGitRepositoryService;
 import ch.ksfx.services.git.GitSyncMigrationService;
 import ch.ksfx.services.git.GitSyncReconciliationService;
+import ch.ksfx.services.systemlogger.SystemLogger;
 import ch.ksfx.util.StacktraceUtil;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,16 +23,19 @@ public class GitSyncConfigController
     private final ActivityGitRepositoryService activityGitRepositoryService;
     private final GitSyncMigrationService gitSyncMigrationService;
     private final GitSyncReconciliationService gitSyncReconciliationService;
+    private final SystemLogger systemLogger;
 
     public GitSyncConfigController(GitSyncConfigDAO gitSyncConfigDAO,
                                     ActivityGitRepositoryService activityGitRepositoryService,
                                     GitSyncMigrationService gitSyncMigrationService,
-                                    GitSyncReconciliationService gitSyncReconciliationService)
+                                    GitSyncReconciliationService gitSyncReconciliationService,
+                                    SystemLogger systemLogger)
     {
         this.gitSyncConfigDAO = gitSyncConfigDAO;
         this.activityGitRepositoryService = activityGitRepositoryService;
         this.gitSyncMigrationService = gitSyncMigrationService;
         this.gitSyncReconciliationService = gitSyncReconciliationService;
+        this.systemLogger = systemLogger;
     }
 
     @GetMapping("/")
@@ -66,9 +70,11 @@ public class GitSyncConfigController
         try {
             activityGitRepositoryService.sync();
             redirectAttributes.addFlashAttribute("resultMessage", "Verbindung erfolgreich, Repository synchronisiert.");
+            systemLogger.logMessage("GITSYNC", "Test connection: successful.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("resultError", true);
             redirectAttributes.addFlashAttribute("resultMessage", "Verbindung fehlgeschlagen: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
+            systemLogger.logMessage("GITSYNC", "Test connection failed", e);
         }
 
         return "redirect:/admin/gitsync/";
@@ -83,6 +89,7 @@ public class GitSyncConfigController
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("resultError", true);
             redirectAttributes.addFlashAttribute("resultMessage", "Migration fehlgeschlagen: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
+            systemLogger.logMessage("GITSYNC", "Migrate failed", e);
         }
 
         return "redirect:/admin/gitsync/";
@@ -97,6 +104,7 @@ public class GitSyncConfigController
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("resultError", true);
             redirectAttributes.addFlashAttribute("resultMessage", "Unlink fehlgeschlagen: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
+            systemLogger.logMessage("GITSYNC", "Unlink failed", e);
         }
 
         return "redirect:/admin/gitsync/";
@@ -111,6 +119,7 @@ public class GitSyncConfigController
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("resultError", true);
             redirectAttributes.addFlashAttribute("resultMessage", "Reconciliation fehlgeschlagen: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
+            systemLogger.logMessage("GITSYNC", "Reconciliation failed", e);
         }
 
         return "redirect:/admin/gitsync/";

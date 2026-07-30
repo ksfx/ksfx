@@ -7,6 +7,7 @@ import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
 import ch.ksfx.model.GitSyncConfig;
 import ch.ksfx.model.activity.Activity;
+import ch.ksfx.services.systemlogger.SystemLogger;
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,7 @@ public class GitSyncReconciliationServiceTest
             Files.createDirectories(seedDir.resolve("activities"));
             Files.write(seedDir.resolve("activities/orphan-activity.groovy"), "class Orphan {}".getBytes(StandardCharsets.UTF_8));
             Files.write(seedDir.resolve("activities/old-name.groovy"), "class Foo {}".getBytes(StandardCharsets.UTF_8));
+            Files.write(seedDir.resolve("activities/synced.groovy"), "class GitVersion {}".getBytes(StandardCharsets.UTF_8));
             seed.add().addFilepattern("activities").call();
             seed.commit().setMessage("seed").call();
             seed.push().call();
@@ -78,7 +80,9 @@ public class GitSyncReconciliationServiceTest
         publishingConfigurationDAO = mock(PublishingConfigurationDAO.class);
         publishingResourceDAO = mock(PublishingResourceDAO.class);
 
-        reconciliationService = new GitSyncReconciliationService(activityDAO, codeLibDAO, publishingConfigurationDAO, publishingResourceDAO, gitService);
+        SystemLogger systemLogger = mock(SystemLogger.class);
+
+        reconciliationService = new GitSyncReconciliationService(activityDAO, codeLibDAO, publishingConfigurationDAO, publishingResourceDAO, gitService, systemLogger);
     }
 
     @Test
@@ -96,17 +100,25 @@ public class GitSyncReconciliationServiceTest
         missingFileActivity.setGitPath("activities/missing.groovy");
         missingFileActivity.setGroovyCode("class Recreated {}");
 
-        when(activityDAO.getAllActivities()).thenReturn(Arrays.asList(renamedActivity, missingFileActivity));
+        Activity syncedActivity = new Activity();
+        syncedActivity.setId(3L);
+        syncedActivity.setName("Synced");
+        syncedActivity.setGitPath("activities/synced.groovy");
+        syncedActivity.setGroovyCode("class OldDbVersion {}"); // stale - Git has "class GitVersion {}"
+
+        when(activityDAO.getAllActivities()).thenReturn(Arrays.asList(renamedActivity, missingFileActivity, syncedActivity));
 
         String result = reconciliationService.reconcile();
 
-        assertEquals("1 Datei(en) gelöscht, 1 umbenannt, 1 wiederhergestellt."
+        assertEquals("1 Datei(en) gelöscht, 1 umbenannt, 1 wiederhergestellt, 1 Code-Cache(s) aus Git aktualisiert."
                 + " Gelöscht: activities/orphan-activity.groovy."
                 + " Umbenannt: activities/old-name.groovy -> activities/new-name.groovy."
-                + " Wiederhergestellt: activities/missing.groovy.", result);
+                + " Wiederhergestellt: activities/missing.groovy."
+                + " Code aktualisiert: activities/synced.groovy.", result);
 
-        verify(activityDAO).saveOrUpdateActivity(any(Activity.class));
+        verify(activityDAO, org.mockito.Mockito.times(2)).saveOrUpdateActivity(any(Activity.class));
         assertEquals("activities/new-name.groovy", renamedActivity.getGitPath());
+        assertEquals("class GitVersion {}", syncedActivity.getGroovyCode(), "stale DB cache should have been refreshed from Git");
 
         Path verifyCloneDir = Files.createTempDirectory("gitsync-reconcile-verify");
 
