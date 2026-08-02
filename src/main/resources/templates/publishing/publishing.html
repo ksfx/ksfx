@@ -11,6 +11,7 @@
     </ol>
 </nav>
 
+<div th:if="${gitSyncActive != null and !gitSyncActive}" class="alert alert-secondary">Git-Sync ist nicht aktiv - Änderungen werden nur in der Datenbank gespeichert.</div>
 <div th:if="${gitSyncWarning}" class="alert alert-warning" th:text="${gitSyncWarning}"></div>
 <div style="float:right"><a th:href="@{/publishing/publishingconfigurationedit}" class="fa fa-plus fa-2x" title="Add Publishing Configuration" alt="Add Publishing Configuration"></a>&nbsp;&nbsp;&nbsp;</div>
 <div th:if="${publishingConfigurationsPage.totalPages  > 0}">

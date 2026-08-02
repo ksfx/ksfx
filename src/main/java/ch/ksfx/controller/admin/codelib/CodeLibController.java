@@ -35,6 +35,12 @@ public class CodeLibController
         this.codeLibMigrationService = codeLibMigrationService;
     }
 
+    @ModelAttribute("gitSyncActive")
+    public boolean gitSyncActive()
+    {
+        return activityGitRepositoryService.isActive();
+    }
+
     @GetMapping("/")
     public String index(Pageable pageable, Model model)
     {

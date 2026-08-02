@@ -58,6 +58,12 @@ public class PublishingController
         this.activityGitRepositoryService = activityGitRepositoryService;
     }
 
+    @ModelAttribute("gitSyncActive")
+    public boolean gitSyncActive()
+    {
+        return activityGitRepositoryService.isActive();
+    }
+
     @GetMapping("/")
     public String publishingIndex(Pageable pageable, Model model)
     {

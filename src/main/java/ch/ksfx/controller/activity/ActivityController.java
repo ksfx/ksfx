@@ -57,6 +57,12 @@ public class ActivityController
         this.activityGitRepositoryService = activityGitRepositoryService;
     }
 
+    @ModelAttribute("gitSyncActive")
+    public boolean gitSyncActive()
+    {
+        return activityGitRepositoryService.isActive();
+    }
+
     @GetMapping("/")
     public String activityIndex(Pageable pageable, Model model, HttpServletRequest request)
     {

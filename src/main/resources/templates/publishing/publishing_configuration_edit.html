@@ -13,6 +13,7 @@
 </nav>
 
 <div class="container">
+    <div th:if="${gitSyncActive != null and !gitSyncActive}" class="alert alert-secondary">Git-Sync ist nicht aktiv - Änderungen werden nur in der Datenbank gespeichert.</div>
     <div th:if="${gitSyncWarning}" class="alert alert-warning" th:text="${gitSyncWarning}"></div>
     <div class="list-group">
         <div class="list-group-item">
