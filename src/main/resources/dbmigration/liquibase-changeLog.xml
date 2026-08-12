@@ -23,4 +23,13 @@
     <include file="20260729150000_rename_library_to_code_lib.sql" relativeToChangelogFile="true"/>
     <include file="20260729160000_rename_activity_repository_config_to_git_sync_config.sql" relativeToChangelogFile="true"/>
     <include file="20260729170000_publishing_git_path.sql" relativeToChangelogFile="true"/>
+    <include file="20260810120000_agentic_config.sql" relativeToChangelogFile="true"/>
+    <include file="20260810121000_agent_and_agent_message.sql" relativeToChangelogFile="true"/>
+    <include file="20260811090000_agentic_config_auth_mode.sql" relativeToChangelogFile="true"/>
+    <include file="20260811150000_agent_permission_mode.sql" relativeToChangelogFile="true"/>
+    <include file="20260811160000_agent_schedule.sql" relativeToChangelogFile="true"/>
+    <include file="20260811170000_agent_api_token.sql" relativeToChangelogFile="true"/>
+    <include file="20260811180000_agent_message_attachments.sql" relativeToChangelogFile="true"/>
+    <include file="20260812090000_agentic_project.sql" relativeToChangelogFile="true"/>
+    <include file="20260812150000_agentic_usage_stats.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

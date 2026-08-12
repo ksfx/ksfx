@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title th:text="'KSFX - Schedules - ' + ${agent.name}">KSFX - Schedules</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/chat/{id}(id=${agent.id})}" th:text="${agent.name}">Agent</a></li>
+        <li class="breadcrumb-item active">Schedules</li>
+    </ol>
+</nav>
+
+<div style="float:right">
+    <a th:href="@{/agentic/schedule/{agentId}/edit(agentId=${agent.id})}" class="fa fa-plus fa-2x" title="New Schedule" alt="New Schedule"></a>&nbsp;&nbsp;&nbsp;
+</div>
+
+<table class="table table-striped table-responsive-md">
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Cron</th>
+        <th>Active</th>
+        <th>Last Run</th>
+        <th>Status</th>
+        <th>Next Run</th>
+        <th>Edit</th>
+        <th>Delete</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="schedule : ${schedules}">
+        <td th:text="${schedule.name}"></td>
+        <td th:text="${schedule.cronSchedule}"></td>
+        <td th:text="${schedule.cronScheduleEnabled} ? 'Yes' : 'No'"></td>
+        <td th:text="${schedule.lastRunAt}"></td>
+        <td>
+            <span th:text="${schedule.lastRunStatus}"></span>
+            <span th:if="${schedule.lastRunError}" class="fa fa-exclamation-triangle text-danger" th:title="${schedule.lastRunError}"></span>
+        </td>
+        <td th:if="${schedule.cronScheduleEnabled}" th:text="${schedulerService.getNextFireTime('AgentSchedule' + schedule.id + 'Trigger')}"></td>
+        <td th:unless="${schedule.cronScheduleEnabled}">-</td>
+        <td><a th:href="@{/agentic/schedule/{agentId}/edit/{id}(agentId=${agent.id},id=${schedule.id})}" class="fa fa-pencil" title="Edit"></a></td>
+        <td><a th:attr="data-href=@{/agentic/schedule/{agentId}/delete/{id}(agentId=${agent.id},id=${schedule.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" title="Delete"></a></td>
+    </tr>
+    </tbody>
+</table>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

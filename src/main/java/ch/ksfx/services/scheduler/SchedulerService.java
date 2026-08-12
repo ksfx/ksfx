@@ -17,15 +17,19 @@
 
 package ch.ksfx.services.scheduler;
 
+import ch.ksfx.dao.AgentScheduleDAO;
 import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.dao.spidering.SpideringConfigurationDAO;
 import ch.ksfx.dao.spidering.SpideringDAO;
+import ch.ksfx.model.AgentSchedule;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.spidering.SpideringConfiguration;
 import ch.ksfx.services.activity.ActivityInstanceJob;
+import ch.ksfx.services.agentic.AgentScheduleJob;
+import ch.ksfx.services.agentic.ClaudeCliSessionService;
 import ch.ksfx.services.configurationdatabase.ConfigurationDatabaseProvider;
 import ch.ksfx.services.publishing.PublicationJob;
 import ch.ksfx.services.publishing.PublicationLoaderRunner;
@@ -72,9 +76,12 @@ public class SchedulerService
     private PublishingConfigurationDAO publishingConfigurationDAO;
     private PublicationLoaderRunner publicationLoaderRunner;
 
+    private AgentScheduleDAO agentScheduleDAO;
+    private ClaudeCliSessionService claudeCliSessionService;
+
     private Logger logger = LoggerFactory.getLogger(SchedulerService.class);
 
-    public SchedulerService(ConfigurationDatabaseProvider configurationDatabaseProvider, SystemLogger systemLogger, SystemEnvironment systemEnvironment, SpideringRunner spideringRunner, SpideringDAO spideringDAO, SpideringConfigurationDAO spideringConfigurationDAO, ActivityDAO activityDAO, ActivityInstanceDAO activityInstanceDAO, ActivityInstanceRunner activityInstanceRunner, PublishingConfigurationDAO publishingConfigurationDAO, PublicationLoaderRunner publicationLoaderRunner)
+    public SchedulerService(ConfigurationDatabaseProvider configurationDatabaseProvider, SystemLogger systemLogger, SystemEnvironment systemEnvironment, SpideringRunner spideringRunner, SpideringDAO spideringDAO, SpideringConfigurationDAO spideringConfigurationDAO, ActivityDAO activityDAO, ActivityInstanceDAO activityInstanceDAO, ActivityInstanceRunner activityInstanceRunner, PublishingConfigurationDAO publishingConfigurationDAO, PublicationLoaderRunner publicationLoaderRunner, AgentScheduleDAO agentScheduleDAO, ClaudeCliSessionService claudeCliSessionService)
     {
         this.configurationDatabaseProvider = configurationDatabaseProvider;
         this.systemLogger = systemLogger;
@@ -87,6 +94,8 @@ public class SchedulerService
         this.activityInstanceRunner = activityInstanceRunner;
         this.publishingConfigurationDAO = publishingConfigurationDAO;
         this.publicationLoaderRunner = publicationLoaderRunner;
+        this.agentScheduleDAO = agentScheduleDAO;
+        this.claudeCliSessionService = claudeCliSessionService;
     }
 
     @PostConstruct
@@ -103,6 +112,7 @@ public class SchedulerService
             startSpideringSchedules();
             startActivitySchedules();
             startPublicationSchedules();
+            startAgentSchedules();
 
         } catch (Exception e) {
             systemLogger.logMessage("FATAL","Error while starting scheduler service", e);
@@ -208,6 +218,29 @@ public class SchedulerService
         }
     }
 
+    public void scheduleAgentSchedule(AgentSchedule agentSchedule)
+    {
+        JobDetail agentScheduleJob = newJob(AgentScheduleJob.class)
+                .withIdentity("AgentSchedule" + agentSchedule.getId().toString(), "AgentSchedules")
+                .build();
+
+        Trigger trigger = newTrigger()
+                .withIdentity("AgentSchedule" + agentSchedule.getId().toString() + "Trigger")
+                .withSchedule(cronSchedule(agentSchedule.getCronSchedule()))
+                .build();
+
+        agentScheduleJob.getJobDataMap().put("agentScheduleDao", agentScheduleDAO);
+        agentScheduleJob.getJobDataMap().put("agentScheduleId", agentSchedule.getId());
+        agentScheduleJob.getJobDataMap().put("claudeCliSessionService", claudeCliSessionService);
+        agentScheduleJob.getJobDataMap().put("systemLogger", systemLogger);
+
+        try {
+            scheduler.scheduleJob(agentScheduleJob, trigger);
+        } catch (SchedulerException e) {
+            systemLogger.logMessage("FATAL", "Could not schedule Agent schedule job", e);
+        }
+    }
+
     public void pauseJob(String jobName, String groupName) throws SchedulerException
     {
         JobKey jobKey = new JobKey(jobName, groupName);
@@ -270,6 +303,15 @@ public class SchedulerService
 
         for (PublishingConfiguration publishingConfiguration : publishingConfigurations) {
             schedulePublication(publishingConfiguration);
+        }
+    }
+
+    private void startAgentSchedules()
+    {
+        List<AgentSchedule> agentSchedules = agentScheduleDAO.getAllEnabledSchedules();
+
+        for (AgentSchedule agentSchedule : agentSchedules) {
+            scheduleAgentSchedule(agentSchedule);
         }
     }
 }

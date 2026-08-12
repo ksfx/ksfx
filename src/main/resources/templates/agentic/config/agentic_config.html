@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Agentic Config</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item active">Config</li>
+    </ol>
+</nav>
+
+<div class="container">
+    <div class="list-group">
+        <div class="list-group-item">
+            <form id="agenticConfigForm" action="#" th:action="@{/agentic/config/}" th:object="${agenticConfig}" method="post">
+                <input type="hidden" th:field="*{id}" />
+                <div class="form-group">
+                    <label>Auth Mode</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="API_KEY" id="authModeApiKey" />
+                        <label class="form-check-label" for="authModeApiKey">API Key</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="OAUTH" id="authModeOauth" />
+                        <label class="form-check-label" for="authModeOauth">OAuth (claude login on the host)</label>
+                    </div>
+                    <small class="form-text text-muted">
+                        With OAuth, no API key is passed to the Claude CLI process - instead, the CLI uses the login
+                        performed once interactively via <code>claude login</code> on the KSFX host (same OS user
+                        that starts the KSFX process). This cannot be triggered from this form.
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="apiKey">Anthropic API Key</label>
+                    <input type="text" class="form-control" id="apiKey" th:field="*{apiKey}" placeholder="Anthropic API Key" />
+                    <small class="form-text text-muted">Only relevant when Auth Mode = API Key.</small>
+                </div>
+                <div class="form-group">
+                    <label for="claudeCliPath">Claude CLI Path</label>
+                    <input type="text" class="form-control" id="claudeCliPath" th:field="*{claudeCliPath}" placeholder="claude" />
+                    <small class="form-text text-muted">
+                        On Windows: enter the full path to the actual <code>claude.exe</code> (e.g. <code>...\npm\node_modules\@anthropic-ai\claude-code\bin\claude.exe</code>),
+                        <strong>not</strong> the <code>claude.cmd</code> wrapper. <code>.cmd</code> files run via <code>cmd.exe</code>, whose argument parsing has been observed to
+                        silently drop arguments on long, quote-heavy prompts (system prompt, file attachments) -
+                        the agent then replies empty, with no error message.
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="defaultPermissionMode">Default Permission Mode</label>
+                    <input type="text" class="form-control" id="defaultPermissionMode" th:field="*{defaultPermissionMode}" placeholder="default / acceptEdits / bypassPermissions / plan" />
+                </div>
+                <div class="form-group">
+                    <label for="workspaceRoot">Workspace Root</label>
+                    <input type="text" class="form-control" id="workspaceRoot" th:field="*{workspaceRoot}" />
+                </div>
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
+                    <label class="form-check-label" for="enabled">Enabled</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a th:href="@{/agentic/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+            </form>
+        </div>
+
+        <div class="list-group-item" th:if="${agenticConfig.claudeRateLimitUpdatedAt}">
+            <h5>Rate Limit</h5>
+            <p>
+                Status: <strong th:text="${agenticConfig.claudeRateLimitStatus}"></strong>
+                (<span th:text="${agenticConfig.claudeRateLimitType}"></span>),
+                resets <span th:text="${#dates.format(agenticConfig.claudeRateLimitResetsAt, 'yyyy-MM-dd HH:mm')}"></span>
+            </p>
+            <p th:if="${agenticConfig.claudeRateLimitUsingOverage}">
+                Currently using overage capacity (<span th:text="${agenticConfig.claudeRateLimitOverageStatus}"></span>),
+                resets <span th:text="${#dates.format(agenticConfig.claudeRateLimitOverageResetsAt, 'yyyy-MM-dd HH:mm')}"></span>
+            </p>
+            <small class="form-text text-muted">Snapshot as of <span th:text="${#dates.format(agenticConfig.claudeRateLimitUpdatedAt, 'yyyy-MM-dd HH:mm')}"></span> - only refreshed when an agent actually runs a turn, not live.</small>
+        </div>
+
+        <div class="list-group-item" th:if="${totalTurns} > 0">
+            <h5>Usage Statistics</h5>
+            <p>
+                <strong th:text="${totalTurns}"></strong> turns,
+                <strong th:text="${totalInputTokens} + ' / ' + ${totalOutputTokens}"></strong> input/output tokens
+            </p>
+            <table class="table table-sm" th:if="${usageByAgent.size()} > 1">
+                <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th></tr></thead>
+                <tbody>
+                <tr th:each="u : ${usageByAgent}">
+                    <td th:text="${u.agentName}"></td>
+                    <td th:text="${u.turnCount}"></td>
+                    <td th:text="${u.inputTokens}"></td>
+                    <td th:text="${u.outputTokens}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit Agent</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item active">Edit Agent</li>
+    </ol>
+</nav>
+
+<div class="container">
+ <div class="list-group">
+ <div class="list-group-item">
+        <form id="agentForm" action="#" th:action="@{/agentic/edit}" th:object="${agent}" method="post">
+            <input type="hidden" th:field="*{id}" />
+            <div class="form-group">
+                <label for="name">Name</label>
+                <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
+                <input type="text" class="form-control" id="name" th:field="*{name}" />
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <input type="text" class="form-control" id="description" th:field="*{description}" />
+            </div>
+            <div class="form-group">
+                <label for="agenticProject">Agentic Project</label>
+                <select class="form-control" id="agenticProject" th:field="*{agenticProject.id}">
+                    <option value="">-- No Agentic Project --</option>
+                    <option th:each="p : ${allAgenticProjects}" th:value="${p.id}" th:text="${p.name}"></option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="systemPrompt">System Prompt</label>
+                <textarea class="form-control" id="systemPrompt" th:field="*{systemPrompt}" style="height:300px"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="permissionMode">Permission Mode (Override)</label>
+                <input type="text" class="form-control" id="permissionMode" th:field="*{permissionMode}" placeholder="empty = use global default from /agentic/config/" />
+                <small class="form-text text-muted">Optional: default / acceptEdits / bypassPermissions / plan. Leave empty to use the global default.</small>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
+                <label class="form-check-label" for="enabled">Enabled</label>
+            </div>
+            <div class="form-group" th:if="${agent.workspacePath}">
+                <label>Workspace Path</label>
+                <p class="form-control-plaintext" th:text="${agent.workspacePath}"></p>
+            </div>
+            <div class="form-group" th:if="${agent.claudeSessionId}">
+                <label>Claude Session ID</label>
+                <p class="form-control-plaintext" th:text="${agent.claudeSessionId}"></p>
+            </div>
+            <div class="form-group" th:if="${agent.apiToken}">
+                <label>API Token</label>
+                <p class="form-control-plaintext" th:text="${agent.apiToken}"></p>
+                <small class="form-text text-muted">Used by the agent itself for /agentic/api/schedule calls (as the environment variable $KSFX_AGENT_TOKEN, not in the plaintext prompt). No rotation in this version.</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <a th:href="@{/agentic/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+        </form>
+</div>
+</div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

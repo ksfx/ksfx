@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title th:text="'KSFX - Chat - ' + ${agent.name}">KSFX - Chat</title>
+</head>
+<body>
+<!-- layout :: site-head above discards all of <head>'s own children (th:replace swaps the whole
+     element), so page-specific CSS can't live there - it's linked here in <body> instead, which
+     HTML5 permits and keeps this file self-contained without touching layout.html. -->
+<link rel="stylesheet" th:href="@{/styles/agentic-chat.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item active" th:text="${agent.name}">Agent</li>
+    </ol>
+</nav>
+
+<div class="agentic-layout" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' agentic-dark' : ''">
+
+    <aside class="agentic-sidebar" th:data-status-endpoint="@{/agentic/status}">
+        <div class="agentic-sidebar-header">
+            <span>Agents</span>
+            <a th:href="@{/agentic/edit}" class="agentic-sidebar-new" title="New Agent" aria-label="New Agent"><i class="fa fa-plus"></i></a>
+        </div>
+        <div class="agentic-sidebar-list">
+            <div th:each="p : ${allAgenticProjects}" class="agentic-sidebar-project">
+                <div class="agentic-sidebar-project-name" th:text="${p.name}"></div>
+                <a th:each="a : ${agentsByAgenticProject[p.id]}" th:href="@{/agentic/chat/{id}(id=${a.id})}"
+                   th:data-agent-id="${a.id}"
+                   class="agentic-sidebar-item" th:classappend="${a.id == agent.id} ? ' agentic-sidebar-item--active' : ''">
+                    <span class="agentic-sidebar-item-name" th:text="${a.name}"></span>
+                    <span class="agentic-sidebar-item-status" title=""></span>
+                    <span th:unless="${a.enabled}" class="agentic-sidebar-item-badge">off</span>
+                </a>
+            </div>
+            <div th:if="${not #lists.isEmpty(unassignedAgents)}" class="agentic-sidebar-project">
+                <div class="agentic-sidebar-project-name">Ungrouped</div>
+                <a th:each="a : ${unassignedAgents}" th:href="@{/agentic/chat/{id}(id=${a.id})}"
+                   th:data-agent-id="${a.id}"
+                   class="agentic-sidebar-item" th:classappend="${a.id == agent.id} ? ' agentic-sidebar-item--active' : ''">
+                    <span class="agentic-sidebar-item-name" th:text="${a.name}"></span>
+                    <span class="agentic-sidebar-item-status" title=""></span>
+                    <span th:unless="${a.enabled}" class="agentic-sidebar-item-badge">off</span>
+                </a>
+            </div>
+        </div>
+        <div class="agentic-sidebar-footer">
+            <a th:href="@{/agentic/}">Manage all agents</a>
+        </div>
+    </aside>
+
+    <div class="agentic-main">
+        <div th:if="${agentRunning}" class="alert alert-info agentic-running-banner">A request is already running for this agent.</div>
+
+        <div class="agentic-toolbar">
+            <span class="agentic-main-title" th:text="${agent.name}">Agent</span>
+            <span>
+                <a th:href="@{/agentic/schedule/{id}/(id=${agent.id})}" class="btn btn-outline-secondary btn-sm">Schedules</a>
+                <a th:href="@{/agentic/edit/{id}(id=${agent.id})}" class="btn btn-outline-secondary btn-sm">Edit Agent</a>
+            </span>
+        </div>
+
+        <div id="agenticChatRoot" class="agentic-chat-wrapper"
+             th:data-agent-id="${agent.id}"
+             th:data-chat-endpoint="@{/agentic/chat/{id}(id=${agent.id})}"
+             th:data-download-endpoint="@{/agentic/download/{id}(id=${agent.id})}"
+             th:data-csrf-header="${_csrf.headerName}"
+             th:data-csrf-token="${_csrf.token}">
+
+            <div id="agenticMessages" class="agentic-messages">
+                <div th:each="m : ${messages}" class="agentic-msg" th:classappend="'agentic-msg--' + ${#strings.toLowerCase(m.role.name())}">
+                    <div class="agentic-role-label" th:text="${m.role.name() == 'USER'} ? 'You' : (${m.role.name() == 'SYSTEM'} ? 'System' : 'Assistant')"></div>
+                    <div class="agentic-bubble" th:text="${m.content}"></div>
+                    <div th:if="${m.attachments}" class="agentic-attachments" th:data-attachments="${m.attachments}"></div>
+                    <details th:if="${m.toolActivity}" class="agentic-tool-activity">
+                        <summary><i class="fa fa-wrench"></i> Tool Activity</summary>
+                        <div class="agentic-tool-activity-body" th:data-tool-activity="${m.toolActivity}"></div>
+                    </details>
+                    <div th:if="${m.inputTokens != null}" class="agentic-message-tokens" th:text="${m.inputTokens + m.outputTokens} + ' tokens'"></div>
+                </div>
+            </div>
+
+            <div id="agenticPendingFiles" class="agentic-pending-files"></div>
+            <div class="agentic-composer">
+                <button id="agenticAttachBtn" type="button" class="agentic-attach-btn" title="Attach file" aria-label="Attach file">
+                    <i class="fa fa-paperclip"></i>
+                </button>
+                <input id="agenticFileInput" type="file" multiple hidden="hidden" />
+                <textarea id="agenticInput" rows="1" placeholder="Message to the agent... (Enter to send, Shift+Enter for new line)"></textarea>
+                <button id="agenticSendBtn" type="button" class="agentic-send-btn" title="Send" aria-label="Send">
+                    <i class="fa fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+<script th:src="@{/script/agentic-chat.js}"></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit Schedule</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/schedule/{id}/(id=${agent.id})}" th:text="${agent.name}">Agent</a></li>
+        <li class="breadcrumb-item active">Edit Schedule</li>
+    </ol>
+</nav>
+
+<div class="container">
+ <div class="list-group">
+ <div class="list-group-item">
+        <form th:action="@{/agentic/schedule/{agentId}/edit(agentId=${agent.id})}" th:object="${agentSchedule}" method="post">
+            <input type="hidden" th:field="*{id}" />
+            <div class="form-group">
+                <label for="name">Name</label>
+                <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                <input type="text" class="form-control" id="name" th:field="*{name}" />
+            </div>
+            <div class="form-group">
+                <label for="taskPrompt">Task Prompt</label>
+                <textarea class="form-control" id="taskPrompt" th:field="*{taskPrompt}" style="height:200px"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="cronSchedule">Cron Schedule</label>
+                <div class="text-danger" th:if="${#fields.hasErrors('cronSchedule')}" th:errors="*{cronSchedule}"></div>
+                <input type="text" class="form-control" id="cronSchedule" th:field="*{cronSchedule}" placeholder="0 0 9 * * ?" />
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="cronScheduleEnabled" th:field="*{cronScheduleEnabled}" />
+                <label class="form-check-label" for="cronScheduleEnabled">Active</label>
+            </div>
+            <div class="form-group" th:if="${agentSchedule.lastRunAt}">
+                <label>Last Run</label>
+                <p class="form-control-plaintext" th:text="${agentSchedule.lastRunStatus} + ' @ ' + ${agentSchedule.lastRunAt}"></p>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <a th:href="@{/agentic/schedule/{id}/(id=${agent.id})}" class="btn btn-danger">Cancel</a>
+        </form>
+</div>
+</div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

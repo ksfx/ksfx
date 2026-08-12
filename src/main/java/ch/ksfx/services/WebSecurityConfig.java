@@ -24,7 +24,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
     {
         http
                 .authorizeRequests()
-                .antMatchers("/", "/home","/toggledisplaymode", "/images/**", "/styles/**", "/script/**", "/publishing/publicationviewer/**").permitAll()
+                .antMatchers("/", "/home","/toggledisplaymode", "/images/**", "/styles/**", "/script/**", "/publishing/publicationviewer/**", "/agentic/api/**").permitAll()
                 .anyRequest().authenticated()
                 .and()
                 .formLogin()
@@ -33,7 +33,14 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
                 .and()
                 .logout()
                 .logoutSuccessUrl("/")
-                .permitAll();
+                .permitAll()
+                .and()
+                // /agentic/api/** is the agent self-service scheduling API, called via curl from
+                // inside the headless Claude CLI's Bash tool - no browser session/CSRF token
+                // available to it, so it's permitAll() above and does its own bearer-token check
+                // in AgentScheduleApiController instead. Only this prefix is exempted from CSRF.
+                .csrf()
+                .ignoringAntMatchers("/agentic/api/**");
 
         http.headers().frameOptions().sameOrigin();
     }

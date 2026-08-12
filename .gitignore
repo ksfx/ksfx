@@ -7,3 +7,4 @@ ksfx.iml
 ksfx.ipr
 ksfx.iws
 /src/main/resources/groovymigration/
+.claude/settings.local.json
