@@ -32,4 +32,6 @@
     <include file="20260811180000_agent_message_attachments.sql" relativeToChangelogFile="true"/>
     <include file="20260812090000_agentic_project.sql" relativeToChangelogFile="true"/>
     <include file="20260812150000_agentic_usage_stats.sql" relativeToChangelogFile="true"/>
+    <include file="20260812180000_agent_message_generated_files.sql" relativeToChangelogFile="true"/>
+    <include file="20260813090000_agent_utf8mb4.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

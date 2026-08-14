@@ -19,6 +19,7 @@ public class AgentMessage
     private String content;
     private String toolActivity;
     private String attachments;
+    private String generatedFiles;
     private Date createdAt;
 
     // Usage stats for this turn (ASSISTANT-role messages only) - captured from the CLI's
@@ -101,6 +102,22 @@ public class AgentMessage
     public void setAttachments(String attachments)
     {
         this.attachments = attachments;
+    }
+
+    /**
+     * JSON array of files the agent produced during this turn (new/modified since the turn
+     * started), detected by diffing the workspace before and after - see ClaudeCliSessionService.
+     * Same {fileName, path} shape as {@link #attachments}, just for the other direction.
+     */
+    @Lob
+    public String getGeneratedFiles()
+    {
+        return generatedFiles;
+    }
+
+    public void setGeneratedFiles(String generatedFiles)
+    {
+        this.generatedFiles = generatedFiles;
     }
 
     public Date getCreatedAt()

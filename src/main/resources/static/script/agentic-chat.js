@@ -78,25 +78,28 @@
         }
     }
 
-    // Renders {fileName, path?} attachment chips into `container` - used both for a just-sent
-    // message (container is a freshly created div, `path` not yet known - the upload happens
-    // server-side as part of the in-flight request) and for history reloaded from the DB
-    // (container is the template's own .agentic-attachments div, see the parsing loop below,
-    // `path` is set there so the chip can link to the download endpoint).
-    function renderAttachmentChips(container, attachments) {
+    // Renders {fileName, path?} chips into `container` - used both for a just-sent message
+    // (container is a freshly created div, `path` not yet known - the upload happens server-side
+    // as part of the in-flight request) and for history reloaded from the DB (container is the
+    // template's own .agentic-attachments/.agentic-generated-files div, see the parsing loops
+    // below, `path` is set there so the chip can link to the download endpoint). Also reused for
+    // agent-generated files (see the 'generated_files' SSE handler and the matching history loop)
+    // with a different iconClass to distinguish "you gave this to the agent" from the reverse.
+    // `path` is always relative to the agent's workspace root - the full path is sent (not just
+    // the last segment), since generated files can live in subfolders, not just uploads/.
+    function renderAttachmentChips(container, attachments, iconClass) {
         (attachments || []).forEach(function (a) {
             var chip = document.createElement(a.path ? 'a' : 'span');
             chip.className = 'agentic-attachment-chip';
 
             if (a.path) {
-                var storedName = a.path.substring(a.path.lastIndexOf('/') + 1);
-                chip.href = downloadEndpoint + '/' + encodeURIComponent(storedName);
+                chip.href = downloadEndpoint + '/' + a.path.split('/').map(encodeURIComponent).join('/');
                 chip.target = '_blank';
                 chip.rel = 'noopener';
             }
 
             var icon = document.createElement('i');
-            icon.className = 'fa fa-paperclip';
+            icon.className = 'fa ' + (iconClass || 'fa-paperclip');
             chip.appendChild(icon);
             chip.appendChild(document.createTextNode(' ' + (a.fileName || 'File')));
 
@@ -318,6 +321,11 @@
             tokens.className = 'agentic-message-tokens';
             tokens.textContent = JSON.parse(data) + ' tokens';
             assistantMessage.root.appendChild(tokens);
+        } else if (eventName === 'generated_files') {
+            var filesDiv = document.createElement('div');
+            filesDiv.className = 'agentic-attachments';
+            renderAttachmentChips(filesDiv, JSON.parse(data), 'fa-download');
+            assistantMessage.root.appendChild(filesDiv);
         } else if (eventName === 'error') {
             clearTyping(assistantMessage.bubble);
             createMessageEl('system').bubble.textContent = data;
@@ -431,6 +439,14 @@
     document.querySelectorAll('.agentic-attachments[data-attachments]').forEach(function (el) {
         try {
             renderAttachmentChips(el, JSON.parse(el.dataset.attachments));
+        } catch (parseError) {
+            // malformed - leave the (empty) placeholder rather than losing the message
+        }
+    });
+
+    document.querySelectorAll('.agentic-generated-files[data-generated-files]').forEach(function (el) {
+        try {
+            renderAttachmentChips(el, JSON.parse(el.dataset.generatedFiles), 'fa-download');
         } catch (parseError) {
             // malformed - leave the (empty) placeholder rather than losing the message
         }

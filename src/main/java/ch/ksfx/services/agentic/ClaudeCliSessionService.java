@@ -27,13 +27,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
  * Spawns the headless Claude Code CLI ({@code claude -p ... --output-format stream-json}) as a
@@ -286,6 +291,13 @@ public class ClaudeCliSessionService
             runningStatus.put(agent.getId(), "Thinking…");
 
             Path workspace = agentWorkspaceService.ensureWorkspace(agent, config);
+            Map<String, FileTime> filesBefore;
+
+            try {
+                filesBefore = snapshotWorkspaceFiles(workspace);
+            } catch (IOException e) {
+                filesBefore = new HashMap<>();
+            }
 
             ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(agent, config, userMessage));
             processBuilder.directory(workspace.toFile());
@@ -328,11 +340,31 @@ public class ClaudeCliSessionService
                 agentDAO.saveOrUpdateAgent(agent);
             }
 
+            ArrayNode generatedFiles = objectMapper.createArrayNode();
+
+            try {
+                Map<String, FileTime> filesAfter = snapshotWorkspaceFiles(workspace);
+
+                for (Map.Entry<String, FileTime> entry : filesAfter.entrySet()) {
+                    FileTime previous = filesBefore.get(entry.getKey());
+
+                    if (previous == null || entry.getValue().compareTo(previous) > 0) {
+                        ObjectNode fileEntry = objectMapper.createObjectNode();
+                        fileEntry.put("fileName", Paths.get(entry.getKey()).getFileName().toString());
+                        fileEntry.put("path", entry.getKey());
+                        generatedFiles.add(fileEntry);
+                    }
+                }
+            } catch (IOException e) {
+                // best-effort - a scan failure shouldn't take down an otherwise-successful turn
+            }
+
             AgentMessage assistantMessage = new AgentMessage();
             assistantMessage.setAgent(agent);
             assistantMessage.setRole(AgentMessageRole.ASSISTANT);
             assistantMessage.setContent(assistantText.toString());
             assistantMessage.setToolActivity(toolActivity.size() > 0 ? objectMapper.writeValueAsString(toolActivity) : null);
+            assistantMessage.setGeneratedFiles(generatedFiles.size() > 0 ? objectMapper.writeValueAsString(generatedFiles) : null);
             assistantMessage.setInputTokens(turnUsage.inputTokens);
             assistantMessage.setOutputTokens(turnUsage.outputTokens);
             assistantMessage.setCacheCreationInputTokens(turnUsage.cacheCreationInputTokens);
@@ -356,6 +388,10 @@ public class ClaudeCliSessionService
                 emitter.send(SseEmitter.event().name("usage").data(objectMapper.writeValueAsString(turnUsage.inputTokens + turnUsage.outputTokens)));
             }
 
+            if (emitter != null && generatedFiles.size() > 0) {
+                emitter.send(SseEmitter.event().name("generated_files").data(objectMapper.writeValueAsString(generatedFiles)));
+            }
+
             return null;
         } catch (Exception e) {
             systemLogger.logMessage("AGENTIC", "Agent turn failed for agent " + agent.getId(), e);
@@ -375,6 +411,71 @@ public class ClaudeCliSessionService
 
             runningStatus.remove(agent.getId());
         }
+    }
+
+    /**
+     * Walks the workspace (excluding uploads/, code/, and dot-directories - see
+     * {@link #isExcludedFromSnapshot}) and returns each remaining file's path (relative to the
+     * workspace, forward-slash-separated) mapped to its last-modified time. Called once before and
+     * once after a turn; the diff between the two snapshots is how "generated files" are detected.
+     */
+    private Map<String, FileTime> snapshotWorkspaceFiles(Path workspace) throws IOException
+    {
+        Map<String, FileTime> snapshot = new HashMap<>();
+
+        if (!Files.isDirectory(workspace)) {
+            return snapshot;
+        }
+
+        try (Stream<Path> walk = Files.walk(workspace)) {
+            walk.filter(Files::isRegularFile)
+                .filter(p -> !isExcludedFromSnapshot(workspace, p))
+                .forEach(p -> {
+                    try {
+                        snapshot.put(workspace.relativize(p).toString().replace('\\', '/'), Files.getLastModifiedTime(p));
+                    } catch (IOException ignored) {
+                        // file vanished mid-walk or unreadable - just omit it from the snapshot
+                    }
+                });
+        }
+
+        return snapshot;
+    }
+
+    /**
+     * Machine-generated/scratch directory names that are never a deliverable, regardless of where
+     * they show up in the tree (not just at the workspace root) - e.g. an agent installing a
+     * library to produce a .pptx (pptxgenjs/python-pptx) creates node_modules/__pycache__/venv
+     * directly in the workspace root when it doesn't consider "install a dependency" a "coding
+     * task" worth putting under code/, so these need to be caught independently of that convention.
+     */
+    private static final Set<String> EXCLUDED_DIRECTORY_NAMES = new HashSet<>(Arrays.asList(
+            "uploads", "code", "node_modules", "__pycache__", "venv", ".venv"));
+
+    /**
+     * uploads/ is user-provided input, not agent output; code/ is the conventional home for git
+     * checkouts/larger project work (see buildAppendedSystemPrompt); the rest of
+     * {@link #EXCLUDED_DIRECTORY_NAMES} and dot-directories (.playwright-mcp/ etc.) are tool/package-
+     * manager scratch state. Checked against every path segment, not just the first, so e.g. a
+     * node_modules/ created directly in the workspace root (not under code/) is still excluded.
+     */
+    private boolean isExcludedFromSnapshot(Path workspace, Path file)
+    {
+        Path relative = workspace.relativize(file).getParent();
+
+        if (relative == null) {
+            return false;
+        }
+
+        for (Path segment : relative) {
+            String name = segment.toString();
+
+            if (EXCLUDED_DIRECTORY_NAMES.contains(name) || name.startsWith(".")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -436,6 +537,10 @@ public class ClaudeCliSessionService
                 + "curl -s -X POST http://localhost:" + serverPort + "/agentic/api/schedule "
                 + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
                 + "-d '{\"name\":\"Tägliche Erinnerung\",\"taskPrompt\":\"Prüfe X\",\"cronSchedule\":\"0 0 9 * * ?\",\"cronScheduleEnabled\":true}'\n";
+
+        schedulingPrompt += "\nFür Coding-Aufgaben (z.B. Git-Checkouts, größere Projektstrukturen) legst du diese, "
+                + "sofern nicht explizit anders gewünscht, unter einem Unterordner code/ in deinem Arbeitsverzeichnis an, "
+                + "nicht direkt im Hauptverzeichnis - Dateien dort werden dir nicht als Download-Vorschlag im Chat angezeigt.\n";
 
         if (agent.getAgenticProject() != null) {
             schedulingPrompt += "\nGeteilte Ressourcen deines Agentic Projects findest du unter ../shared "

@@ -73,6 +73,7 @@
                     <div class="agentic-role-label" th:text="${m.role.name() == 'USER'} ? 'You' : (${m.role.name() == 'SYSTEM'} ? 'System' : 'Assistant')"></div>
                     <div class="agentic-bubble" th:text="${m.content}"></div>
                     <div th:if="${m.attachments}" class="agentic-attachments" th:data-attachments="${m.attachments}"></div>
+                    <div th:if="${m.generatedFiles}" class="agentic-generated-files" th:data-generated-files="${m.generatedFiles}"></div>
                     <details th:if="${m.toolActivity}" class="agentic-tool-activity">
                         <summary><i class="fa fa-wrench"></i> Tool Activity</summary>
                         <div class="agentic-tool-activity-body" th:data-tool-activity="${m.toolActivity}"></div>

@@ -25,12 +25,15 @@ import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -227,15 +230,24 @@ public class AgentController
     }
 
     /**
-     * Serves a file previously uploaded as a chat attachment (see ClaudeCliSessionService.
-     * saveAttachmentsAndBuildNote, which stores it under the agent's workspace uploads/ dir and
-     * records {@code fileName} there as its stored name). "inline" disposition lets the browser
-     * render viewable types (images, PDFs) directly in a new tab instead of forcing a download.
+     * Serves a file from the agent's workspace - either a chat attachment the user uploaded (see
+     * ClaudeCliSessionService.saveAttachmentsAndBuildNote, under uploads/) or a file the agent
+     * itself produced during a turn (see ClaudeCliSessionService's workspace-diffing in
+     * executeTurn). The relative path can contain subfolders (e.g. "uploads/172...-report.pdf" or
+     * "output/deck.pptx"), so this uses a trailing "/**" mapping + manual extraction rather than a
+     * {fileName:.+} path variable - confirmed by testing that the latter does NOT span multiple
+     * path segments on this Spring version, only the last one. "inline" disposition lets the
+     * browser render viewable types (images, PDFs) directly in a new tab instead of forcing a
+     * download.
      */
-    @GetMapping("/download/{agentId}/{fileName:.+}")
+    @GetMapping("/download/{agentId}/**")
     @ResponseBody
-    public ResponseEntity<Resource> download(@PathVariable(value = "agentId") Long agentId, @PathVariable(value = "fileName") String fileName) throws IOException
+    public ResponseEntity<Resource> download(@PathVariable(value = "agentId") Long agentId, HttpServletRequest request) throws IOException
     {
+        String bestMatchingPattern = (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        String pathWithinHandlerMapping = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
+        String fileName = new AntPathMatcher().extractPathWithinPattern(bestMatchingPattern, pathWithinHandlerMapping);
+
         Agent agent = agentDAO.getAgentForId(agentId);
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
 
@@ -243,10 +255,10 @@ public class AgentController
             return ResponseEntity.notFound().build();
         }
 
-        Path uploadsDir = agentWorkspaceService.resolveWorkspace(agent, config).resolve("uploads").normalize();
-        Path target = uploadsDir.resolve(fileName).normalize();
+        Path workspaceDir = agentWorkspaceService.resolveWorkspace(agent, config).normalize();
+        Path target = workspaceDir.resolve(fileName).normalize();
 
-        if (!target.startsWith(uploadsDir) || !Files.isRegularFile(target)) {
+        if (!target.startsWith(workspaceDir) || !Files.isRegularFile(target)) {
             return ResponseEntity.notFound().build();
         }
 
