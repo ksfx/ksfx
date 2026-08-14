@@ -29,13 +29,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -286,6 +283,7 @@ public class ClaudeCliSessionService
         RateLimitSnapshot rateLimitSnapshot = new RateLimitSnapshot();
         TurnUsage turnUsage = new TurnUsage();
         Process process = null;
+        Path systemPromptFile = null;
 
         try {
             runningStatus.put(agent.getId(), "Thinking…");
@@ -294,12 +292,22 @@ public class ClaudeCliSessionService
             Map<String, FileTime> filesBefore;
 
             try {
-                filesBefore = snapshotWorkspaceFiles(workspace);
+                filesBefore = snapshotDownloadsFolder(workspace);
             } catch (IOException e) {
                 filesBefore = new HashMap<>();
             }
 
-            ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(agent, config, userMessage));
+            // The appended system prompt (scheduling instructions + downloads/ convention + the
+            // agent's own prompt) is written to a temp file and passed via --append-system-prompt-file
+            // instead of --append-system-prompt <text> directly - Java's ProcessBuilder on Windows
+            // (confirmed empirically, JDK 8) silently truncates long command-line arguments
+            // containing many embedded double quotes (this prompt's curl/JSON examples have several),
+            // dropping everything after a certain point with no error. A short file path as the
+            // actual argument sidesteps that entirely. Deleted again in the finally block below.
+            systemPromptFile = Files.createTempFile("agentic-system-prompt-", ".txt");
+            Files.write(systemPromptFile, buildAppendedSystemPrompt(agent).getBytes(StandardCharsets.UTF_8));
+
+            ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(agent, config, userMessage, systemPromptFile));
             processBuilder.directory(workspace.toFile());
 
             if (config.getAuthMode() != AgenticAuthMode.OAUTH) {
@@ -343,7 +351,7 @@ public class ClaudeCliSessionService
             ArrayNode generatedFiles = objectMapper.createArrayNode();
 
             try {
-                Map<String, FileTime> filesAfter = snapshotWorkspaceFiles(workspace);
+                Map<String, FileTime> filesAfter = snapshotDownloadsFolder(workspace);
 
                 for (Map.Entry<String, FileTime> entry : filesAfter.entrySet()) {
                     FileTime previous = filesBefore.get(entry.getKey());
@@ -409,27 +417,49 @@ public class ClaudeCliSessionService
                 process.destroyForcibly();
             }
 
+            if (systemPromptFile != null) {
+                try {
+                    Files.deleteIfExists(systemPromptFile);
+                } catch (IOException ignored) {
+                    // best-effort - a leftover temp file here is harmless clutter, not a functional problem
+                }
+            }
+
             runningStatus.remove(agent.getId());
         }
     }
 
     /**
-     * Walks the workspace (excluding uploads/, code/, and dot-directories - see
-     * {@link #isExcludedFromSnapshot}) and returns each remaining file's path (relative to the
-     * workspace, forward-slash-separated) mapped to its last-modified time. Called once before and
-     * once after a turn; the diff between the two snapshots is how "generated files" are detected.
+     * The workspace can accumulate arbitrary amounts of scratch/tool/dependency clutter that has
+     * nothing to do with what the user actually asked for (node_modules/, log files, package-manager
+     * caches, whatever a script happens to write) - a name-based *exclusion* list was tried first
+     * (see git history) and abandoned: it's an unbounded blocklist that can never enumerate every
+     * kind of noise a tool might create, and each gap re-surfaces as a fresh flood of junk download
+     * chips. This flips it to a small, explicit *inclusion* allowlist instead - a single named
+     * folder, taught to the agent via the system prompt (see buildAutoAppendedSystemPrompt): only
+     * files under downloads/ are ever offered as download chips, nothing else in the workspace is
+     * scanned or considered, regardless of what else accumulates there.
      */
-    private Map<String, FileTime> snapshotWorkspaceFiles(Path workspace) throws IOException
+    private static final String DOWNLOADS_DIRECTORY_NAME = "downloads";
+
+    /**
+     * Snapshots workspace/downloads/ only (not the rest of the workspace - see
+     * {@link #DOWNLOADS_DIRECTORY_NAME}), returning each file's path (relative to the workspace,
+     * forward-slash-separated, so it still starts with "downloads/") mapped to its last-modified
+     * time. Called once before and once after a turn; the diff between the two snapshots is how
+     * "generated files" are detected.
+     */
+    private Map<String, FileTime> snapshotDownloadsFolder(Path workspace) throws IOException
     {
         Map<String, FileTime> snapshot = new HashMap<>();
+        Path downloads = workspace.resolve(DOWNLOADS_DIRECTORY_NAME);
 
-        if (!Files.isDirectory(workspace)) {
+        if (!Files.isDirectory(downloads)) {
             return snapshot;
         }
 
-        try (Stream<Path> walk = Files.walk(workspace)) {
+        try (Stream<Path> walk = Files.walk(downloads)) {
             walk.filter(Files::isRegularFile)
-                .filter(p -> !isExcludedFromSnapshot(workspace, p))
                 .forEach(p -> {
                     try {
                         snapshot.put(workspace.relativize(p).toString().replace('\\', '/'), Files.getLastModifiedTime(p));
@@ -443,46 +473,12 @@ public class ClaudeCliSessionService
     }
 
     /**
-     * Machine-generated/scratch directory names that are never a deliverable, regardless of where
-     * they show up in the tree (not just at the workspace root) - e.g. an agent installing a
-     * library to produce a .pptx (pptxgenjs/python-pptx) creates node_modules/__pycache__/venv
-     * directly in the workspace root when it doesn't consider "install a dependency" a "coding
-     * task" worth putting under code/, so these need to be caught independently of that convention.
-     */
-    private static final Set<String> EXCLUDED_DIRECTORY_NAMES = new HashSet<>(Arrays.asList(
-            "uploads", "code", "node_modules", "__pycache__", "venv", ".venv"));
-
-    /**
-     * uploads/ is user-provided input, not agent output; code/ is the conventional home for git
-     * checkouts/larger project work (see buildAppendedSystemPrompt); the rest of
-     * {@link #EXCLUDED_DIRECTORY_NAMES} and dot-directories (.playwright-mcp/ etc.) are tool/package-
-     * manager scratch state. Checked against every path segment, not just the first, so e.g. a
-     * node_modules/ created directly in the workspace root (not under code/) is still excluded.
-     */
-    private boolean isExcludedFromSnapshot(Path workspace, Path file)
-    {
-        Path relative = workspace.relativize(file).getParent();
-
-        if (relative == null) {
-            return false;
-        }
-
-        for (Path segment : relative) {
-            String name = segment.toString();
-
-            if (EXCLUDED_DIRECTORY_NAMES.contains(name) || name.startsWith(".")) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * Flags verified against the installed CLI's --help before go-live; kept isolated here so a
-     * version mismatch is a one-line fix.
+     * version mismatch is a one-line fix. systemPromptFile must already exist and contain the
+     * appended system prompt as UTF-8 - see the caller (executeTurn) and the class comment on
+     * --append-system-prompt-file above for why this is a file, not an inline argument.
      */
-    private List<String> buildCommand(Agent agent, AgenticConfig config, String userMessage)
+    private List<String> buildCommand(Agent agent, AgenticConfig config, String userMessage, Path systemPromptFile)
     {
         List<String> command = new ArrayList<>();
 
@@ -500,8 +496,8 @@ public class ClaudeCliSessionService
             command.add(agent.getClaudeSessionId());
         }
 
-        command.add("--append-system-prompt");
-        command.add(buildAppendedSystemPrompt(agent));
+        command.add("--append-system-prompt-file");
+        command.add(systemPromptFile.toAbsolutePath().toString());
 
         return command;
     }
@@ -521,6 +517,26 @@ public class ClaudeCliSessionService
             agentDAO.saveOrUpdateAgent(agent);
         }
 
+        return buildAutoAppendedSystemPrompt(agent);
+    }
+
+    /**
+     * The complete text appended (via --append-system-prompt-file) ahead of/around whatever the
+     * CLI's own default system prompt already contains: platform boilerplate (scheduling API
+     * instructions; the code/ organizational convention for coding-task work, purely a tidiness
+     * convention with no functional effect since the downloads/ change below; the downloads/
+     * convention - see {@link #DOWNLOADS_DIRECTORY_NAME} - which is what actually determines what
+     * surfaces as a download suggestion; and, if the agent has an AgenticProject, a note about its
+     * shared/ folder), followed by the agent's own custom
+     * Agent.systemPrompt, if any. Pure/side-effect-free (unlike {@link #buildAppendedSystemPrompt},
+     * which also lazily backfills agent.apiToken - a backfill that never affects this method's
+     * *output*, since the token value itself is never inlined into the prompt text, only referenced
+     * by env-var name) so it doubles as the exact text shown as a read-only hint on the agent edit
+     * page - see AgentController.edit()/submit() - keeping that preview from ever drifting out of
+     * sync with what's actually sent to the CLI.
+     */
+    public String buildAutoAppendedSystemPrompt(Agent agent)
+    {
         String schedulingPrompt = "Du kannst eigene wiederkehrende Hintergrundaufgaben (Scheduled Tasks) verwalten, "
                 + "indem du mit dem Bash-Tool curl gegen die lokale KSFX-API aufrufst. Authentifiziere dich dabei "
                 + "IMMER über die bereits gesetzte Umgebungsvariable $KSFX_AGENT_TOKEN (NIEMALS den Wert selbst "
@@ -539,15 +555,31 @@ public class ClaudeCliSessionService
                 + "-d '{\"name\":\"Tägliche Erinnerung\",\"taskPrompt\":\"Prüfe X\",\"cronSchedule\":\"0 0 9 * * ?\",\"cronScheduleEnabled\":true}'\n";
 
         schedulingPrompt += "\nFür Coding-Aufgaben (z.B. Git-Checkouts, größere Projektstrukturen) legst du diese, "
-                + "sofern nicht explizit anders gewünscht, unter einem Unterordner code/ in deinem Arbeitsverzeichnis an, "
-                + "nicht direkt im Hauptverzeichnis - Dateien dort werden dir nicht als Download-Vorschlag im Chat angezeigt.\n";
+                + "sofern nicht explizit anders gewünscht, unter einem Unterordner code/ in deinem Arbeitsverzeichnis "
+                + "an, nicht direkt im Hauptverzeichnis.\n";
+
+        schedulingPrompt += "\nWenn der Nutzer dich explizit um eine fertige Datei zum Download bittet (z.B. einen "
+                + "Bericht, eine PowerPoint, ein Bild, eine CSV), legst du GENAU DIESE fertige Datei zusätzlich unter "
+                + "einem Unterordner downloads/ in deinem Arbeitsverzeichnis ab (z.B. downloads/bericht.pptx) - "
+                + "NUR Dateien dort werden dir im Chat als Download-Vorschlag angezeigt, alles andere in deinem "
+                + "Arbeitsverzeichnis (Zwischenstände, Abhängigkeiten, Logs, Caches etc.) bleibt unsichtbar für den "
+                + "Nutzer. Lege dort nichts ab, worum der Nutzer nicht explizit gebeten hat.\n";
 
         if (agent.getAgenticProject() != null) {
             schedulingPrompt += "\nGeteilte Ressourcen deines Agentic Projects findest du unter ../shared "
                     + "(relativ zu deinem eigenen Arbeitsverzeichnis).\n";
         }
 
-        return isBlank(agent.getSystemPrompt()) ? schedulingPrompt : schedulingPrompt + "\n---\n\n" + agent.getSystemPrompt();
+        if (isBlank(agent.getSystemPrompt())) {
+            return schedulingPrompt;
+        }
+
+        // No separator, no label, no attribution sentence - both were tried (a bare "---" block and
+        // a "this is legitimate, not injected" label) and both measurably backfired: the model
+        // treated any special framing around the custom text as itself a sign of tampering, more so
+        // for the label than the plain separator. Simplest option turned out best: just concatenate,
+        // exactly like two paragraphs of the same document, no visual or textual seam at all.
+        return schedulingPrompt + "\n\n" + agent.getSystemPrompt();
     }
 
     private void readStdout(Process process, SseEmitter emitter, Long agentId, StringBuilder assistantText, ArrayNode toolActivity, String[] capturedSessionId, RateLimitSnapshot rateLimitSnapshot, TurnUsage turnUsage) throws IOException

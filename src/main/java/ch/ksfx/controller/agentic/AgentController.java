@@ -92,6 +92,7 @@ public class AgentController
 
         model.addAttribute("agent", agent);
         model.addAttribute("allAgenticProjects", agenticProjectDAO.getAllAgenticProjects());
+        model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
 
         return "agentic/agent/agent_edit";
     }
@@ -101,6 +102,7 @@ public class AgentController
     {
         if (bindingResult.hasErrors()) {
             model.addAttribute("allAgenticProjects", agenticProjectDAO.getAllAgenticProjects());
+            model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
             return "agentic/agent/agent_edit";
         }
 

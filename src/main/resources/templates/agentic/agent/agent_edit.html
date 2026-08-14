@@ -36,6 +36,10 @@
             <div class="form-group">
                 <label for="systemPrompt">System Prompt</label>
                 <textarea class="form-control" id="systemPrompt" th:field="*{systemPrompt}" style="height:300px"></textarea>
+                <details class="agentic-auto-prompt-hint">
+                    <summary>Full system prompt actually sent to the agent (platform boilerplate + your text above, exactly as joined) - click to view</summary>
+                    <pre th:text="${autoAppendedSystemPrompt}"></pre>
+                </details>
             </div>
             <div class="form-group">
                 <label for="permissionMode">Permission Mode (Override)</label>

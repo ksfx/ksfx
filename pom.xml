@@ -324,6 +324,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!-- Java 8 on Windows defaults file.encoding/sun.jnu.encoding to the system ANSI
+					     codepage (e.g. Cp1252), not UTF-8, which silently corrupts non-ASCII text passed
+					     as OS process arguments (e.g. ClaudeCliSessionService's Agentic system prompt
+					     builder, which appends it to the CLI subprocess it spawns). No-op on Linux/Docker,
+					     where UTF-8 is already the platform default. -->
+					<jvmArguments>-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8</jvmArguments>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
