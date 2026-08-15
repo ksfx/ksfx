@@ -16,6 +16,8 @@
     </ol>
 </nav>
 
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
 <div class="agentic-layout" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' agentic-dark' : ''">
 
     <aside class="agentic-sidebar" th:data-status-endpoint="@{/agentic/status}">
@@ -46,7 +48,8 @@
             </div>
         </div>
         <div class="agentic-sidebar-footer">
-            <a th:href="@{/agentic/}">Manage all agents</a>
+            <a th:href="@{/agentic/projects/}" title="Agentic Projects"><i class="fa fa-folder"></i> Projects</a>
+            <a th:href="@{/agentic/config/}" title="Agentic Settings"><i class="fa fa-cog"></i> Settings</a>
         </div>
     </aside>
 

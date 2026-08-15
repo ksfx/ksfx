@@ -81,22 +81,57 @@
         </div>
 
         <div class="list-group-item" th:if="${totalTurns} > 0">
-            <h5>Usage Statistics</h5>
+            <h5>Usage Statistics (All-Time)</h5>
             <p>
                 <strong th:text="${totalTurns}"></strong> turns,
                 <strong th:text="${totalInputTokens} + ' / ' + ${totalOutputTokens}"></strong> input/output tokens
+                (of which cache write: <span th:text="${totalCacheCreationTokens}"></span> / cache read: <span th:text="${totalCacheReadTokens}"></span>)
             </p>
+            <small class="form-text text-muted" style="margin-top:-8px;margin-bottom:8px">Cache write/read are both part of the input side (Anthropic prompt caching) - writing to or reading from a cached prompt prefix - not a separate token category from Input, and unrelated to Output, which is never cached.</small>
             <table class="table table-sm" th:if="${usageByAgent.size()} > 1">
-                <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th></tr></thead>
+                <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th></tr></thead>
                 <tbody>
                 <tr th:each="u : ${usageByAgent}">
                     <td th:text="${u.agentName}"></td>
                     <td th:text="${u.turnCount}"></td>
                     <td th:text="${u.inputTokens}"></td>
                     <td th:text="${u.outputTokens}"></td>
+                    <td th:text="${u.cacheCreationTokens}"></td>
+                    <td th:text="${u.cacheReadTokens}"></td>
                 </tr>
                 </tbody>
             </table>
+        </div>
+
+        <div class="list-group-item">
+            <h5>Usage Statistics (By Day)</h5>
+            <form action="#" th:action="@{/agentic/config/}" method="get" class="form-inline">
+                <label for="statsDate" style="margin-right:8px">Day:</label>
+                <input type="date" id="statsDate" name="statsDate" class="form-control form-control-sm"
+                       th:value="${statsDate}" onchange="this.form.submit()" style="margin-right:8px" />
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Show</button>
+            </form>
+            <p th:if="${totalTurnsForDay} == 0" class="text-muted" style="margin-top:10px">No turns on this day.</p>
+            <div th:if="${totalTurnsForDay} > 0" style="margin-top:10px">
+                <p>
+                    <strong th:text="${totalTurnsForDay}"></strong> turns,
+                    <strong th:text="${totalInputTokensForDay} + ' / ' + ${totalOutputTokensForDay}"></strong> input/output tokens
+                    (of which cache write: <span th:text="${totalCacheCreationTokensForDay}"></span> / cache read: <span th:text="${totalCacheReadTokensForDay}"></span>)
+                </p>
+                <table class="table table-sm">
+                    <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th></tr></thead>
+                    <tbody>
+                    <tr th:each="u : ${usageByAgentForDay}">
+                        <td th:text="${u.agentName}"></td>
+                        <td th:text="${u.turnCount}"></td>
+                        <td th:text="${u.inputTokens}"></td>
+                        <td th:text="${u.outputTokens}"></td>
+                        <td th:text="${u.cacheCreationTokens}"></td>
+                        <td th:text="${u.cacheReadTokens}"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

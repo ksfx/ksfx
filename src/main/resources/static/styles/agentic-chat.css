@@ -126,6 +126,8 @@
     padding: 8px 14px;
     border-top: 1px solid #e4e4e9;
     font-size: 0.8rem;
+    display: flex;
+    gap: 16px;
 }
 
 .agentic-main {

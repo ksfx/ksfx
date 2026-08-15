@@ -65,7 +65,8 @@
             </div>
 
             <button type="submit" class="btn btn-primary">Submit</button>
-            <a th:href="@{/agentic/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+            <a th:href="@{/agentic/}" id="cancel" name="cancel" class="btn btn-secondary">Cancel</a>
+            <a th:if="${agent.id}" th:attr="data-href=@{/agentic/delete/{id}(id=${agent.id})}" data-toggle="modal" data-target="#standard-confirm" class="btn btn-danger" style="float:right">Delete</a>
         </form>
 </div>
 </div>

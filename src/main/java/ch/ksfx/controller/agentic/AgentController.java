@@ -18,7 +18,7 @@ import org.quartz.SchedulerException;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
@@ -75,14 +75,28 @@ public class AgentController
         this.schedulerService = schedulerService;
     }
 
+    /**
+     * "Agentic" in the main nav used to land on a standalone list/table page (agent.html, since
+     * removed) before you could actually talk to an agent - one extra click for the common case.
+     * Now it goes straight to a chat window; the sidebar there already covers everything that page
+     * offered (grouped agent list, New Agent, chat/edit navigation) except Delete, which moved to
+     * the edit page, and Settings/Projects links, which moved to the sidebar footer.
+     */
     @GetMapping("/")
-    public String index(Pageable pageable, Model model)
+    public String index()
     {
-        Page<Agent> agentsPage = agentDAO.getAgentsForPageable(pageable);
+        return redirectToFirstAgentOrNew();
+    }
 
-        model.addAttribute("agentsPage", agentsPage);
+    private String redirectToFirstAgentOrNew()
+    {
+        Page<Agent> firstPage = agentDAO.getAgentsForPageable(PageRequest.of(0, 1));
 
-        return "agentic/agent/agent";
+        if (firstPage.isEmpty()) {
+            return "redirect:/agentic/edit";
+        }
+
+        return "redirect:/agentic/chat/" + firstPage.getContent().get(0).getId();
     }
 
     @GetMapping({"/edit", "/edit/{id}"})
@@ -181,7 +195,9 @@ public class AgentController
 
         redirectAttributes.addFlashAttribute("resultMessage", "Agent deleted.");
 
-        return "redirect:/agentic/";
+        // Not a plain "redirect:/agentic/" - that would cost a second hop through index()'s own
+        // redirect, and flash attributes don't survive a redirect they weren't re-added for.
+        return redirectToFirstAgentOrNew();
     }
 
     @GetMapping("/chat/{id}")
