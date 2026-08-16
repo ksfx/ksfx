@@ -4,10 +4,10 @@ import javax.persistence.*;
 import java.util.Date;
 
 /**
- * One turn of a chat with an {@link Agent}: either the user's message, the assistant's final
- * reply for that turn, or a system-role error. {@link #toolActivity} holds a pre-formatted,
- * human-readable summary of any tool calls made during the turn (not raw JSON), so it can be
- * rendered directly in Thymeleaf without a JSON-parsing helper.
+ * One turn of a chat with an {@link Agent}: the user's message, the assistant's final reply for
+ * that turn, a system-role error, or an incoming message from another Agent (see {@link #fromAgent}).
+ * {@link #toolActivity} holds a pre-formatted, human-readable summary of any tool calls made during
+ * the turn (not raw JSON), so it can be rendered directly in Thymeleaf without a JSON-parsing helper.
  */
 @Entity
 @Table(name = "agent_message")
@@ -15,6 +15,7 @@ public class AgentMessage
 {
     private Long id;
     private Agent agent;
+    private Agent fromAgent;
     private AgentMessageRole role;
     private String content;
     private String toolActivity;
@@ -53,6 +54,22 @@ public class AgentMessage
     public void setAgent(Agent agent)
     {
         this.agent = agent;
+    }
+
+    /**
+     * The Agent that sent this message, set only when {@link #role} is {@link AgentMessageRole#AGENT}
+     * (an agent-to-agent message via AgentMessageApiController) - null for USER/ASSISTANT/SYSTEM rows.
+     */
+    @ManyToOne
+    @JoinColumn(name = "from_agent_id")
+    public Agent getFromAgent()
+    {
+        return fromAgent;
+    }
+
+    public void setFromAgent(Agent fromAgent)
+    {
+        this.fromAgent = fromAgent;
     }
 
     @Enumerated(EnumType.STRING)

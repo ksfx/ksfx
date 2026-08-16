@@ -73,7 +73,12 @@
 
             <div id="agenticMessages" class="agentic-messages">
                 <div th:each="m : ${messages}" class="agentic-msg" th:classappend="'agentic-msg--' + ${#strings.toLowerCase(m.role.name())}">
-                    <div class="agentic-role-label" th:text="${m.role.name() == 'USER'} ? 'You' : (${m.role.name() == 'SYSTEM'} ? 'System' : 'Assistant')"></div>
+                    <div class="agentic-role-label" th:switch="${m.role.name()}">
+                        <span th:case="'USER'">You</span>
+                        <span th:case="'SYSTEM'">System</span>
+                        <span th:case="'AGENT'" th:text="${m.fromAgent != null ? 'Agent: ' + m.fromAgent.name : 'Agent'}"></span>
+                        <span th:case="*">Assistant</span>
+                    </div>
                     <div class="agentic-bubble" th:text="${m.content}"></div>
                     <div th:if="${m.attachments}" class="agentic-attachments" th:data-attachments="${m.attachments}"></div>
                     <div th:if="${m.generatedFiles}" class="agentic-generated-files" th:data-generated-files="${m.generatedFiles}"></div>

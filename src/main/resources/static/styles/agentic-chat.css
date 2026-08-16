@@ -179,7 +179,8 @@
 }
 
 .agentic-msg--assistant,
-.agentic-msg--system {
+.agentic-msg--system,
+.agentic-msg--agent {
     align-self: flex-start;
     align-items: flex-start;
     max-width: 92%;
@@ -226,6 +227,14 @@
     background: #fff3cd;
     color: #664d03;
     border: 1px solid #ffe69c;
+    border-radius: 12px;
+    padding: 10px 16px;
+}
+
+.agentic-msg--agent .agentic-bubble {
+    background: #eef0ff;
+    color: #33348e;
+    border: 1px solid #d6d9ff;
     border-radius: 12px;
     padding: 10px 16px;
 }
@@ -510,6 +519,12 @@ a.agentic-attachment-chip:hover {
     background: #4a3b12;
     border-color: #6b5518;
     color: #ffe9a8;
+}
+
+.agentic-dark .agentic-msg--agent .agentic-bubble {
+    background: #262a4a;
+    border-color: #3a3f70;
+    color: #c9ccff;
 }
 
 .agentic-dark .agentic-sidebar {

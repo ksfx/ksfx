@@ -26,7 +26,7 @@
     var pendingFilesEl = document.getElementById('agenticPendingFiles');
     var pendingFiles = [];
 
-    var ROLE_LABELS = { user: 'You', assistant: 'Assistant', system: 'System' };
+    var ROLE_LABELS = { user: 'You', assistant: 'Assistant', system: 'System', agent: 'Agent' };
 
     var TOOL_ICONS = {
         Bash: 'fa-terminal',

@@ -2,5 +2,5 @@ package ch.ksfx.model;
 
 public enum AgentMessageRole
 {
-    USER, ASSISTANT, SYSTEM
+    USER, ASSISTANT, SYSTEM, AGENT
 }

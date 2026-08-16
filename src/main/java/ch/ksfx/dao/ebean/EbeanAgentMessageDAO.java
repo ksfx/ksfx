@@ -20,7 +20,7 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     @Override
     public List<AgentMessage> getMessagesForAgent(Long agentId)
     {
-        return Ebean.find(AgentMessage.class).where().eq("agent.id", agentId).order().asc("id").findList();
+        return Ebean.find(AgentMessage.class).fetch("fromAgent").where().eq("agent.id", agentId).order().asc("id").findList();
     }
 
     @Override

@@ -23,6 +23,14 @@ public class AgenticProject
     private String description;
     private Date createdAt;
 
+    // Docker isolation is opt-in and off by default - see AgenticDockerService. When disabled (the
+    // default), none of the other docker* fields are ever populated or read, and ClaudeCliSessionService
+    // spawns the claude CLI directly on the host exactly as for a project with isolation never touched.
+    private boolean dockerIsolationEnabled = false;
+    private String dockerContainerName;
+    private DockerContainerStatus dockerContainerStatus = DockerContainerStatus.NOT_CREATED;
+    private Date dockerContainerLastCheckedAt;
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     public Long getId()
@@ -63,5 +71,45 @@ public class AgenticProject
     public void setCreatedAt(Date createdAt)
     {
         this.createdAt = createdAt;
+    }
+
+    public boolean getDockerIsolationEnabled()
+    {
+        return dockerIsolationEnabled;
+    }
+
+    public void setDockerIsolationEnabled(boolean dockerIsolationEnabled)
+    {
+        this.dockerIsolationEnabled = dockerIsolationEnabled;
+    }
+
+    public String getDockerContainerName()
+    {
+        return dockerContainerName;
+    }
+
+    public void setDockerContainerName(String dockerContainerName)
+    {
+        this.dockerContainerName = dockerContainerName;
+    }
+
+    public DockerContainerStatus getDockerContainerStatus()
+    {
+        return dockerContainerStatus;
+    }
+
+    public void setDockerContainerStatus(DockerContainerStatus dockerContainerStatus)
+    {
+        this.dockerContainerStatus = dockerContainerStatus;
+    }
+
+    public Date getDockerContainerLastCheckedAt()
+    {
+        return dockerContainerLastCheckedAt;
+    }
+
+    public void setDockerContainerLastCheckedAt(Date dockerContainerLastCheckedAt)
+    {
+        this.dockerContainerLastCheckedAt = dockerContainerLastCheckedAt;
     }
 }

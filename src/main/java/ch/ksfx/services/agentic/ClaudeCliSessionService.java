@@ -8,6 +8,7 @@ import ch.ksfx.model.AgentMessage;
 import ch.ksfx.model.AgentMessageRole;
 import ch.ksfx.model.AgenticAuthMode;
 import ch.ksfx.model.AgenticConfig;
+import ch.ksfx.model.AgenticProject;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import ch.ksfx.util.StacktraceUtil;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,12 +30,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -49,11 +52,14 @@ import java.util.stream.Stream;
  * the Agentic sidebar (GET /agentic/status) so activity is visible even for agents you're not
  * currently chatting with.
  *
- * Two entry points share the same validation/busy-guard/execution core: {@link #runTurn} (browser,
- * streams via SseEmitter, spawns a Thread so the controller can return the emitter immediately) and
+ * Three entry points share the same validation/busy-guard/execution core: {@link #runTurn} (browser,
+ * streams via SseEmitter, spawns a Thread so the controller can return the emitter immediately),
  * {@link #runScheduledTurn} (Quartz jobs from AgentScheduleJob, no browser attached, runs
  * synchronously on Quartz's own worker thread - a scheduled trigger is otherwise identical to the
- * user having typed the message themselves, including landing in the same AgentMessage history).
+ * user having typed the message themselves, including landing in the same AgentMessage history),
+ * and {@link #runAgentTriggeredTurn} (another Agent messaging this one via AgentMessageApiController,
+ * also synchronous/headless, persisted with role AGENT instead of USER so the chat UI can tell it
+ * apart from a human).
  */
 @Service
 public class ClaudeCliSessionService
@@ -66,6 +72,7 @@ public class ClaudeCliSessionService
     private final AgentDAO agentDAO;
     private final AgentMessageDAO agentMessageDAO;
     private final AgentWorkspaceService agentWorkspaceService;
+    private final AgenticDockerService agenticDockerService;
     private final SystemLogger systemLogger;
     private final ObjectMapper objectMapper;
     private final int serverPort;
@@ -76,6 +83,7 @@ public class ClaudeCliSessionService
                                     AgentDAO agentDAO,
                                     AgentMessageDAO agentMessageDAO,
                                     AgentWorkspaceService agentWorkspaceService,
+                                    AgenticDockerService agenticDockerService,
                                     SystemLogger systemLogger,
                                     ObjectMapper objectMapper,
                                     @Value("${server.port:8080}") int serverPort)
@@ -84,6 +92,7 @@ public class ClaudeCliSessionService
         this.agentDAO = agentDAO;
         this.agentMessageDAO = agentMessageDAO;
         this.agentWorkspaceService = agentWorkspaceService;
+        this.agenticDockerService = agenticDockerService;
         this.systemLogger = systemLogger;
         this.objectMapper = objectMapper;
         this.serverPort = serverPort;
@@ -177,6 +186,106 @@ public class ClaudeCliSessionService
         return executeTurn(agent, config, taskPrompt, null);
     }
 
+    /**
+     * Outcome of {@link #runAgentTriggeredTurn}. Exactly one of getReply()/isSkipped()/getErrorMessage()
+     * is meaningful. Deliberately a typed result rather than {@link #runScheduledTurn}'s plain-String
+     * null/{@link #SKIPPED_RESULT}/error-text contract - that contract only stays unambiguous because
+     * a scheduled turn's success case never has to carry payload text back through the same channel;
+     * this one does (the reply text), so overloading String further would make a genuine reply that
+     * happens to start with "Error:" or equal "SKIPPED" indistinguishable from a real failure/skip.
+     * Only one caller (AgentMessageApiController), so the extra type costs nothing.
+     */
+    public static final class AgentTriggeredTurnResult
+    {
+        private final String reply;
+        private final boolean skipped;
+        private final String errorMessage;
+
+        private AgentTriggeredTurnResult(String reply, boolean skipped, String errorMessage)
+        {
+            this.reply = reply;
+            this.skipped = skipped;
+            this.errorMessage = errorMessage;
+        }
+
+        static AgentTriggeredTurnResult success(String reply)
+        {
+            return new AgentTriggeredTurnResult(reply, false, null);
+        }
+
+        static AgentTriggeredTurnResult skipped()
+        {
+            return new AgentTriggeredTurnResult(null, true, null);
+        }
+
+        static AgentTriggeredTurnResult error(String message)
+        {
+            return new AgentTriggeredTurnResult(null, false, message);
+        }
+
+        public String getReply()
+        {
+            return reply;
+        }
+
+        public boolean isSkipped()
+        {
+            return skipped;
+        }
+
+        public String getErrorMessage()
+        {
+            return errorMessage;
+        }
+    }
+
+    /**
+     * Headless counterpart of {@link #runTurn} for agent-to-agent messaging (see
+     * AgentMessageApiController) - {@code fromAgent} synchronously triggers a turn on
+     * {@code targetAgentId} and gets the reply text back. Mirrors {@link #runScheduledTurn}'s
+     * validate -> busy-guard -> executeTurn shape, except the incoming message is persisted with
+     * role=AGENT/fromAgent=&lt;caller&gt; (see {@link #persistIncomingAgentMessage}) instead of
+     * role=USER, and on success the just-persisted ASSISTANT reply is read back via
+     * agentMessageDAO rather than restructuring executeTurn's own null-on-success return contract,
+     * which runTurn/runScheduledTurn's other call sites depend on unchanged.
+     *
+     * The busy-guard ({@link #runningStatus}) doubles as the circuit-breaker against the most
+     * dangerous loop shape: fromAgent is itself marked "running" for this whole synchronous call, so
+     * if targetAgent's own turn tries to message fromAgent back while fromAgent is still blocked
+     * here, that inner call immediately sees fromAgent as busy and gets isSkipped()=true rather than
+     * hanging. Slower-burning ping-pong across separate top-level turns is not prevented here - see
+     * the loop-avoidance guidance in buildAutoAppendedSystemPrompt instead; a hop-count/depth limit
+     * is a possible future addition, not v1.
+     */
+    public AgentTriggeredTurnResult runAgentTriggeredTurn(Long targetAgentId, Agent fromAgent, String message)
+    {
+        Agent targetAgent = agentDAO.getAgentForId(targetAgentId);
+        AgenticConfig config = agenticConfigDAO.getAgenticConfig();
+
+        String validationError = validateAgentAndConfig(targetAgent, config);
+
+        if (validationError != null) {
+            return AgentTriggeredTurnResult.error(validationError);
+        }
+
+        if (runningStatus.putIfAbsent(targetAgentId, "Starting… (message from " + fromAgent.getName() + ")") != null) {
+            return AgentTriggeredTurnResult.skipped();
+        }
+
+        persistIncomingAgentMessage(targetAgent, fromAgent, message);
+
+        String error = executeTurn(targetAgent, config, message, null);
+
+        if (error != null) {
+            return AgentTriggeredTurnResult.error(error);
+        }
+
+        List<AgentMessage> messages = agentMessageDAO.getMessagesForAgent(targetAgentId);
+        String reply = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getContent();
+
+        return AgentTriggeredTurnResult.success(reply);
+    }
+
     private String validateAgentAndConfig(Agent agent, AgenticConfig config)
     {
         if (agent == null || !agent.getEnabled()) {
@@ -203,6 +312,18 @@ public class ClaudeCliSessionService
         userAgentMessage.setAttachments(attachmentsJson);
         userAgentMessage.setCreatedAt(new Date());
         agentMessageDAO.saveAgentMessage(userAgentMessage);
+    }
+
+    /** Sibling of {@link #persistUserMessage} for an agent-to-agent message - see {@link #runAgentTriggeredTurn}. */
+    private void persistIncomingAgentMessage(Agent targetAgent, Agent fromAgent, String content)
+    {
+        AgentMessage message = new AgentMessage();
+        message.setAgent(targetAgent);
+        message.setRole(AgentMessageRole.AGENT);
+        message.setFromAgent(fromAgent);
+        message.setContent(content);
+        message.setCreatedAt(new Date());
+        agentMessageDAO.saveAgentMessage(message);
     }
 
     /**
@@ -285,6 +406,9 @@ public class ClaudeCliSessionService
         Process process = null;
         Path systemPromptFile = null;
 
+        AgenticProject project = agent.getAgenticProject();
+        boolean useDocker = project != null && project.getDockerIsolationEnabled();
+
         try {
             runningStatus.put(agent.getId(), "Thinking…");
 
@@ -297,30 +421,48 @@ public class ClaudeCliSessionService
                 filesBefore = new HashMap<>();
             }
 
+            if (useDocker) {
+                try {
+                    agenticDockerService.ensureContainer(project, config);
+                } catch (IOException e) {
+                    throw new IOException("Docker container for project '" + project.getName() + "' is not available: " + e.getMessage(), e);
+                }
+            }
+
             // The appended system prompt (scheduling instructions + downloads/ convention + the
-            // agent's own prompt) is written to a temp file and passed via --append-system-prompt-file
+            // agent's own prompt) is written to a file and passed via --append-system-prompt-file
             // instead of --append-system-prompt <text> directly - Java's ProcessBuilder on Windows
             // (confirmed empirically, JDK 8) silently truncates long command-line arguments
             // containing many embedded double quotes (this prompt's curl/JSON examples have several),
             // dropping everything after a certain point with no error. A short file path as the
-            // actual argument sidesteps that entirely. Deleted again in the finally block below.
-            systemPromptFile = Files.createTempFile("agentic-system-prompt-", ".txt");
+            // actual argument sidesteps that entirely. For a Docker-isolated agent the file has to
+            // live inside the bind-mounted workspace (a host temp file wouldn't be visible to `docker
+            // exec`); for a host agent a plain temp file is simplest. Deleted again in the finally
+            // block below either way.
+            systemPromptFile = useDocker
+                    ? workspace.resolve(".agentic-system-prompt.txt")
+                    : Files.createTempFile("agentic-system-prompt-", ".txt");
             Files.write(systemPromptFile, buildAppendedSystemPrompt(agent).getBytes(StandardCharsets.UTF_8));
 
             ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(agent, config, userMessage, systemPromptFile));
             processBuilder.directory(workspace.toFile());
 
-            if (config.getAuthMode() != AgenticAuthMode.OAUTH) {
-                processBuilder.environment().put("ANTHROPIC_API_KEY", config.getApiKey());
-            }
-            // OAUTH mode: no ANTHROPIC_API_KEY set, CLI falls back to credentials from `claude login`
-            // run interactively, once, as the same OS user that starts the KSFX process.
+            if (!useDocker) {
+                if (config.getAuthMode() != AgenticAuthMode.OAUTH) {
+                    processBuilder.environment().put("ANTHROPIC_API_KEY", config.getApiKey());
+                }
+                // OAUTH mode: no ANTHROPIC_API_KEY set, CLI falls back to credentials from `claude
+                // login` run interactively, once, as the same OS user that starts the KSFX process.
 
-            // Passed as an env var (not a literal in the prompt text) so it never appears in
-            // stream-json output, AgentMessage.toolActivity, the chat UI, or the CLI's own on-disk
-            // transcript - see buildAppendedSystemPrompt, which tells the agent to reference
-            // $KSFX_AGENT_TOKEN rather than write the value itself.
-            processBuilder.environment().put("KSFX_AGENT_TOKEN", agent.getApiToken());
+                // Passed as an env var (not a literal in the prompt text) so it never appears in
+                // stream-json output, AgentMessage.toolActivity, the chat UI, or the CLI's own on-disk
+                // transcript - see buildAppendedSystemPrompt, which tells the agent to reference
+                // $KSFX_AGENT_TOKEN rather than write the value itself.
+                processBuilder.environment().put("KSFX_AGENT_TOKEN", agent.getApiToken());
+            }
+            // useDocker: the same two values are passed as `-e` args to `docker exec` in
+            // buildCommand instead - `docker exec` doesn't forward this (host) process's env to the
+            // container without them being named explicitly.
 
             process = processBuilder.start();
 
@@ -334,6 +476,11 @@ public class ClaudeCliSessionService
 
             if (!finished) {
                 process.destroyForcibly();
+
+                if (useDocker) {
+                    killDockerClaudeProcess(project);
+                }
+
                 throw new IOException("Claude CLI process exceeded the timeout of " + PROCESS_TIMEOUT_SECONDS + "s and was terminated.");
             }
 
@@ -415,6 +562,10 @@ public class ClaudeCliSessionService
         } finally {
             if (process != null && process.isAlive()) {
                 process.destroyForcibly();
+
+                if (useDocker) {
+                    killDockerClaudeProcess(project);
+                }
             }
 
             if (systemPromptFile != null) {
@@ -426,6 +577,24 @@ public class ClaudeCliSessionService
             }
 
             runningStatus.remove(agent.getId());
+        }
+    }
+
+    /**
+     * Killing the {@code docker exec} client process (via destroyForcibly above) does not kill the
+     * process tree it spawned inside the container - so on a timeout/abort for a Docker-isolated
+     * agent, this best-effort follow-up asks the container itself to kill any running `claude`
+     * process, rather than leaving it running unattended in the background.
+     */
+    private void killDockerClaudeProcess(AgenticProject project)
+    {
+        try {
+            new ProcessBuilder("docker", "exec", agenticDockerService.containerNameFor(project.getId()), "pkill", "-f", "claude")
+                    .start().waitFor(5, TimeUnit.SECONDS);
+        } catch (IOException ignored) {
+            // best-effort - docker itself may be unreachable
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -477,27 +646,66 @@ public class ClaudeCliSessionService
      * version mismatch is a one-line fix. systemPromptFile must already exist and contain the
      * appended system prompt as UTF-8 - see the caller (executeTurn) and the class comment on
      * --append-system-prompt-file above for why this is a file, not an inline argument.
+     *
+     * For a Docker-isolated agent (see AgenticDockerService), the whole `claude` invocation is
+     * wrapped in `docker exec` against the agent's project container instead of running directly on
+     * the host - same flags either way, only how the process is launched (and where its cwd/env come
+     * from) differs. No `-t`/`-i`: a pseudo-tty would corrupt the --output-format stream-json framing
+     * this class's stdout parser relies on.
      */
     private List<String> buildCommand(Agent agent, AgenticConfig config, String userMessage, Path systemPromptFile)
     {
-        List<String> command = new ArrayList<>();
+        AgenticProject project = agent.getAgenticProject();
+        boolean useDocker = project != null && project.getDockerIsolationEnabled();
 
-        command.add(config.getClaudeCliPath());
-        command.add("-p");
-        command.add(userMessage);
-        command.add("--output-format");
-        command.add("stream-json");
-        command.add("--verbose");
-        command.add("--permission-mode");
-        command.add(!isBlank(agent.getPermissionMode()) ? agent.getPermissionMode() : config.getDefaultPermissionMode());
+        List<String> claudeArgs = new ArrayList<>();
+        claudeArgs.add(useDocker ? "claude" : config.getClaudeCliPath());
+        claudeArgs.add("-p");
+        claudeArgs.add(userMessage);
+        claudeArgs.add("--output-format");
+        claudeArgs.add("stream-json");
+        claudeArgs.add("--verbose");
+        claudeArgs.add("--permission-mode");
+        claudeArgs.add(!isBlank(agent.getPermissionMode()) ? agent.getPermissionMode() : config.getDefaultPermissionMode());
 
         if (!isBlank(agent.getClaudeSessionId())) {
-            command.add("--resume");
-            command.add(agent.getClaudeSessionId());
+            claudeArgs.add("--resume");
+            claudeArgs.add(agent.getClaudeSessionId());
         }
 
-        command.add("--append-system-prompt-file");
-        command.add(systemPromptFile.toAbsolutePath().toString());
+        claudeArgs.add("--append-system-prompt-file");
+
+        if (!useDocker) {
+            claudeArgs.add(systemPromptFile.toAbsolutePath().toString());
+            return claudeArgs;
+        }
+
+        // Inside the container the workspace is bind-mounted at /workspace/agent-<id> (see
+        // AgentWorkspaceService/AgenticDockerService) - systemPromptFile is a host path under that
+        // same folder, so this is just its container-side equivalent, not a second file.
+        claudeArgs.add("/workspace/agent-" + agent.getId() + "/" + systemPromptFile.getFileName());
+
+        List<String> command = new ArrayList<>();
+        command.add("docker");
+        command.add("exec");
+        // Runs as AgenticDockerService.CONTAINER_USER, not root - the claude CLI itself refuses
+        // --dangerously-skip-permissions (bypassPermissions mode) under UID 0, so the container
+        // boots/is-administered as root but the actual claude process runs unprivileged instead
+        // (with passwordless sudo available inside the container for anything still needing root).
+        command.add("-u");
+        command.add(agenticDockerService.containerUser());
+        command.add("-w");
+        command.add("/workspace/agent-" + agent.getId());
+
+        if (config.getAuthMode() != AgenticAuthMode.OAUTH) {
+            command.add("-e");
+            command.add("ANTHROPIC_API_KEY=" + config.getApiKey());
+        }
+
+        command.add("-e");
+        command.add("KSFX_AGENT_TOKEN=" + agent.getApiToken());
+        command.add(agenticDockerService.containerNameFor(project.getId()));
+        command.addAll(claudeArgs);
 
         return command;
     }
@@ -537,11 +745,21 @@ public class ClaudeCliSessionService
      */
     public String buildAutoAppendedSystemPrompt(Agent agent)
     {
+        // A Docker-isolated agent's curl calls originate from inside its container, where
+        // "localhost" is the container itself, not the KSFX host - host.docker.internal is Docker's
+        // standard way to reach the host from inside a container (works with the --add-host flag
+        // AgenticDockerService.ensureContainer sets on `docker run`). Non-isolated agents keep
+        // calling plain localhost exactly as before. Shared by both the scheduling and the
+        // agent-messaging sections below - both are /agentic/api/** self-service calls.
+        String agentApiBaseUrl = (agent.getAgenticProject() != null && agent.getAgenticProject().getDockerIsolationEnabled())
+                ? "http://host.docker.internal:" + serverPort
+                : "http://localhost:" + serverPort;
+
         String schedulingPrompt = "Du kannst eigene wiederkehrende Hintergrundaufgaben (Scheduled Tasks) verwalten, "
                 + "indem du mit dem Bash-Tool curl gegen die lokale KSFX-API aufrufst. Authentifiziere dich dabei "
                 + "IMMER über die bereits gesetzte Umgebungsvariable $KSFX_AGENT_TOKEN (NIEMALS den Wert selbst "
                 + "aufschreiben oder raten - referenziere ausschließlich $KSFX_AGENT_TOKEN im curl-Aufruf). "
-                + "Basis-URL: http://localhost:" + serverPort + "/agentic/api/schedule\n\n"
+                + "Basis-URL: " + agentApiBaseUrl + "/agentic/api/schedule\n\n"
                 + "Endpunkte:\n"
                 + "- GET  /agentic/api/schedule            -> Liste deiner eigenen geplanten Aufgaben\n"
                 + "- POST /agentic/api/schedule            -> neue Aufgabe anlegen, JSON-Body: "
@@ -550,9 +768,38 @@ public class ClaudeCliSessionService
                 + "- DELETE /agentic/api/schedule/{id}      -> Aufgabe löschen\n\n"
                 + "WICHTIG: cronSchedule verwendet Quartz-Cron-Syntax mit 6-7 Feldern (Sekunde zuerst), NICHT "
                 + "Standard-5-Feld-Cron. Beispiel für 'täglich um 9 Uhr': \"0 0 9 * * ?\". Beispiel-Aufruf:\n"
-                + "curl -s -X POST http://localhost:" + serverPort + "/agentic/api/schedule "
+                + "curl -s -X POST " + agentApiBaseUrl + "/agentic/api/schedule "
                 + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
                 + "-d '{\"name\":\"Tägliche Erinnerung\",\"taskPrompt\":\"Prüfe X\",\"cronSchedule\":\"0 0 9 * * ?\",\"cronScheduleEnabled\":true}'\n";
+
+        List<Agent> otherAgents = agentDAO.getAllAgents().stream()
+                .filter(a -> a.getEnabled() && !a.getId().equals(agent.getId()))
+                .sorted(Comparator.comparing(Agent::getName))
+                .collect(Collectors.toList());
+
+        schedulingPrompt += "\nDu kannst auch andere Agenten direkt ansprechen (synchron - du wartest auf ihre "
+                + "Antwort), indem du mit dem Bash-Tool curl gegen die lokale KSFX-API aufrufst. Authentifiziere "
+                + "dich dabei IMMER über $KSFX_AGENT_TOKEN. Endpunkt: POST " + agentApiBaseUrl + "/agentic/api/message\n"
+                + "Body: {\"targetAgentId\":<id>,\"message\":\"...\"}\n"
+                + "Die Antwort des Ziel-Agenten kommt direkt als JSON zurück: "
+                + "{\"targetAgentId\":<id>,\"targetAgentName\":\"...\",\"reply\":\"...\"}\n"
+                + "Beispiel-Aufruf:\n"
+                + "curl -s -X POST " + agentApiBaseUrl + "/agentic/api/message "
+                + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
+                + "-d '{\"targetAgentId\":123,\"message\":\"...\"}'\n"
+                + "WICHTIG: Antworte nicht reflexhaft auf eine eingehende Nachricht eines anderen Agenten, indem du "
+                + "sofort wieder zurückschreibst - das kann zu einer Endlosschleife führen (A wartet auf B, B "
+                + "antwortet sofort wieder an A, usw.). Nutze diese Funktion gezielt, nicht automatisch.\n";
+
+        if (!otherAgents.isEmpty()) {
+            StringBuilder directory = new StringBuilder("\nVerfügbare Ziel-Agenten (id: Name):\n");
+
+            for (Agent other : otherAgents) {
+                directory.append("- ").append(other.getId()).append(": ").append(other.getName()).append("\n");
+            }
+
+            schedulingPrompt += directory;
+        }
 
         schedulingPrompt += "\nFür Coding-Aufgaben (z.B. Git-Checkouts, größere Projektstrukturen) legst du diese, "
                 + "sofern nicht explizit anders gewünscht, unter einem Unterordner code/ in deinem Arbeitsverzeichnis "
@@ -568,6 +815,13 @@ public class ClaudeCliSessionService
         if (agent.getAgenticProject() != null) {
             schedulingPrompt += "\nGeteilte Ressourcen deines Agentic Projects findest du unter ../shared "
                     + "(relativ zu deinem eigenen Arbeitsverzeichnis).\n";
+
+            if (agent.getAgenticProject().getDockerIsolationEnabled()) {
+                schedulingPrompt += "\nDu läufst isoliert in einem eigenen Docker-Container (Ubuntu) als "
+                        + "normaler Benutzer, nicht als root. Für System-Installationen (z.B. apt-get, "
+                        + "Paketmanager) steht dir passwortloses sudo zur Verfügung - stelle Bash-Befehlen, "
+                        + "die root-Rechte benötigen, einfach sudo voran.\n";
+            }
         }
 
         if (isBlank(agent.getSystemPrompt())) {

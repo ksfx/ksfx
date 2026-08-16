@@ -14,6 +14,9 @@
 </nav>
 
 <div class="container">
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
  <div class="list-group">
  <div class="list-group-item">
         <form id="agenticProjectForm" action="#" th:action="@{/agentic/projects/edit}" th:object="${agenticProject}" method="post">
@@ -26,6 +29,31 @@
             <div class="form-group">
                 <label for="description">Description</label>
                 <input type="text" class="form-control" id="description" th:field="*{description}" />
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="dockerIsolationEnabled" th:field="*{dockerIsolationEnabled}" />
+                <label class="form-check-label" for="dockerIsolationEnabled">Enable Docker Isolation</label>
+                <small class="form-text text-muted">Runs this project's agents in their own long-lived Docker container (plain Ubuntu; agents run unprivileged but have passwordless sudo, so they can still install whatever they need) instead of directly on the KSFX host. Optional - leave off to keep running agents on the host as before.</small>
+                <details class="agentic-auto-prompt-hint" th:if="${dockerSetupDescription}">
+                    <summary>Exactly what this sets up, including the docker command lines - click to view</summary>
+                    <pre th:text="${dockerSetupDescription}" style="white-space:pre-wrap;word-break:break-all"></pre>
+                </details>
+            </div>
+
+            <div th:if="${agenticProject.id != null and agenticProject.dockerIsolationEnabled}" class="form-group">
+                <label>Container</label>
+                <p class="form-control-plaintext">
+                    <span th:text="${agenticProject.dockerContainerName}"></span> &mdash;
+                    <span th:text="${agenticProject.dockerContainerStatus}"></span>
+                </p>
+                <small class="form-text text-muted" th:if="${agenticProject.dockerContainerLastCheckedAt}">
+                    Last checked: <span th:text="${agenticProject.dockerContainerLastCheckedAt}"></span>
+                </small>
+                <div style="margin-top:0.5rem">
+                    <a th:href="@{/agentic/projects/{id}/docker/start(id=${agenticProject.id})}" class="btn btn-secondary">Start</a>
+                    <a th:href="@{/agentic/projects/{id}/docker/stop(id=${agenticProject.id})}" class="btn btn-secondary">Stop</a>
+                    <a th:attr="data-href=@{/agentic/projects/{id}/docker/throwaway(id=${agenticProject.id})}" data-toggle="modal" data-target="#standard-confirm" class="btn btn-danger">Throw Away</a>
+                </div>
             </div>
 
             <button type="submit" class="btn btn-primary">Submit</button>

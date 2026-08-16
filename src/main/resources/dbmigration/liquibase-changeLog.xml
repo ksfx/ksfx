@@ -34,4 +34,6 @@
     <include file="20260812150000_agentic_usage_stats.sql" relativeToChangelogFile="true"/>
     <include file="20260812180000_agent_message_generated_files.sql" relativeToChangelogFile="true"/>
     <include file="20260813090000_agent_utf8mb4.sql" relativeToChangelogFile="true"/>
+    <include file="20260815100000_agentic_project_docker_isolation.sql" relativeToChangelogFile="true"/>
+    <include file="20260816090000_agent_message_from_agent.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>
