@@ -18,6 +18,7 @@
 package ch.ksfx.services.activity;
 
 import ch.ksfx.model.activity.Activity;
+import ch.ksfx.model.activity.ActivityApprovalStrategy;
 import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.services.systemlogger.SystemLogger;
@@ -88,7 +89,14 @@ public class ActivityInstanceRunner
 
     public void runActivity(ActivityInstance activityInstance)
     {
-        if (activityInstance.getApproved() || activityInstance.getActivity().getActivityApprovalStrategy().getName().equalsIgnoreCase("none")) {
+        // No ActivityApprovalStrategy assigned means the same thing as an explicit "None" strategy -
+        // no approval gate - not "requires approval". Only a strategy actually present AND named
+        // something other than "None" (e.g. Boolean/Tristate/String/Map) requires
+        // activityInstance.getApproved()==true before a run is allowed to start.
+        ActivityApprovalStrategy strategy = activityInstance.getActivity().getActivityApprovalStrategy();
+        boolean noApprovalRequired = strategy == null || "none".equalsIgnoreCase(strategy.getName());
+
+        if (activityInstance.getApproved() || noApprovalRequired) {
             startActivity(activityInstance);
         }
     }
