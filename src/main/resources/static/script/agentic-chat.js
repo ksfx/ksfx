@@ -488,6 +488,8 @@
     }
 
     var statusEndpoint = sidebar.dataset.statusEndpoint;
+    var csrfHeader = sidebar.dataset.csrfHeader;
+    var csrfToken = sidebar.dataset.csrfToken;
     var POLL_INTERVAL_MS = 2500;
 
     function applyStatuses(statuses) {
@@ -515,6 +517,25 @@
                 // transient polling error - just wait for the next tick
             });
     }
+
+    sidebar.addEventListener('click', function (e) {
+        var stopBtn = e.target.closest('.agentic-sidebar-item-stop');
+
+        if (!stopBtn) {
+            return;
+        }
+
+        e.preventDefault();
+
+        var headers = {};
+        headers[csrfHeader] = csrfToken;
+
+        fetch(stopBtn.dataset.stopEndpoint, { method: 'POST', headers: headers })
+            .then(poll)
+            .catch(function () {
+                // best-effort - the next scheduled poll will reconcile the sidebar either way
+            });
+    });
 
     poll();
     setInterval(poll, POLL_INTERVAL_MS);

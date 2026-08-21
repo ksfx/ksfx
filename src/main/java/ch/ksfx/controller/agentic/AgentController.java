@@ -38,6 +38,7 @@ import javax.validation.Valid;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -200,6 +201,22 @@ public class AgentController
         return redirectToFirstAgentOrNew();
     }
 
+    @GetMapping("/edit/{id}/reset-session")
+    public String resetSession(@PathVariable(value = "id") Long agentId, RedirectAttributes redirectAttributes)
+    {
+        Agent agent = agentDAO.getAgentForId(agentId);
+
+        if (claudeCliSessionService.isRunning(agentId)) {
+            redirectAttributes.addFlashAttribute("resultError", true);
+            redirectAttributes.addFlashAttribute("resultMessage", "Agent is currently busy with a turn - try again once it finishes.");
+        } else {
+            claudeCliSessionService.resetSession(agent);
+            redirectAttributes.addFlashAttribute("resultMessage", "Session reset. The next message will start a new conversation; chat history is preserved.");
+        }
+
+        return "redirect:/agentic/edit/" + agentId;
+    }
+
     @GetMapping("/chat/{id}")
     public String chat(@PathVariable(value = "id") Long agentId, Model model)
     {
@@ -245,6 +262,17 @@ public class AgentController
     public Map<Long, String> status()
     {
         return claudeCliSessionService.getAllStatuses();
+    }
+
+    /**
+     * Manually ends a running turn - see ClaudeCliSessionService.stopTurn. Called from the sidebar
+     * (agentic-chat.js), not tied to the currently-open agent's chat page.
+     */
+    @PostMapping("/chat/{id}/stop")
+    @ResponseBody
+    public Map<String, Boolean> stop(@PathVariable(value = "id") Long agentId)
+    {
+        return Collections.singletonMap("stopped", claudeCliSessionService.stopTurn(agentId));
     }
 
     /**

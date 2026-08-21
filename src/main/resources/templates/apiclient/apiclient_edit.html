@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit API Client</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/apiclients/}">API Clients</a></li>
+        <li class="breadcrumb-item active">Edit API Client</li>
+    </ol>
+</nav>
+
+<div class="container">
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+ <div class="list-group">
+ <div class="list-group-item">
+        <form id="apiClientForm" action="#" th:action="@{/apiclients/edit}" th:object="${apiClient}" method="post">
+            <input type="hidden" th:field="*{id}" />
+            <div class="form-group">
+                <label for="name">Name</label>
+                <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
+                <input type="text" class="form-control" id="name" th:field="*{name}" />
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
+                <label class="form-check-label" for="enabled">Enabled</label>
+            </div>
+            <div class="form-group" th:if="${apiClient.id != null}">
+                <label>Bearer Token</label>
+                <p class="form-control-plaintext"><code th:text="${apiClient.apiToken}"></code></p>
+                <small class="form-text text-muted">Use as <code>Authorization: Bearer &lt;token&gt;</code> against /api/**. Shown here for copy/paste - generated once, no rotation.</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <a th:href="@{/apiclients/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+        </form>
+</div>
+</div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

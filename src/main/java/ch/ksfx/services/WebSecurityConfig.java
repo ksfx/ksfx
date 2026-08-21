@@ -1,6 +1,10 @@
 package ch.ksfx.services;
 
 
+import ch.ksfx.dao.ApiClientDAO;
+import ch.ksfx.services.security.ApiClientAuthenticationProvider;
+import ch.ksfx.services.security.ApiTokenAuthenticationFilter;
+import ch.ksfx.services.security.ApiUnauthorizedEntryPoint;
 import ch.ksfx.services.user.KsfxUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -12,8 +16,12 @@ import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.firewall.HttpFirewall;
 import org.springframework.security.web.firewall.StrictHttpFirewall;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -38,9 +46,26 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
                 // /agentic/api/** is the agent self-service scheduling API, called via curl from
                 // inside the headless Claude CLI's Bash tool - no browser session/CSRF token
                 // available to it, so it's permitAll() above and does its own bearer-token check
-                // in AgentScheduleApiController instead. Only this prefix is exempted from CSRF.
+                // in AgentScheduleApiController instead. /api/** is the newer, Spring-Security-
+                // integrated bearer-token API (see ApiTokenAuthenticationFilter /
+                // ApiClientAuthenticationProvider below) - it's NOT permitAll above, it relies on
+                // anyRequest().authenticated() plus that filter/provider instead - but its callers
+                // are equally token-only, so it needs the same CSRF exemption.
                 .csrf()
-                .ignoringAntMatchers("/agentic/api/**");
+                .ignoringAntMatchers("/agentic/api/**", "/api/**")
+                .and()
+                .exceptionHandling()
+                // Explicit catch-all as well as the /api/** mapping - registering ANY mapping here
+                // replaces the implicit default (normally auto-derived from formLogin's login page)
+                // with a DelegatingAuthenticationEntryPoint that has no fallback unless one is given
+                // explicitly, so without this line every other unauthenticated request in the app
+                // (not just /api/**) would get the JSON 401 too instead of being redirected to
+                // /login. Order matters - DelegatingAuthenticationEntryPoint uses the first matching
+                // entry, so the specific /api/** mapping must come before this catch-all.
+                .defaultAuthenticationEntryPointFor(apiUnauthorizedEntryPoint(), new AntPathRequestMatcher("/api/**"))
+                .defaultAuthenticationEntryPointFor(loginUrlAuthenticationEntryPoint(), new AntPathRequestMatcher("/**"))
+                .and()
+                .addFilterBefore(new ApiTokenAuthenticationFilter(authenticationManagerBean()), UsernamePasswordAuthenticationFilter.class);
 
         http.headers().frameOptions().sameOrigin();
     }
@@ -53,9 +78,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
     }
 
     @Autowired
-    public void configureGlobal(AuthenticationManagerBuilder auth, KsfxUserDetailsService ksfxUserDetailsService) throws Exception
+    public void configureGlobal(AuthenticationManagerBuilder auth, KsfxUserDetailsService ksfxUserDetailsService, ApiClientDAO apiClientDAO) throws Exception
     {
         auth.authenticationProvider(authenticationProvider(ksfxUserDetailsService));
+        auth.authenticationProvider(apiClientAuthenticationProvider(apiClientDAO));
     }
 
     @Bean
@@ -70,6 +96,24 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
         authProvider.setPasswordEncoder(encoder);
 
         return authProvider;
+    }
+
+    @Bean
+    public ApiClientAuthenticationProvider apiClientAuthenticationProvider(ApiClientDAO apiClientDAO)
+    {
+        return new ApiClientAuthenticationProvider(apiClientDAO);
+    }
+
+    @Bean
+    public ApiUnauthorizedEntryPoint apiUnauthorizedEntryPoint()
+    {
+        return new ApiUnauthorizedEntryPoint();
+    }
+
+    @Bean
+    public AuthenticationEntryPoint loginUrlAuthenticationEntryPoint()
+    {
+        return new LoginUrlAuthenticationEntryPoint("/login");
     }
 
     @Bean

@@ -35,6 +35,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -66,8 +67,6 @@ public class ClaudeCliSessionService
 {
     public static final String SKIPPED_RESULT = "SKIPPED";
 
-    private static final long PROCESS_TIMEOUT_SECONDS = TimeUnit.MINUTES.toSeconds(30);
-
     private final AgenticConfigDAO agenticConfigDAO;
     private final AgentDAO agentDAO;
     private final AgentMessageDAO agentMessageDAO;
@@ -78,6 +77,8 @@ public class ClaudeCliSessionService
     private final int serverPort;
 
     private final ConcurrentHashMap<Long, String> runningStatus = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Process> runningProcesses = new ConcurrentHashMap<>();
+    private final Set<Long> stopRequested = ConcurrentHashMap.newKeySet();
 
     public ClaudeCliSessionService(AgenticConfigDAO agenticConfigDAO,
                                     AgentDAO agentDAO,
@@ -117,6 +118,46 @@ public class ClaudeCliSessionService
         return new HashMap<>(runningStatus);
     }
 
+    /**
+     * Manually ends a running turn (chat/scheduled/agent-triggered alike, all funnel through the
+     * same {@link #executeTurn} and its {@link #runningProcesses} entry) instead of waiting for it
+     * to finish or hang forever - there is no automatic timeout any more. Returns false if the
+     * agent isn't currently running (e.g. a race where the turn just finished on its own).
+     */
+    public boolean stopTurn(Long agentId)
+    {
+        Process process = runningProcesses.get(agentId);
+
+        if (process == null) {
+            return false;
+        }
+
+        stopRequested.add(agentId);
+        process.destroyForcibly();
+
+        Agent agent = agentDAO.getAgentForId(agentId);
+        AgenticProject project = agent != null ? agent.getAgenticProject() : null;
+
+        if (project != null && project.getDockerIsolationEnabled()) {
+            killDockerClaudeProcess(project);
+        }
+
+        return true;
+    }
+
+    public void resetSession(Agent agent)
+    {
+        agent.setClaudeSessionId(null);
+        agentDAO.saveOrUpdateAgent(agent);
+
+        AgentMessage resetMessage = new AgentMessage();
+        resetMessage.setAgent(agent);
+        resetMessage.setRole(AgentMessageRole.SYSTEM);
+        resetMessage.setContent("Session reset. The Claude CLI's memory of this conversation was cleared; the next message starts a new conversation.");
+        resetMessage.setCreatedAt(new Date());
+        agentMessageDAO.saveAgentMessage(resetMessage);
+    }
+
     public void runTurn(Long agentId, String userMessage, MultipartFile[] files, SseEmitter emitter)
     {
         Agent agent = agentDAO.getAgentForId(agentId);
@@ -151,7 +192,7 @@ public class ClaudeCliSessionService
             String error = executeTurn(agent, config, messageForCli, emitter);
 
             if (error == null) {
-                emitter.complete();
+                safeComplete(emitter);
             } else {
                 completeWithError(emitter, error);
             }
@@ -465,6 +506,7 @@ public class ClaudeCliSessionService
             // container without them being named explicitly.
 
             process = processBuilder.start();
+            runningProcesses.put(agent.getId(), process);
 
             final Process startedProcess = process;
             Thread stderrDrain = new Thread(() -> drainStream(startedProcess.getErrorStream(), stderrOutput));
@@ -472,21 +514,15 @@ public class ClaudeCliSessionService
 
             readStdout(process, emitter, agent.getId(), assistantText, toolActivity, capturedSessionId, rateLimitSnapshot, turnUsage);
 
-            boolean finished = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-
-                if (useDocker) {
-                    killDockerClaudeProcess(project);
-                }
-
-                throw new IOException("Claude CLI process exceeded the timeout of " + PROCESS_TIMEOUT_SECONDS + "s and was terminated.");
-            }
+            process.waitFor();
 
             stderrDrain.join(TimeUnit.SECONDS.toMillis(5));
 
             if (process.exitValue() != 0) {
+                if (stopRequested.remove(agent.getId())) {
+                    throw new IOException("Turn stopped by user.");
+                }
+
                 throw new IOException("Claude CLI process exited with exit code " + process.exitValue() + ": " + stderrOutput);
             }
 
@@ -539,12 +575,12 @@ public class ClaudeCliSessionService
                 agenticConfigDAO.saveOrUpdateAgenticConfig(config);
             }
 
-            if (emitter != null && turnUsage.inputTokens != null) {
-                emitter.send(SseEmitter.event().name("usage").data(objectMapper.writeValueAsString(turnUsage.inputTokens + turnUsage.outputTokens)));
+            if (turnUsage.inputTokens != null) {
+                trySend(emitter, SseEmitter.event().name("usage").data(objectMapper.writeValueAsString(turnUsage.inputTokens + turnUsage.outputTokens)));
             }
 
-            if (emitter != null && generatedFiles.size() > 0) {
-                emitter.send(SseEmitter.event().name("generated_files").data(objectMapper.writeValueAsString(generatedFiles)));
+            if (generatedFiles.size() > 0) {
+                trySend(emitter, SseEmitter.event().name("generated_files").data(objectMapper.writeValueAsString(generatedFiles)));
             }
 
             return null;
@@ -577,6 +613,8 @@ public class ClaudeCliSessionService
             }
 
             runningStatus.remove(agent.getId());
+            runningProcesses.remove(agent.getId());
+            stopRequested.remove(agent.getId());
         }
     }
 
@@ -876,14 +914,12 @@ public class ClaudeCliSessionService
                     assistantText.append(text);
                     runningStatus.put(agentId, "Responding…");
 
-                    if (emitter != null) {
-                        // JSON-encoded (like tool_use/tool_result below), not sent raw: a raw
-                        // multi-line string here breaks the client's naive SSE event-boundary
-                        // parsing (it splits on a blank line, which a paragraph break inside the
-                        // text also produces) and truncates the live-rendered response, even
-                        // though assistantText/the DB copy stays complete either way.
-                        emitter.send(SseEmitter.event().name("text").data(objectMapper.writeValueAsString(text)));
-                    }
+                    // JSON-encoded (like tool_use/tool_result below), not sent raw: a raw
+                    // multi-line string here breaks the client's naive SSE event-boundary
+                    // parsing (it splits on a blank line, which a paragraph break inside the
+                    // text also produces) and truncates the live-rendered response, even
+                    // though assistantText/the DB copy stays complete either way.
+                    trySend(emitter, SseEmitter.event().name("text").data(objectMapper.writeValueAsString(text)));
                 } else if ("tool_use".equals(blockType)) {
                     String toolName = contentBlock.path("name").asText("tool");
 
@@ -895,9 +931,7 @@ public class ClaudeCliSessionService
 
                     runningStatus.put(agentId, "Tool: " + toolName);
 
-                    if (emitter != null) {
-                        emitter.send(SseEmitter.event().name("tool_use").data(objectMapper.writeValueAsString(toolUseEntry)));
-                    }
+                    trySend(emitter, SseEmitter.event().name("tool_use").data(objectMapper.writeValueAsString(toolUseEntry)));
                 }
             }
         } else if ("user".equals(type)) {
@@ -914,9 +948,7 @@ public class ClaudeCliSessionService
 
                     runningStatus.put(agentId, "Evaluating tool result…");
 
-                    if (emitter != null) {
-                        emitter.send(SseEmitter.event().name("tool_result").data(objectMapper.writeValueAsString(toolResultEntry)));
-                    }
+                    trySend(emitter, SseEmitter.event().name("tool_result").data(objectMapper.writeValueAsString(toolResultEntry)));
                 }
             }
         } else if ("rate_limit_event".equals(type)) {
@@ -977,12 +1009,41 @@ public class ClaudeCliSessionService
 
     private void completeWithError(SseEmitter emitter, String message)
     {
+        trySend(emitter, SseEmitter.event().name("error").data(message));
+
         try {
-            emitter.send(SseEmitter.event().name("error").data(message));
-        } catch (IOException ignored) {
+            emitter.completeWithError(new IllegalStateException(message));
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * Sends an SSE event if an emitter is attached, silently ignoring failures. The emitter is
+     * null for headless/scheduled/agent-triggered runs (no browser attached); it's non-null but
+     * already completed if the browser navigated away mid-turn (Spring throws
+     * IllegalStateException on the next send). Either way the turn should keep running the CLI
+     * process to completion and persist normally, not treat "nobody's watching anymore" as a
+     * turn failure - that used to abort the read loop, land in executeTurn's catch block, and
+     * kill the still-working CLI process via its finally block.
+     */
+    private void trySend(SseEmitter emitter, SseEmitter.SseEventBuilder event)
+    {
+        if (emitter == null) {
+            return;
         }
 
-        emitter.completeWithError(new IllegalStateException(message));
+        try {
+            emitter.send(event);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void safeComplete(SseEmitter emitter)
+    {
+        try {
+            emitter.complete();
+        } catch (Exception ignored) {
+        }
     }
 
     private boolean isBlank(String value)

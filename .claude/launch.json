@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ksfx",
+      "runtimeExecutable": "C:\\Users\\kejos\\Documents\\github\\ksfx-lexaris\\mvnw.cmd",
+      "runtimeArgs": ["-o", "spring-boot:run"],
+      "port": 8080
+    }
+  ]
+}
