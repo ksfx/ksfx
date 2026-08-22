@@ -388,6 +388,7 @@ public class PublicationViewerController
     {
         if (gitPath != null && activityGitRepositoryService.isActive()) {
             try {
+                activityGitRepositoryService.sync();
                 return activityGitRepositoryService.readActivitySource(gitPath);
             } catch (Exception e) {
                 systemLogger.logMessage("WARN", "Could not read publishing strategy source from Git, falling back to cached value", e);

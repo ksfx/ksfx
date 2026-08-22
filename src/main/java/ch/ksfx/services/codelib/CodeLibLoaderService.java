@@ -70,6 +70,7 @@ public class CodeLibLoaderService
 
         if (codeLib.getGitPath() != null && activityGitRepositoryService.isActive()) {
             try {
+                activityGitRepositoryService.sync();
                 groovyCode = activityGitRepositoryService.readActivitySource(codeLib.getGitPath());
             } catch (Exception e) {
                 systemLogger.logMessage("WARN", "Could not read CodeLib '" + codeLibName + "' source from Git, falling back to cached groovyCode", e);

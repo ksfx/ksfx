@@ -51,6 +51,7 @@ public class EbeanActivityExecutionDAO implements ActivityExecutionDAO
 
                 if (activityGitRepositoryService.isActive()) {
                     try {
+                        activityGitRepositoryService.sync();
                         groovyCode = activityGitRepositoryService.readActivitySource(activity.getGitPath());
                     } catch (Exception e) {
                         systemLogger.logMessage("WARN", "Could not read activity source from Git, falling back to cached groovyCode", e);

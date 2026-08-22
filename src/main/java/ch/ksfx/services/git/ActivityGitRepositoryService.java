@@ -23,7 +23,6 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -72,20 +71,6 @@ public class ActivityGitRepositoryService
         return config != null && config.getEnabled()
                 && config.getRepoUrl() != null && !config.getRepoUrl().isEmpty()
                 && config.getLocalClonePath() != null && !config.getLocalClonePath().isEmpty();
-    }
-
-    @Scheduled(fixedDelay = 120000)
-    public void scheduledSync()
-    {
-        if (!isActive()) {
-            return;
-        }
-
-        try {
-            sync();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     /**
