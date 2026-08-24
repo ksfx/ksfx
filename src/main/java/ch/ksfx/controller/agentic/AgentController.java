@@ -230,14 +230,45 @@ public class AgentController
             agentsByAgenticProject.put(p.getId(), agentDAO.getAgentsForAgenticProject(p.getId()));
         }
 
+        boolean agentRunning = claudeCliSessionService.isRunning(agentId);
+        ClaudeCliSessionService.PartialTurn partialTurn = agentRunning ? claudeCliSessionService.getPartialTurn(agentId) : null;
+
         model.addAttribute("agent", agent);
         model.addAttribute("messages", messages);
-        model.addAttribute("agentRunning", claudeCliSessionService.isRunning(agentId));
+        model.addAttribute("agentRunning", agentRunning);
+        // Both null (not just agentRunning itself) when nothing's actually running yet - executeTurn
+        // registers the RunningTurnState a moment after runningStatus, so there's a brief window
+        // where isRunning() is already true but getPartialTurn() is still null; the template/JS
+        // treat that the same as "no output yet, but still show the busy indicator".
+        model.addAttribute("partialText", partialTurn != null ? partialTurn.getText() : null);
+        model.addAttribute("partialToolActivity", partialTurn != null ? partialTurn.getToolActivityJson() : null);
         model.addAttribute("allAgenticProjects", allAgenticProjects);
         model.addAttribute("agentsByAgenticProject", agentsByAgenticProject);
         model.addAttribute("unassignedAgents", agentDAO.getAgentsWithoutAgenticProject());
 
         return "agentic/agent/agent_chat";
+    }
+
+    /**
+     * Lets a freshly (re)loaded chat page catch up on a turn that's already running - see
+     * ClaudeCliSessionService.attachToRunningTurn. GET, not POST like {@link #chatMessage}, since
+     * this doesn't start anything, just subscribes to output a turn already in flight (started by
+     * this same browser before navigating away, another tab, a schedule, or another agent
+     * messaging this one) keeps producing - see agentic-chat.js's use of EventSource, which (unlike
+     * the fetch()+ReadableStream the send flow needs for POST) works natively for a plain GET SSE
+     * stream.
+     */
+    @GetMapping(value = "/chat/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @ResponseBody
+    public SseEmitter attach(@PathVariable(value = "id") Long agentId)
+    {
+        SseEmitter emitter = new SseEmitter(0L);
+
+        if (!claudeCliSessionService.attachToRunningTurn(agentId, emitter)) {
+            emitter.complete();
+        }
+
+        return emitter;
     }
 
     @PostMapping(value = "/chat/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

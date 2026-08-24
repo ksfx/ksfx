@@ -277,6 +277,13 @@
         inputEl.disabled = sending;
     }
 
+    // Parses one raw multi-line SSE chunk (from the fetch()+ReadableStream buffer in sendMessage())
+    // into an {eventName, data} pair and applies it - the manual parsing EventSource does natively
+    // but which fetch()-based streaming (needed for POST - EventSource is GET-only) has to redo by
+    // hand. The EventSource-based reconnect below (see the 'agentRunning' block) doesn't go through
+    // this at all - its listeners get eventName/data pre-split by the browser and call applyEvent
+    // directly - but both paths end up rendering through the exact same applyEvent, so a live-sent
+    // turn and one you reconnect to mid-flight are visually indistinguishable.
     function handleSseEvent(rawEvent, assistantMessage) {
         var eventName = 'message';
         var dataLines = [];
@@ -289,8 +296,10 @@
             }
         });
 
-        var data = dataLines.join('\n');
+        applyEvent(eventName, dataLines.join('\n'), assistantMessage);
+    }
 
+    function applyEvent(eventName, data, assistantMessage) {
         if (eventName === 'text') {
             clearTyping(assistantMessage.bubble);
 
@@ -468,6 +477,53 @@
             body.appendChild(pre);
         }
     });
+
+    // If this agent had a turn already running when the page loaded (see AgentController.chat()'s
+    // partialText/partialToolActivity and the '#agenticInProgressMessage' block in agent_chat.html),
+    // catch up on it: show the busy indicator and keep appending everything still to come, exactly
+    // like a turn started from this page - see EventSource below. Without this, navigating to
+    // another agent and back used to silently lose both the busy indicator and any not-yet-persisted
+    // output, even though the turn itself kept running server-side the whole time.
+    if (root.dataset.agentRunning === 'true') {
+        var inProgressEl = document.getElementById('agenticInProgressMessage');
+
+        var assistantMessage = inProgressEl
+            ? {
+                root: inProgressEl,
+                bubble: inProgressEl.querySelector('.agentic-bubble'),
+                // Already populated by the history-hydration loop above if the server sent partial
+                // tool activity - reusing it here (instead of leaving toolBody unset) stops
+                // ensureToolContainer from creating a second, empty <details> block alongside it.
+                toolBody: inProgressEl.querySelector('.agentic-tool-activity-body')
+            }
+            : createMessageEl('assistant');
+
+        showTyping(assistantMessage.bubble);
+        setSending(true);
+
+        // GET, unlike the send flow's POST - EventSource can't do POST, but that's fine here since
+        // this connection only ever subscribes to an already-running turn, never starts one.
+        var stream = new EventSource(root.dataset.streamEndpoint);
+
+        ['text', 'tool_use', 'tool_result', 'usage', 'generated_files'].forEach(function (name) {
+            stream.addEventListener(name, function (e) {
+                applyEvent(name, e.data, assistantMessage);
+            });
+        });
+
+        // EventSource's own 'error' fires both for a genuine connection problem and for the normal
+        // "server closed the stream" case (how a completed/failed turn ends this connection) - either
+        // way there's nothing more coming, so just stop showing busy and let the next page load (or
+        // the already-persisted AgentMessage on a future reload) reflect the final state. Not
+        // attempting to special-case a real mid-turn error here (unlike the send flow's own 'error'
+        // SSE event, which does): the SYSTEM error message is already persisted server-side by
+        // executeTurn regardless, this connection existing purely to catch up on an in-flight turn.
+        stream.addEventListener('error', function () {
+            clearTyping(assistantMessage.bubble);
+            setSending(false);
+            stream.close();
+        });
+    }
 
     scrollToBottom();
     autoResize();

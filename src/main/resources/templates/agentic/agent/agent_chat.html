@@ -75,8 +75,6 @@
     </aside>
 
     <div class="agentic-main">
-        <div th:if="${agentRunning}" class="alert alert-info agentic-running-banner">A request is already running for this agent.</div>
-
         <div class="agentic-toolbar">
             <span class="agentic-main-title" th:text="${agent.name}">Agent</span>
         </div>
@@ -84,6 +82,8 @@
         <div id="agenticChatRoot" class="agentic-chat-wrapper"
              th:data-agent-id="${agent.id}"
              th:data-chat-endpoint="@{/agentic/chat/{id}(id=${agent.id})}"
+             th:data-stream-endpoint="@{/agentic/chat/{id}/stream(id=${agent.id})}"
+             th:data-agent-running="${agentRunning}"
              th:data-download-endpoint="@{/agentic/download/{id}(id=${agent.id})}"
              th:data-csrf-header="${_csrf.headerName}"
              th:data-csrf-token="${_csrf.token}">
@@ -104,6 +104,23 @@
                         <div class="agentic-tool-activity-body" th:data-tool-activity="${m.toolActivity}"></div>
                     </details>
                     <div th:if="${m.inputTokens != null}" class="agentic-message-tokens" th:text="${m.inputTokens + m.outputTokens} + ' tokens'"></div>
+                </div>
+
+                <!-- A turn still in flight when this page loaded (e.g. navigated away mid-turn and
+                     back, or a schedule/other-agent-triggered turn happening while you're looking at
+                     this agent) hasn't persisted an AgentMessage yet - see AgentController.chat()'s
+                     partialText/partialToolActivity. Rendered the same shape as a real assistant
+                     message so agentic-chat.js's existing history-hydration/tool-activity rendering
+                     picks it up unchanged; the script then attaches an EventSource to keep appending
+                     to it live and shows the busy indicator, exactly as if this page had started the
+                     turn itself. -->
+                <div th:if="${agentRunning}" id="agenticInProgressMessage" class="agentic-msg agentic-msg--assistant">
+                    <div class="agentic-role-label">Assistant</div>
+                    <div class="agentic-bubble" th:text="${partialText}"></div>
+                    <details th:if="${partialToolActivity}" class="agentic-tool-activity">
+                        <summary><i class="fa fa-wrench"></i> Tool Activity</summary>
+                        <div class="agentic-tool-activity-body" th:data-tool-activity="${partialToolActivity}"></div>
+                    </details>
                 </div>
             </div>
 
