@@ -34,7 +34,10 @@
                      class="agentic-sidebar-item" th:classappend="${a.id == agent.id} ? ' agentic-sidebar-item--active' : ''">
                     <span class="agentic-sidebar-item-status" title=""></span>
                     <a th:href="@{/agentic/chat/{id}(id=${a.id})}" class="agentic-sidebar-item-link">
-                        <span class="agentic-sidebar-item-name" th:text="${a.name}"></span>
+                        <span class="agentic-sidebar-item-text">
+                            <span class="agentic-sidebar-item-name" th:text="${a.name}"></span>
+                            <span th:if="${not #strings.isEmpty(a.description)}" class="agentic-sidebar-item-description" th:text="${a.description}"></span>
+                        </span>
                         <span th:unless="${a.enabled}" class="agentic-sidebar-item-badge">off</span>
                     </a>
                     <button type="button" class="agentic-sidebar-item-icon agentic-sidebar-item-stop" th:data-stop-endpoint="@{/agentic/chat/{id}/stop(id=${a.id})}" title="Stop" aria-label="Stop"><i class="fa fa-stop"></i></button>
@@ -51,7 +54,10 @@
                      class="agentic-sidebar-item" th:classappend="${a.id == agent.id} ? ' agentic-sidebar-item--active' : ''">
                     <span class="agentic-sidebar-item-status" title=""></span>
                     <a th:href="@{/agentic/chat/{id}(id=${a.id})}" class="agentic-sidebar-item-link">
-                        <span class="agentic-sidebar-item-name" th:text="${a.name}"></span>
+                        <span class="agentic-sidebar-item-text">
+                            <span class="agentic-sidebar-item-name" th:text="${a.name}"></span>
+                            <span th:if="${not #strings.isEmpty(a.description)}" class="agentic-sidebar-item-description" th:text="${a.description}"></span>
+                        </span>
                         <span th:unless="${a.enabled}" class="agentic-sidebar-item-badge">off</span>
                     </a>
                     <button type="button" class="agentic-sidebar-item-icon agentic-sidebar-item-stop" th:data-stop-endpoint="@{/agentic/chat/{id}/stop(id=${a.id})}" title="Stop" aria-label="Stop"><i class="fa fa-stop"></i></button>

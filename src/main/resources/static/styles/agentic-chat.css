@@ -99,12 +99,29 @@
     text-decoration: none;
 }
 
-.agentic-sidebar-item-name {
+.agentic-sidebar-item-text {
     flex: 1 1 auto;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.agentic-sidebar-item-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.agentic-sidebar-item-description {
+    font-size: 0.72rem;
+    color: #999;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agentic-sidebar-item--active .agentic-sidebar-item-description {
+    color: rgba(255, 255, 255, 0.75);
 }
 
 .agentic-sidebar-item-status {
@@ -621,6 +638,10 @@ a.agentic-attachment-chip:hover {
 
 .agentic-dark .agentic-sidebar-item-status {
     background: #4a4a56;
+}
+
+.agentic-dark .agentic-sidebar-item-description {
+    color: #77778a;
 }
 
 .agentic-dark .agentic-sidebar-item-icon:hover {
