@@ -20,7 +20,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -36,6 +38,9 @@ import java.util.concurrent.TimeUnit;
  * in at /workspace, so uploads/downloads/code/shared all survive a {@link #throwAway} rebuild;
  * everything an agent installs directly into the container's own filesystem (apt packages, etc.)
  * does not, which is the intended "reset a broken toolchain" semantics of throwing a container away.
+ * A fixed, project-derived set of ports is also published at creation - see {@link #portMappingsFor} -
+ * so a dev server an agent starts is reachable from the host; like everything else `docker run`-time,
+ * that set can't be changed without a {@link #throwAway} either.
  *
  * All `docker` invocations go through {@link #runProcess}, the only pattern in this codebase for
  * shelling out to and monitoring an external process (mirrors ClaudeCliSessionService.executeTurn's
@@ -55,6 +60,26 @@ public class AgenticDockerService
     // as this unprivileged user instead, with passwordless sudo available for anything it still needs
     // root for. Preserves "agents may install whatever they want" while keeping bypassPermissions usable.
     static final String CONTAINER_USER = "agent";
+
+    // Fixed set of container-side ports published for every Docker-isolated project, so an agent can
+    // just point a dev server at one of these (told which via the system prompt - see
+    // ClaudeCliSessionService) without KSFX having to support arbitrary/dynamic port publishing,
+    // which Docker doesn't allow adding to an already-running container anyway (publishing is fixed
+    // at `docker run` time - see hostPortFor). Not framework-default ports (Vite's 5173 etc.) on
+    // purpose: a small contiguous range is simpler to document/remember than a grab-bag of every
+    // framework's own default, and the agent has to be told explicitly which port(s) are reachable
+    // either way, so nothing is lost by picking our own numbers instead.
+    static final int FIRST_AGENT_PORT = 8080;
+    static final int LAST_AGENT_PORT = 8085;
+
+    // Host-side base for the published range - deliberately far from common dev-machine ports
+    // (KSFX's own 8080 included) so a project's host ports never collide with anything else running
+    // on this machine. Combined with the *10-per-project stride below, project 1 lands on
+    // 18090-18095, project 2 on 18100-18105, etc. - human-readable at a glance, with headroom
+    // (10 slots reserved per project, only 6 used) for FIRST_AGENT_PORT..LAST_AGENT_PORT to grow
+    // later without shifting every existing project's host ports.
+    static final int HOST_PORT_BASE = 18080;
+    static final int HOST_PORT_STRIDE_PER_PROJECT = 10;
 
     private final AgenticProjectDAO agenticProjectDAO;
     private final AgentWorkspaceService agentWorkspaceService;
@@ -87,6 +112,26 @@ public class AgenticDockerService
     }
 
     /**
+     * Container-port -&gt; host-port for every port published on this project's container - see the
+     * {@link #FIRST_AGENT_PORT}/{@link #HOST_PORT_BASE} field comments for the derivation. Pure
+     * arithmetic on {@code agenticProjectId}, no Docker call involved, so this is safe to show on a
+     * project's page (e.g. as a preview/status table) even while its container isn't running, and is
+     * exactly what {@link #buildRunCommand} publishes - the single source of truth for both, so a UI
+     * display of this can never drift from what's actually running.
+     */
+    public Map<Integer, Integer> portMappingsFor(Long agenticProjectId)
+    {
+        Map<Integer, Integer> mappings = new LinkedHashMap<>();
+        int hostBase = HOST_PORT_BASE + (int) (agenticProjectId * HOST_PORT_STRIDE_PER_PROJECT);
+
+        for (int containerPort = FIRST_AGENT_PORT; containerPort <= LAST_AGENT_PORT; containerPort++) {
+            mappings.put(containerPort, hostBase + (containerPort - FIRST_AGENT_PORT));
+        }
+
+        return mappings;
+    }
+
+    /**
      * Creates the container if it doesn't exist yet (pulling ubuntu:24.04 and bootstrapping Node.js
      * + the claude CLI into it - see {@link #bootstrap}), starts it if it's stopped (re-bootstrapping
      * only if the marker file is missing, e.g. a crash mid-bootstrap), or no-ops if already running.
@@ -101,6 +146,7 @@ public class AgenticDockerService
 
             if (inspect.exitCode == 0) {
                 if ("running".equals(inspect.stdout.trim())) {
+                    syncOAuthCredentials(name, config);
                     persistStatus(project, DockerContainerStatus.RUNNING, name);
                     return;
                 }
@@ -113,6 +159,7 @@ public class AgenticDockerService
                     bootstrap(name);
                 }
 
+                syncOAuthCredentials(name, config);
                 persistStatus(project, DockerContainerStatus.RUNNING, name);
                 return;
             }
@@ -123,9 +170,10 @@ public class AgenticDockerService
             Path hostWorkspace = agentWorkspaceService.resolveAgenticProjectWorkspace(project, config).toAbsolutePath();
             Files.createDirectories(hostWorkspace);
 
-            requireSuccess(runProcess(120, buildRunCommand(name, hostWorkspace.toString(), config).toArray(new String[0])));
+            requireSuccess(runProcess(120, buildRunCommand(name, hostWorkspace.toString(), config, project.getId()).toArray(new String[0])));
 
             bootstrap(name);
+            syncOAuthCredentials(name, config);
             persistStatus(project, DockerContainerStatus.RUNNING, name);
         } catch (IOException e) {
             persistStatusBestEffort(project, DockerContainerStatus.UNREACHABLE, name);
@@ -141,34 +189,81 @@ public class AgenticDockerService
      */
     private List<String> buildRunCommand(String containerName, String hostWorkspaceMount, AgenticConfig config)
     {
+        return buildRunCommand(containerName, hostWorkspaceMount, config, null);
+    }
+
+    /**
+     * {@code agenticProjectId} may be null only for {@link #describeSetup}'s unsaved-new-project
+     * preview (no id yet to derive host ports from) - every real invocation (from {@link
+     * #ensureContainer}) always has one, so port publishing there is unconditional.
+     */
+    private List<String> buildRunCommand(String containerName, String hostWorkspaceMount, AgenticConfig config, Long agenticProjectId)
+    {
         List<String> runCommand = new ArrayList<>(Arrays.asList("docker", "run", "-d", "--name", containerName,
                 "--add-host=host.docker.internal:host-gateway",
                 "-v", hostWorkspaceMount + ":/workspace",
                 "-w", "/workspace",
                 "--memory=2g", "--cpus=2"));
 
-        // OAuth mode has no API key to hand the container via -e (see ClaudeCliSessionService) - the
-        // CLI instead needs the same OAuth token the host's own `claude login` produced. Bind-mounted
-        // read-only, and scoped to just this one file (not the whole ~/.claude/, which also holds
-        // unrelated session/project history) - an explicit, user-confirmed tradeoff: any code an
-        // isolated agent runs can read this host user's personal Claude OAuth token. Read-only so a
-        // compromised/misbehaving container can't corrupt or hijack the host's credential file; a
-        // token that needs refreshing past its lifetime means recreating (Throw Away) the container
-        // to pick up a freshly host-refreshed one.
-        if (config.getAuthMode() == AgenticAuthMode.OAUTH) {
-            Path hostCredentials = Paths.get(System.getProperty("user.home"), ".claude", ".credentials.json");
-
-            if (Files.isRegularFile(hostCredentials)) {
-                runCommand.add("-v");
-                runCommand.add(hostCredentials.toAbsolutePath() + ":/root/.claude/.credentials.json:ro");
+        if (agenticProjectId != null) {
+            for (Map.Entry<Integer, Integer> mapping : portMappingsFor(agenticProjectId).entrySet()) {
+                runCommand.add("-p");
+                runCommand.add(mapping.getValue() + ":" + mapping.getKey());
             }
         }
 
+        // OAuth credentials are NOT bind-mounted here (see syncOAuthCredentials) - a `docker run -v`
+        // of the single host credentials file used to be mounted to /root/.claude/.credentials.json,
+        // with a symlink from the unprivileged agent user's home pointing at it. That broke: the
+        // `claude` CLI itself refreshes its credentials file via an atomic write (temp file + rename
+        // over the target), which *replaces* whatever was at that path - including a symlink - with
+        // a plain file. The very first turn an agent ran silently severed it from the host's live,
+        // periodically-refreshed OAuth token and froze it at whatever the CLI happened to write at
+        // that moment; from then on it never picked up a host-side token refresh again, eventually
+        // going stale and failing with "Not logged in" with no obvious cause (see ksfx/ksfx#41).
         runCommand.add("ubuntu:24.04");
         runCommand.add("sleep");
         runCommand.add("infinity");
 
         return runCommand;
+    }
+
+    /**
+     * Copies the host's live OAuth credentials file into the container's unprivileged agent user's
+     * home directory via {@code docker cp}, run fresh before every turn (see every {@link
+     * #ensureContainer} success path) rather than mounted/symlinked once at container creation - see
+     * {@link #buildRunCommand}'s comment for why a mount+symlink doesn't survive the CLI's own
+     * atomic-write credential refresh. {@code docker cp} always reads the host file's *current*
+     * content at copy time, so this self-heals from that clobbering on every turn instead of freezing
+     * a stale/invalid copy in place permanently. No-op for API-key mode or if the host hasn't done an
+     * interactive {@code claude login} yet. Best-effort: logs and continues rather than failing the
+     * whole turn, since a sync failure just means the turn itself will fail clearly downstream with
+     * the CLI's own "Not logged in" error rather than KSFX guessing at one here.
+     */
+    private void syncOAuthCredentials(String containerName, AgenticConfig config)
+    {
+        if (config.getAuthMode() != AgenticAuthMode.OAUTH) {
+            return;
+        }
+
+        Path hostCredentials = Paths.get(System.getProperty("user.home"), ".claude", ".credentials.json");
+
+        if (!Files.isRegularFile(hostCredentials)) {
+            return;
+        }
+
+        try {
+            requireSuccess(runProcess(15, "docker", "exec", containerName, "mkdir", "-p", "/home/" + CONTAINER_USER + "/.claude"));
+            requireSuccess(runProcess(15, "docker", "cp", hostCredentials.toAbsolutePath().toString(),
+                    containerName + ":/home/" + CONTAINER_USER + "/.claude/.credentials.json"));
+            requireSuccess(runProcess(15, "docker", "exec", containerName, "chown", CONTAINER_USER + ":" + CONTAINER_USER,
+                    "/home/" + CONTAINER_USER + "/.claude/.credentials.json"));
+            requireSuccess(runProcess(15, "docker", "exec", containerName, "chmod", "600",
+                    "/home/" + CONTAINER_USER + "/.claude/.credentials.json"));
+        } catch (IOException e) {
+            systemLogger.logMessage("AGENTIC", "Could not sync OAuth credentials into container '" + containerName + "' - "
+                    + "the next turn will likely fail with 'Not logged in' if this doesn't clear up on retry.", e);
+        }
     }
 
     /**
@@ -182,9 +277,7 @@ public class AgenticDockerService
                 + "&& apt-get install -y -qq nodejs && npm install -g @anthropic-ai/claude-code "
                 + "&& useradd -m -s /bin/bash " + CONTAINER_USER + " "
                 + "&& echo '" + CONTAINER_USER + " ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/" + CONTAINER_USER + " "
-                + "&& chmod 755 /root "
                 + "&& mkdir -p /home/" + CONTAINER_USER + "/.claude "
-                + "&& ln -sf /root/.claude/.credentials.json /home/" + CONTAINER_USER + "/.claude/.credentials.json "
                 + "&& chown -R " + CONTAINER_USER + ":" + CONTAINER_USER + " /home/" + CONTAINER_USER + " "
                 + "&& touch " + BOOTSTRAP_MARKER_FILE;
     }
@@ -207,20 +300,38 @@ public class AgenticDockerService
                 ? agentWorkspaceService.resolveAgenticProjectWorkspace(project, config).toAbsolutePath().toString()
                 : Paths.get(config.getWorkspaceRoot()).toAbsolutePath() + java.io.File.separator + "project-<project-id>";
 
-        String runCommand = String.join(" ", quoteIfNeeded(buildRunCommand(containerName, hostWorkspaceMount, config)));
+        String runCommand = String.join(" ", quoteIfNeeded(buildRunCommand(containerName, hostWorkspaceMount, config, project.getId())));
+
+        StringBuilder portTable = new StringBuilder();
+
+        if (project.getId() != null) {
+            for (Map.Entry<Integer, Integer> mapping : portMappingsFor(project.getId()).entrySet()) {
+                portTable.append("  localhost:").append(mapping.getValue()).append(" -> container:").append(mapping.getKey()).append("\n");
+            }
+        } else {
+            portTable.append("  (assigned once this project is saved and has an id)\n");
+        }
 
         return "Container name: " + containerName + "\n\n"
                 + "1) Created once, the first time this project's isolation is used (or after Throw Away):\n"
                 + runCommand + "\n\n"
+                + "Published ports (fixed container-side " + FIRST_AGENT_PORT + "-" + LAST_AGENT_PORT + ", host-side derived from this\n"
+                + "project's id so it never collides with another project's - tell the agent which of these to bind\n"
+                + "its dev server to, e.g. via its custom system prompt):\n"
+                + portTable + "\n"
                 + "2) Bootstrapped once right after creation (installs Node.js + the claude CLI, and sets up the\n"
                 + "unprivileged '" + CONTAINER_USER + "' user - see below):\n"
                 + "docker exec " + containerName + " bash -lc \"" + bootstrapScript() + "\"\n\n"
-                + "3) Every chat turn then runs inside that same container as:\n"
-                + "docker exec -u " + CONTAINER_USER + " -w /workspace/agent-<agent-id> [-e ANTHROPIC_API_KEY=... or the mounted OAuth token]"
+                + "3) For OAuth mode, before every turn (not just once - see syncOAuthCredentials): the host's\n"
+                + "current ~/.claude/.credentials.json is freshly `docker cp`'d into the container as '" + CONTAINER_USER + "',\n"
+                + "since the claude CLI's own credential refresh would otherwise silently detach a one-time-mounted\n"
+                + "copy from the host's live token.\n\n"
+                + "4) Every chat turn then runs inside that same container as:\n"
+                + "docker exec -u " + CONTAINER_USER + " -w /workspace/agent-<agent-id> [-e ANTHROPIC_API_KEY=... if not OAuth]"
                 + " -e KSFX_AGENT_TOKEN=... " + containerName + " claude -p \"<message>\" --output-format stream-json --verbose"
                 + " --permission-mode <mode> [--resume <session-id>] --append-system-prompt-file /workspace/agent-<agent-id>/.agentic-system-prompt.txt\n\n"
                 + "The container itself is administered as root (that's what runs the bootstrap above), but the\n"
-                + "claude process in step 3 runs as the unprivileged '" + CONTAINER_USER + "' user, with passwordless\n"
+                + "claude process in step 4 runs as the unprivileged '" + CONTAINER_USER + "' user, with passwordless\n"
                 + "sudo available inside the container for anything that still needs root - the claude CLI refuses\n"
                 + "to run unattended (--dangerously-skip-permissions / bypassPermissions mode) as root itself.\n\n"
                 + "/workspace is your project's workspace folder bind-mounted from the host, so uploads/downloads/\n"
@@ -275,9 +386,8 @@ public class AgenticDockerService
      * pre-built image - is the deliberate choice here: zero registry/build-pipeline maintenance for
      * KSFX, at the cost of this one-time latency on create/throw-away only, never per turn.
      *
-     * chmod 755 on /root (the container's own filesystem, not the bind-mounted credentials file
-     * itself) lets CONTAINER_USER traverse into it to reach the symlinked-to credentials file below -
-     * root's default 700 would otherwise block that regardless of the target file's own permissions.
+     * OAuth credentials are not part of this bootstrap - see {@link #syncOAuthCredentials}, called
+     * separately (and repeatedly, every turn) from every {@link #ensureContainer} success path.
      */
     private void bootstrap(String containerName) throws IOException
     {
