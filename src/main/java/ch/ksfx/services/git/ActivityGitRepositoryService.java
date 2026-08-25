@@ -19,9 +19,11 @@ package ch.ksfx.services.git;
 
 import ch.ksfx.dao.GitSyncConfigDAO;
 import ch.ksfx.model.GitSyncConfig;
+import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.springframework.stereotype.Service;
 
@@ -86,6 +88,7 @@ public class ActivityGitRepositoryService
         if (new File(workingDir, ".git").exists()) {
             try (Git git = Git.open(workingDir)) {
                 git.fetch().setCredentialsProvider(credentialsProvider(config)).call();
+                checkoutBranch(git, config);
                 git.reset().setMode(ResetCommand.ResetType.HARD).setRef("origin/" + config.getBranch()).call();
             }
         } else {
@@ -104,6 +107,34 @@ public class ActivityGitRepositoryService
             config.setLastSyncedCommit(git.getRepository().resolve("HEAD").getName());
             config.setLastSyncedAt(new Date());
             gitSyncConfigDAO.saveOrUpdateGitSyncConfig(config);
+        }
+    }
+
+    /**
+     * Switches the working copy onto the configured branch if it's checked out onto a different
+     * one - e.g. after the branch is changed in the config UI. Creates a local tracking branch
+     * from origin/&lt;branch&gt; if none exists yet, so plain pushes/pulls go to the right place.
+     */
+    private void checkoutBranch(Git git, GitSyncConfig config) throws GitAPIException, IOException
+    {
+        String currentBranch = git.getRepository().getBranch();
+
+        if (currentBranch.equals(config.getBranch())) {
+            return;
+        }
+
+        boolean localBranchExists = git.branchList().call().stream()
+                .anyMatch(ref -> ref.getName().equals("refs/heads/" + config.getBranch()));
+
+        if (localBranchExists) {
+            git.checkout().setName(config.getBranch()).call();
+        } else {
+            git.checkout()
+                    .setCreateBranch(true)
+                    .setName(config.getBranch())
+                    .setStartPoint("origin/" + config.getBranch())
+                    .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK)
+                    .call();
         }
     }
 
@@ -189,11 +220,13 @@ public class ActivityGitRepositoryService
             git.add().setUpdate(true).addFilepattern(".").call(); // JGit's plain add() never stages deletions of tracked files
             git.commit().setMessage(commitMessage).call();
 
+            RefSpec pushSpec = new RefSpec("HEAD:refs/heads/" + config.getBranch());
+
             try {
-                git.push().setCredentialsProvider(credentialsProvider(config)).call();
+                git.push().setRefSpecs(pushSpec).setCredentialsProvider(credentialsProvider(config)).call();
             } catch (GitAPIException pushFailure) {
                 git.pull().setRebase(true).setCredentialsProvider(credentialsProvider(config)).call();
-                git.push().setCredentialsProvider(credentialsProvider(config)).call();
+                git.push().setRefSpecs(pushSpec).setCredentialsProvider(credentialsProvider(config)).call();
             }
 
             config.setLastSyncedCommit(git.getRepository().resolve("HEAD").getName());
