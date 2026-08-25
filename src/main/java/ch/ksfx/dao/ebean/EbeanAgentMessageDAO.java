@@ -18,6 +18,18 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     }
 
     @Override
+    public void deleteAgentMessage(AgentMessage agentMessage)
+    {
+        Ebean.delete(agentMessage);
+    }
+
+    @Override
+    public AgentMessage getAgentMessageForId(Long agentMessageId)
+    {
+        return Ebean.find(AgentMessage.class, agentMessageId);
+    }
+
+    @Override
     public List<AgentMessage> getMessagesForAgent(Long agentId)
     {
         return Ebean.find(AgentMessage.class).fetch("fromAgent").where().eq("agent.id", agentId).order().asc("id").findList();

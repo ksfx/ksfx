@@ -89,12 +89,15 @@
              th:data-csrf-token="${_csrf.token}">
 
             <div id="agenticMessages" class="agentic-messages">
-                <div th:each="m : ${messages}" class="agentic-msg" th:classappend="'agentic-msg--' + ${#strings.toLowerCase(m.role.name())}">
-                    <div class="agentic-role-label" th:switch="${m.role.name()}">
-                        <span th:case="'USER'">You</span>
-                        <span th:case="'SYSTEM'">System</span>
-                        <span th:case="'AGENT'" th:text="${m.fromAgent != null ? 'Agent: ' + m.fromAgent.name : 'Agent'}"></span>
-                        <span th:case="*">Assistant</span>
+                <div th:each="m : ${messages}" class="agentic-msg" th:classappend="'agentic-msg--' + ${#strings.toLowerCase(m.role.name())}" th:data-message-id="${m.id}">
+                    <div class="agentic-msg-header">
+                        <div class="agentic-role-label" th:switch="${m.role.name()}">
+                            <span th:case="'USER'">You</span>
+                            <span th:case="'SYSTEM'">System</span>
+                            <span th:case="'AGENT'" th:text="${m.fromAgent != null ? 'Agent: ' + m.fromAgent.name : 'Agent'}"></span>
+                            <span th:case="*">Assistant</span>
+                        </div>
+                        <button type="button" class="agentic-msg-delete" th:attr="data-delete-endpoint=@{/agentic/chat/{id}/message/{messageId}/delete(id=${agent.id},messageId=${m.id})}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
                     </div>
                     <div class="agentic-bubble" th:text="${m.content}"></div>
                     <div th:if="${m.attachments}" class="agentic-attachments" th:data-attachments="${m.attachments}"></div>

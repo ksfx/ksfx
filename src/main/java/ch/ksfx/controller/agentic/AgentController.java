@@ -307,6 +307,27 @@ public class AgentController
     }
 
     /**
+     * Deletes a single turn (one row - a user message, an assistant reply, a system error, or an
+     * incoming agent-to-agent message; see {@link AgentMessage}'s own Javadoc) from this agent's
+     * transcript. Scoped to the {@code id} in the URL, not just {@code messageId}, so a message
+     * can't be deleted by guessing its id while looking at a different agent's chat page.
+     */
+    @PostMapping("/chat/{id}/message/{messageId}/delete")
+    @ResponseBody
+    public Map<String, Boolean> deleteMessage(@PathVariable(value = "id") Long agentId, @PathVariable Long messageId)
+    {
+        AgentMessage message = agentMessageDAO.getAgentMessageForId(messageId);
+
+        if (message == null || message.getAgent() == null || !message.getAgent().getId().equals(agentId)) {
+            return Collections.singletonMap("deleted", false);
+        }
+
+        agentMessageDAO.deleteAgentMessage(message);
+
+        return Collections.singletonMap("deleted", true);
+    }
+
+    /**
      * Serves a file from the agent's workspace - either a chat attachment the user uploaded (see
      * ClaudeCliSessionService.saveAttachmentsAndBuildNote, under uploads/) or a file the agent
      * itself produced during a turn (see ClaudeCliSessionService's workspace-diffing in

@@ -525,6 +525,38 @@
         });
     }
 
+    // Per-message delete (the small trash icon revealed on hover, see .agentic-msg-delete in
+    // agentic-chat.css) - event delegation on the container, same pattern as the sidebar's stop
+    // button below, since messages are added dynamically (sendMessage()) as well as server-rendered.
+    messagesEl.addEventListener('click', function (e) {
+        var deleteBtn = e.target.closest('.agentic-msg-delete');
+
+        if (!deleteBtn) {
+            return;
+        }
+
+        e.preventDefault();
+
+        if (!window.confirm('Diese Nachricht löschen?')) {
+            return;
+        }
+
+        var msgEl = deleteBtn.closest('.agentic-msg');
+        var headers = {};
+        headers[csrfHeader] = csrfToken;
+
+        fetch(deleteBtn.dataset.deleteEndpoint, { method: 'POST', headers: headers })
+            .then(function (response) { return response.ok ? response.json() : { deleted: false }; })
+            .then(function (result) {
+                if (result.deleted && msgEl) {
+                    msgEl.remove();
+                }
+            })
+            .catch(function () {
+                // best-effort - leave the message in place, user can retry
+            });
+    });
+
     scrollToBottom();
     autoResize();
 })();
