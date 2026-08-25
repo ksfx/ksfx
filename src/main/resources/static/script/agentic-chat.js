@@ -18,6 +18,39 @@
     var csrfHeader = root.dataset.csrfHeader;
     var csrfToken = root.dataset.csrfToken;
 
+    // Fills the rest of the viewport below the sidebar/chat panes instead of the fixed
+    // "calc(100vh - 300px)" the CSS used to hardcode - that guessed constant didn't account for
+    // the page's actual chrome height (test-instance banner, nav wrapping to two lines on a
+    // narrow window, etc.), so it under- or over-shot depending on the page/screen and left a
+    // dead strip of unused space below the composer on some screens (see agentic-chat.css's
+    // .agentic-sidebar/.agentic-chat-wrapper comments). Measuring the real position at runtime
+    // instead is correct regardless of what's above it. Re-run on resize (viewport height/width
+    // change, e.g. rotating a tablet or the nav wrapping differently) and window load (web fonts/
+    // images loading late can still shift layout after DOMContentLoaded).
+    //
+    // Each element's own top, not a shared one from their common ancestor: .agentic-chat-wrapper
+    // sits below .agentic-toolbar (the title row) inside .agentic-main, so it starts ~40px lower
+    // than .agentic-sidebar does - sizing both off one shared top (originally .agentic-layout's)
+    // undersized that gap for the wrapper, pushing its bottom edge that far past the viewport and
+    // forcing the whole page to scroll just to reach the composer. Capped at maxHeight so a very
+    // tall monitor doesn't turn this into a mostly-empty giant panel either.
+    function sizeAgenticPanes() {
+        var bottomBreathingRoom = 24;
+        var minHeight = 420;
+        var maxHeight = 820;
+
+        document.querySelectorAll('.agentic-sidebar, .agentic-chat-wrapper').forEach(function (el) {
+            var top = el.getBoundingClientRect().top;
+            var height = Math.min(maxHeight, Math.max(minHeight, window.innerHeight - top - bottomBreathingRoom));
+
+            el.style.height = height + 'px';
+        });
+    }
+
+    sizeAgenticPanes();
+    window.addEventListener('resize', sizeAgenticPanes);
+    window.addEventListener('load', sizeAgenticPanes);
+
     var messagesEl = document.getElementById('agenticMessages');
     var inputEl = document.getElementById('agenticInput');
     var sendBtn = document.getElementById('agenticSendBtn');

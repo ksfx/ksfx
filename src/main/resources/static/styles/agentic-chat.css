@@ -14,7 +14,12 @@
     flex: 0 0 240px;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 300px);
+    /* No fixed/calc() height here - agentic-chat.js measures this element's actual position and
+       sets an inline height filling the rest of the viewport (see sizeAgenticPanes). A guessed
+       constant (previously "calc(100vh - 300px)") can't account for the page's real chrome height,
+       which varies with the test-instance banner, viewport width (nav wrapping), etc. - it either
+       wastes space (guessed too large) or clips content (too small). This min-height is only the
+       fallback for the brief moment before that JS runs (or if it's disabled). */
     min-height: 420px;
     border: 1px solid #e4e4e9;
     border-radius: 12px;
@@ -224,7 +229,7 @@
 .agentic-chat-wrapper {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 300px);
+    /* See .agentic-sidebar's comment - same JS-measured height, same fallback. */
     min-height: 420px;
 }
 
