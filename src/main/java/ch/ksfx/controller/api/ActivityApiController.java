@@ -8,7 +8,10 @@ import ch.ksfx.model.activity.ActivityCategory;
 import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.services.ServiceProvider;
 import ch.ksfx.services.activity.ActivityInstanceRunner;
+import ch.ksfx.services.git.ActivityGitRepositoryService;
 import ch.ksfx.services.scheduler.SchedulerService;
+import ch.ksfx.services.systemlogger.SystemLogger;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import groovy.lang.GroovyClassLoader;
 import org.quartz.CronExpression;
 import org.quartz.SchedulerException;
@@ -25,8 +28,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +46,11 @@ import java.util.stream.Collectors;
  * re-schedules) - the MVC controller has never done either consistently (schedule on/off is a
  * separate pair of actions there, and delete doesn't touch Quartz at all), but there's no reason
  * for a new API to repeat that gap.
+ *
+ * When Git sync is active, this also keeps the Git-backed source in lockstep with the DB row
+ * exactly like the MVC controller does (same slug/write/rename/delete calls against
+ * {@link ActivityGitRepositoryService}) - API and GUI must produce the same end state for the
+ * same edit, otherwise callers using one and humans using the other silently diverge.
  */
 @RestController
 @RequestMapping("/api/activities")
@@ -51,18 +61,24 @@ public class ActivityApiController
     private final ActivityInstanceRunner activityInstanceRunner;
     private final SchedulerService schedulerService;
     private final ServiceProvider serviceProvider;
+    private final ActivityGitRepositoryService activityGitRepositoryService;
+    private final SystemLogger systemLogger;
 
     public ActivityApiController(ActivityDAO activityDAO,
                                   ActivityInstanceDAO activityInstanceDAO,
                                   ActivityInstanceRunner activityInstanceRunner,
                                   SchedulerService schedulerService,
-                                  ServiceProvider serviceProvider)
+                                  ServiceProvider serviceProvider,
+                                  ActivityGitRepositoryService activityGitRepositoryService,
+                                  SystemLogger systemLogger)
     {
         this.activityDAO = activityDAO;
         this.activityInstanceDAO = activityInstanceDAO;
         this.activityInstanceRunner = activityInstanceRunner;
         this.schedulerService = schedulerService;
         this.serviceProvider = serviceProvider;
+        this.activityGitRepositoryService = activityGitRepositoryService;
+        this.systemLogger = systemLogger;
     }
 
     @GetMapping
@@ -94,7 +110,7 @@ public class ActivityApiController
             return notFound();
         }
 
-        return ResponseEntity.ok(ActivityApiDto.from(activity));
+        return ResponseEntity.ok(ActivityApiDto.fromDetailed(activity, resolveGroovyCode(activity.getGitPath(), activity.getGroovyCode())));
     }
 
     @PostMapping
@@ -133,6 +149,18 @@ public class ActivityApiController
             }
 
             activity.setActivityApprovalStrategy(strategy);
+        }
+
+        if (activityGitRepositoryService.isActive() && activity.getGroovyCode() != null) {
+            try {
+                String slug = activityGitRepositoryService.uniqueSlug(
+                        activityGitRepositoryService.slugify(activity.getName()),
+                        ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
+                activity.setGitPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY + "/" + slug + ".groovy");
+                activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorBody("Could not write to Git repository: " + e.getMessage()));
+            }
         }
 
         activityDAO.saveOrUpdateActivity(activity);
@@ -194,12 +222,43 @@ public class ActivityApiController
             activity.setActivityApprovalStrategy(strategy);
         }
 
-        // gitPath/requiredActivities/triggerActivities are deliberately never touched here - activity
-        // was loaded from the DB above, not built fresh, so anything not explicitly reassigned above
-        // or below just keeps its current persisted value.
+        // requiredActivities/triggerActivities are deliberately never touched here - activity was
+        // loaded from the DB above, not built fresh, so anything not explicitly reassigned above or
+        // below just keeps its current persisted value. gitPath itself is managed below, mirroring
+        // the MVC controller instead of being left untouched.
         activity.setName(body.name);
         activity.setCronSchedule(body.cronSchedule);
         activity.setCronScheduleEnabled(body.cronScheduleEnabled);
+
+        if (activityGitRepositoryService.isActive() && activity.getGroovyCode() != null) {
+            try {
+                if (activity.getGitPath() == null) {
+                    String slug = activityGitRepositoryService.uniqueSlug(
+                            activityGitRepositoryService.slugify(activity.getName()),
+                            ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
+                    activity.setGitPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY + "/" + slug + ".groovy");
+                    activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
+                } else {
+                    Set<String> siblingPaths = new HashSet<>();
+                    for (Activity other : activityDAO.getAllActivities()) {
+                        if (!other.getId().equals(activity.getId()) && other.getGitPath() != null) {
+                            siblingPaths.add(other.getGitPath());
+                        }
+                    }
+
+                    String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY, activity.getName(), activity.getGitPath(), siblingPaths);
+
+                    if (!desiredPath.equals(activity.getGitPath())) {
+                        activityGitRepositoryService.renameAndWriteActivitySource(activity.getGitPath(), desiredPath, activity.getGroovyCode(), "Rename activity: " + activity.getName());
+                        activity.setGitPath(desiredPath);
+                    } else {
+                        activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Update activity: " + activity.getName());
+                    }
+                }
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorBody("Could not write to Git repository: " + e.getMessage()));
+            }
+        }
 
         activityDAO.saveOrUpdateActivity(activity);
 
@@ -218,6 +277,17 @@ public class ActivityApiController
 
         if (activity == null) {
             return notFound();
+        }
+
+        // Mirrors ActivityController.delete: a Git failure is logged but never blocks deleting the
+        // DB row - an orphaned file in Git is recoverable, an Activity the API refuses to delete
+        // because Git is unreachable is a worse failure mode for the caller.
+        if (activity.getGitPath() != null && activityGitRepositoryService.isActive()) {
+            try {
+                activityGitRepositoryService.deleteAndPush(activity.getGitPath(), "Delete activity: " + activity.getName());
+            } catch (Exception e) {
+                systemLogger.logMessage("WARN", "Could not delete Activity '" + activity.getName() + "' from Git", e);
+            }
         }
 
         schedulerService.deleteJob("Activity" + id, "Activities");
@@ -280,6 +350,28 @@ public class ActivityApiController
         return null;
     }
 
+    /**
+     * Mirrors ActivityController.activityEdit's own git-freshness behaviour: if the Activity is
+     * Git-backed and sync is active, re-fetch and return the live Git content instead of the
+     * possibly-stale DB cache, falling back to the cache on any Git error rather than failing the
+     * whole request - a caller reading via the API should see the same "what's actually in Git
+     * right now" answer a human editing the same Activity in the GUI would.
+     */
+    private String resolveGroovyCode(String gitPath, String cachedGroovyCode)
+    {
+        if (gitPath == null || !activityGitRepositoryService.isActive()) {
+            return cachedGroovyCode;
+        }
+
+        try {
+            activityGitRepositoryService.sync();
+            return activityGitRepositoryService.readActivitySource(gitPath);
+        } catch (Exception e) {
+            systemLogger.logMessage("WARN", "Could not read Git source for gitPath '" + gitPath + "', falling back to cached groovyCode", e);
+            return cachedGroovyCode;
+        }
+    }
+
     private ResponseEntity<?> notFound()
     {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("Not found"));
@@ -302,8 +394,10 @@ public class ActivityApiController
 
     /**
      * Deliberately not the raw Activity entity - avoids serializing its lazy Ebean relations
-     * (requiredActivities/triggerActivities) and the (potentially large) groovyCode script, none of
-     * which are relevant to a list/create/update response.
+     * (requiredActivities/triggerActivities). groovyCode is omitted from list/create/update
+     * responses (via {@link #from}) since it's not relevant there and can be large; {@link #get}
+     * uses {@link #fromDetailed} instead, the only place it's populated (`@JsonInclude(NON_NULL)`
+     * keeps it out of the JSON entirely everywhere else, rather than serializing `"groovyCode":null`).
      */
     private static class ActivityApiDto
     {
@@ -315,6 +409,9 @@ public class ActivityApiController
         public String activityCategoryName;
         public Long activityApprovalStrategyId;
         public String activityApprovalStrategyName;
+        public String gitPath;
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public String groovyCode;
 
         static ActivityApiDto from(Activity activity)
         {
@@ -323,6 +420,7 @@ public class ActivityApiController
             dto.name = activity.getName();
             dto.cronSchedule = activity.getCronSchedule();
             dto.cronScheduleEnabled = activity.getCronScheduleEnabled();
+            dto.gitPath = activity.getGitPath();
 
             if (activity.getActivityCategory() != null) {
                 dto.activityCategoryId = activity.getActivityCategory().getId();
@@ -333,6 +431,14 @@ public class ActivityApiController
                 dto.activityApprovalStrategyId = activity.getActivityApprovalStrategy().getId();
                 dto.activityApprovalStrategyName = activity.getActivityApprovalStrategy().getName();
             }
+
+            return dto;
+        }
+
+        static ActivityApiDto fromDetailed(Activity activity, String resolvedGroovyCode)
+        {
+            ActivityApiDto dto = from(activity);
+            dto.groovyCode = resolvedGroovyCode;
 
             return dto;
         }
