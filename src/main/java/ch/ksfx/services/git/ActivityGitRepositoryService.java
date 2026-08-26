@@ -197,14 +197,26 @@ public class ActivityGitRepositoryService
         return candidatePath;
     }
 
-    /** Writes a file into the local working copy without staging/committing/pushing it. */
+    /**
+     * Writes a file into the local working copy without staging/committing/pushing it.
+     *
+     * Normalizes line endings to CRLF first - every existing file in this repo (activities, libs,
+     * reports) is CRLF, and there's no .gitattributes to enforce that automatically. Callers here
+     * (the REST API's JSON bodies, especially) typically hand over LF-only content; writing that
+     * as-is would silently flip a CRLF file to LF on its very next edit, making every single line
+     * show as changed in the diff even though only one line of actual content moved. Normalizing
+     * via replace("\r\n","\n").replace("\n","\r\n") (rather than a single "\n"->"\r\n" replace) is
+     * deliberate - content that already arrives CRLF, or mixed, must not end up double-converted
+     * ("\r\r\n").
+     */
     public void writeFile(String gitPath, String content) throws IOException
     {
         GitSyncConfig config = requireConfig();
         Path filePath = Paths.get(config.getLocalClonePath(), gitPath);
+        String normalizedContent = content.replace("\r\n", "\n").replace("\n", "\r\n");
 
         Files.createDirectories(filePath.getParent());
-        Files.write(filePath, content.getBytes(StandardCharsets.UTF_8));
+        Files.write(filePath, normalizedContent.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
