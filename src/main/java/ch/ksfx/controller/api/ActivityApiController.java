@@ -5,8 +5,10 @@ import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.activity.ActivityApprovalStrategy;
 import ch.ksfx.model.activity.ActivityCategory;
+import ch.ksfx.model.activity.ActivityExecution;
 import ch.ksfx.model.activity.ActivityInstance;
 import ch.ksfx.services.ServiceProvider;
+import ch.ksfx.services.activity.ActivityInstanceRun;
 import ch.ksfx.services.activity.ActivityInstanceRunner;
 import ch.ksfx.services.git.ActivityGitRepositoryService;
 import ch.ksfx.services.scheduler.SchedulerService;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -322,6 +325,73 @@ public class ActivityApiController
     }
 
     /**
+     * Status + log for one run started via {@link #run}, which returns this same {@code instanceId}
+     * in its response - a caller can poll this immediately after triggering a run without a
+     * separate lookup. {@code status} mirrors activity_instances_viewer.html's own precedence
+     * exactly: {@link ActivityInstanceRunner#isActivityInstanceRunning} checked first (the
+     * in-memory "is it actually running right now" answer), only falling back to the DB's
+     * {@code finished}/{@code started} columns once that's false - a crashed/restarted server can
+     * leave {@code started} set with no in-memory entry and no {@code finished} either, which reads
+     * as {@code PENDING_APPROVAL} here same as the GUI would show it (no spinner, no timestamp).
+     */
+    @GetMapping("/{id}/instances/{instanceId}")
+    public ResponseEntity<?> getInstance(@PathVariable Long id, @PathVariable Long instanceId)
+    {
+        ActivityInstance instance = ownedInstance(id, instanceId);
+
+        if (instance == null) {
+            return notFound();
+        }
+
+        return ResponseEntity.ok(ActivityInstanceApiDto.from(instance, activityInstanceRunner.isActivityInstanceRunning(instance)));
+    }
+
+    /**
+     * Signals a running instance to stop - mirrors the MVC
+     * {@code /activityinstanceterminate/{id}} link exactly (same
+     * {@link ActivityInstanceRunner#terminateActivity} call), just reporting back whether a signal
+     * was actually sent. Asynchronous like the MVC action: this returns as soon as the signal is
+     * sent, not once the run has actually stopped - {@code status} will still read {@code RUNNING}
+     * on this same response and on any poll until {@link ActivityInstanceRun}'s own {@code finally}
+     * block persists {@code finished}, however long the activity's Groovy code takes to notice
+     * {@link ActivityExecution#terminateActivity} and actually exit.
+     */
+    @PostMapping("/{id}/instances/{instanceId}/stop")
+    public ResponseEntity<?> stopInstance(@PathVariable Long id, @PathVariable Long instanceId)
+    {
+        ActivityInstance instance = ownedInstance(id, instanceId);
+
+        if (instance == null) {
+            return notFound();
+        }
+
+        boolean running = activityInstanceRunner.isActivityInstanceRunning(instance);
+
+        if (running) {
+            activityInstanceRunner.terminateActivity(instance);
+        }
+
+        return ResponseEntity.ok(Collections.singletonMap("stopping", running));
+    }
+
+    /**
+     * Shared not-found/ownership check for the two endpoints above - null if the instance doesn't
+     * exist or belongs to a different Activity than the {id} in the URL, same defensive pattern as
+     * every other nested-resource check in this controller/CodeLibApiController (an instance can't
+     * be inspected or stopped by guessing its id while looking at a different Activity).
+     */
+    private ActivityInstance ownedInstance(Long activityId, Long instanceId)
+    {
+        ActivityInstance instance = activityInstanceDAO.getActivityInstanceForId(instanceId);
+
+        if (instance == null || instance.getActivity() == null || !instance.getActivity().getId().equals(activityId)) {
+            return null;
+        }
+
+        return instance;
+    }
+
+    /**
      * Same two checks as the MVC form's ActivityController.activityValidate, ported from
      * BindingResult field errors to a plain error-message-or-null return - duplicated rather than
      * shared, consistent with this codebase's existing convention of duplicating small per-endpoint
@@ -462,6 +532,36 @@ public class ActivityApiController
             dto.instanceId = instance.getId();
             dto.activityId = instance.getActivity().getId();
             dto.started = started;
+            return dto;
+        }
+    }
+
+    /**
+     * Response shape for {@link #getInstance}/{@link #stopInstance} - not the raw ActivityInstance
+     * entity, same reasoning as everywhere else in this controller (avoids its lazy Ebean relations,
+     * activityInstancePersistentDatas/activityInstanceParameters, neither of which is relevant here).
+     */
+    private static class ActivityInstanceApiDto
+    {
+        public Long instanceId;
+        public Long activityId;
+        public String status;
+        public Date started;
+        public Date finished;
+        public boolean approved;
+        public String console;
+
+        static ActivityInstanceApiDto from(ActivityInstance instance, boolean running)
+        {
+            ActivityInstanceApiDto dto = new ActivityInstanceApiDto();
+            dto.instanceId = instance.getId();
+            dto.activityId = instance.getActivity().getId();
+            dto.status = running ? "RUNNING" : (instance.getFinished() != null ? "FINISHED" : "PENDING_APPROVAL");
+            dto.started = instance.getStarted();
+            dto.finished = instance.getFinished();
+            dto.approved = instance.getApproved();
+            dto.console = instance.getConsole();
+
             return dto;
         }
     }
