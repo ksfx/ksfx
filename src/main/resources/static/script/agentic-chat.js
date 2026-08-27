@@ -40,6 +40,14 @@
         var maxHeight = 820;
 
         document.querySelectorAll('.agentic-sidebar, .agentic-chat-wrapper').forEach(function (el) {
+            // Below the mobile breakpoint .agentic-sidebar becomes a fixed-position slide-in overlay
+            // sized by CSS (top:0/bottom:0, see agentic-chat.css) - leave it alone here, an inline
+            // height clamped to [420,820]px would either fight that or (on a short phone screen)
+            // just be wrong, since this clamp is tuned for the two-pane desktop layout.
+            if (getComputedStyle(el).position === 'fixed') {
+                return;
+            }
+
             var top = el.getBoundingClientRect().top;
             var height = Math.min(maxHeight, Math.max(minHeight, window.innerHeight - top - bottomBreathingRoom));
 
@@ -606,6 +614,37 @@
 
     if (!sidebar) {
         return;
+    }
+
+    // Mobile: sidebar starts as a closed slide-in overlay (see the max-width:768px block in
+    // agentic-chat.css) - the hamburger button opens it, the backdrop or Escape closes it. No
+    // open/closed state persisted across page loads: every agent switch is a full navigation
+    // (not a SPA), so "start closed on the new page" is already the right default, same as most
+    // mobile chat apps landing on the conversation rather than the list.
+    var sidebarToggle = document.getElementById('agenticSidebarToggle');
+    var backdrop = document.getElementById('agenticBackdrop');
+
+    function closeSidebar() {
+        sidebar.classList.remove('agentic-sidebar--open');
+
+        if (backdrop) {
+            backdrop.classList.remove('agentic-backdrop--visible');
+        }
+    }
+
+    if (sidebarToggle && backdrop) {
+        sidebarToggle.addEventListener('click', function () {
+            sidebar.classList.add('agentic-sidebar--open');
+            backdrop.classList.add('agentic-backdrop--visible');
+        });
+
+        backdrop.addEventListener('click', closeSidebar);
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeSidebar();
+            }
+        });
     }
 
     var statusEndpoint = sidebar.dataset.statusEndpoint;

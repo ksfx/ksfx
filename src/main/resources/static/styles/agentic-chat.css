@@ -27,6 +27,66 @@
     overflow: hidden;
 }
 
+/* Hidden on desktop - only shown (via the media query below) as the hamburger that opens the
+   sidebar as an overlay on narrow screens. */
+.agentic-sidebar-toggle {
+    display: none;
+    border: none;
+    background: none;
+    font-size: 1.2rem;
+    color: inherit;
+    padding: 4px 10px;
+    cursor: pointer;
+}
+
+.agentic-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1040;
+}
+
+.agentic-backdrop--visible {
+    display: block;
+}
+
+/* Below this width the fixed 240px sidebar plus the chat pane no longer both fit - stack instead
+   of sitting side by side, and turn the sidebar into a slide-in overlay (agentic-sidebar-toggle
+   opens it, tapping the backdrop or Escape closes it - see agentic-chat.js) rather than a
+   permanently visible column eating most of the screen. */
+@media (max-width: 768px) {
+    .agentic-layout {
+        display: block;
+    }
+
+    .agentic-sidebar-toggle {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .agentic-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1050;
+        width: 82vw;
+        max-width: 300px;
+        border-radius: 0;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+        /* Overrides agentic-chat.js's inline height (sizeAgenticPanes skips this element once it's
+           fixed-positioned, see that function's comment, but this is the belt-and-braces fallback
+           if that check is ever wrong) - top+bottom already fill the viewport without it. */
+        height: auto !important;
+    }
+
+    .agentic-sidebar--open {
+        transform: translateX(0);
+    }
+}
+
 .agentic-sidebar-header {
     display: flex;
     align-items: center;
