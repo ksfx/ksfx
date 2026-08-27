@@ -408,6 +408,61 @@ public class AgenticDockerService
     }
 
     /**
+     * Ends a stopped/abandoned turn's {@code claude} process inside the container - tried
+     * surgically first ({@code docker exec ... pkill}, given a generous 40s before giving up on
+     * it - escalating to a full container kill+restart is disruptive to every agent sharing this
+     * project's container, not just the one being stopped, so it's worth waiting out a container
+     * that's merely slow rather than truly stuck), escalating to killing and restarting the
+     * *whole* container if that doesn't complete within its own timeout. The surgical path
+     * depends on the container's exec subsystem being responsive - exactly what a runaway,
+     * resource-exhausted container (a real one: ksfx/ksfx#28, a container that ran two JVMs,
+     * Postgres and MySQL simultaneously inside a 2g memory limit) often is not, silently leaving
+     * the stopped-by-the-user turn's process running anyway with nothing telling you it's still
+     * there. `docker kill` operates at the kernel/cgroup level and doesn't need a working exec
+     * session, so it gets through regardless. Restarts the container afterward (`docker start`)
+     * so it's immediately usable again rather than left stopped until the next turn happens to
+     * call {@link #ensureContainer} - the bootstrap marker survives a kill+start, so this
+     * doesn't repeat the ~30-90s Node/claude install.
+     *
+     * Returns whether it had to escalate, so {@link ch.ksfx.services.agentic.ClaudeCliSessionService}
+     * knows to tell every agent sharing this project's container (not just whichever turn
+     * triggered this) that it just got reset out from under them - a project's container is
+     * shared across every Agent assigned to it (see the class javadoc), so a `docker kill` here
+     * ends their in-flight work too, not only the turn this call is cleaning up after.
+     */
+    public boolean recoverStuckContainer(AgenticProject project)
+    {
+        String name = containerNameFor(project.getId());
+
+        try {
+            // Never throws for "found nothing to kill" (a plain non-zero exit, not a timeout/
+            // exec failure - see runProcess) - that's the common, unremarkable case where the
+            // claude process had already exited on its own by the time this runs.
+            runProcess(40, "docker", "exec", name, "pkill", "-f", "claude");
+            return false;
+        } catch (IOException e) {
+            systemLogger.logMessage("AGENTIC", "Surgical kill of claude process in '" + name
+                    + "' didn't complete - container looks stuck, escalating to a full container kill+restart.", e);
+        }
+
+        try {
+            runProcess(20, "docker", "kill", name);
+        } catch (IOException ignored) {
+            // best-effort - if even `docker kill` doesn't get through, the daemon itself is in
+            // trouble; the restart attempt right below will surface that clearly if so.
+        }
+
+        try {
+            requireSuccess(runProcess(30, "docker", "start", name));
+            persistStatus(project, DockerContainerStatus.RUNNING, name);
+        } catch (IOException e) {
+            persistStatusBestEffort(project, DockerContainerStatus.UNREACHABLE, name);
+        }
+
+        return true;
+    }
+
+    /**
      * Discards the container and recreates it clean from the base image - the "reset a broken
      * toolchain" action. The project's workspace is bind-mounted, not part of the container's own
      * filesystem, so uploads/downloads/code/shared are untouched by this.

@@ -770,17 +770,37 @@ public class ClaudeCliSessionService
      * Killing the {@code docker exec} client process (via destroyForcibly above) does not kill the
      * process tree it spawned inside the container - so on a timeout/abort for a Docker-isolated
      * agent, this best-effort follow-up asks the container itself to kill any running `claude`
-     * process, rather than leaving it running unattended in the background.
+     * process, rather than leaving it running unattended in the background - see
+     * AgenticDockerService.recoverStuckContainer for how it also recovers a container whose exec
+     * subsystem is itself unresponsive (the failure mode that let this actually happen once - see
+     * ksfx/ksfx#28 - a "stopped" turn's process kept running anyway with nothing telling anyone).
+     * A project's container is shared across every Agent assigned to it, so escalating to a full
+     * container kill+restart there ends every one of their in-flight turns too, not just this
+     * one - posts a SYSTEM notice to each of them so that isn't silently discovered later the way
+     * #52 was, only found by noticing the container's stats looked wrong.
      */
     private void killDockerClaudeProcess(AgenticProject project)
     {
-        try {
-            new ProcessBuilder("docker", "exec", agenticDockerService.containerNameFor(project.getId()), "pkill", "-f", "claude")
-                    .start().waitFor(5, TimeUnit.SECONDS);
-        } catch (IOException ignored) {
-            // best-effort - docker itself may be unreachable
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        boolean escalatedToContainerRestart = agenticDockerService.recoverStuckContainer(project);
+
+        if (!escalatedToContainerRestart) {
+            return;
+        }
+
+        String containerName = agenticDockerService.containerNameFor(project.getId());
+        String notice = "Der Docker-Container '" + containerName + "' dieses Projekts war nicht mehr ansprechbar "
+                + "(der reguläre Stop-Befehl kam nicht mehr durch) und wurde deshalb zwangsweise neu gestartet. "
+                + "Alle darin laufenden Prozesse - auch die anderer Agenten in diesem Projekt - wurden dabei beendet. "
+                + "Der Container ist jetzt wieder einsatzbereit, aber alles, was er sich seit dem letzten Throw Away "
+                + "selbst installiert hatte (außer Node.js/claude aus dem Bootstrap), ist weg.";
+
+        for (Agent affected : agentDAO.getAgentsForAgenticProject(project.getId())) {
+            AgentMessage noticeMessage = new AgentMessage();
+            noticeMessage.setAgent(affected);
+            noticeMessage.setRole(AgentMessageRole.SYSTEM);
+            noticeMessage.setContent(notice);
+            noticeMessage.setCreatedAt(new Date());
+            agentMessageDAO.saveAgentMessage(noticeMessage);
         }
     }
 
