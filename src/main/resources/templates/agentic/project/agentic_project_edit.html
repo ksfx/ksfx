@@ -30,6 +30,11 @@
                 <label for="description">Description</label>
                 <input type="text" class="form-control" id="description" th:field="*{description}" />
             </div>
+            <div class="form-group">
+                <label for="systemPrompt">System Prompt</label>
+                <textarea class="form-control" id="systemPrompt" th:field="*{systemPrompt}" style="height:200px"></textarea>
+                <small class="form-text text-muted">Applied to every Agent in this project, between the platform boilerplate and that Agent's own System Prompt (see its edit page for the full, exact text actually sent). Optional - leave empty to add nothing at this level.</small>
+            </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="dockerIsolationEnabled" th:field="*{dockerIsolationEnabled}" />
                 <label class="form-check-label" for="dockerIsolationEnabled">Enable Docker Isolation</label>

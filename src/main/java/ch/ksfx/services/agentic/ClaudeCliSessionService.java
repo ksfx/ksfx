@@ -916,18 +916,25 @@ public class ClaudeCliSessionService
 
     /**
      * The complete text appended (via --append-system-prompt-file) ahead of/around whatever the
-     * CLI's own default system prompt already contains: platform boilerplate (scheduling API
-     * instructions; the code/ organizational convention for coding-task work, purely a tidiness
-     * convention with no functional effect since the downloads/ change below; the downloads/
-     * convention - see {@link #DOWNLOADS_DIRECTORY_NAME} - which is what actually determines what
-     * surfaces as a download suggestion; and, if the agent has an AgenticProject, a note about its
-     * shared/ folder), followed by the agent's own custom
-     * Agent.systemPrompt, if any. Pure/side-effect-free (unlike {@link #buildAppendedSystemPrompt},
-     * which also lazily backfills agent.apiToken - a backfill that never affects this method's
-     * *output*, since the token value itself is never inlined into the prompt text, only referenced
-     * by env-var name) so it doubles as the exact text shown as a read-only hint on the agent edit
-     * page - see AgentController.edit()/submit() - keeping that preview from ever drifting out of
-     * sync with what's actually sent to the CLI.
+     * CLI's own default system prompt already contains - a three-tier hierarchy, each tier optional
+     * except the first:
+     * <ol>
+     *     <li>Hardcoded platform boilerplate (scheduling API instructions; the code/ organizational
+     *     convention for coding-task work, purely a tidiness convention with no functional effect
+     *     since the downloads/ change below; the downloads/ convention - see
+     *     {@link #DOWNLOADS_DIRECTORY_NAME} - which is what actually determines what surfaces as a
+     *     download suggestion; and, if the agent has an AgenticProject, notes about its shared/
+     *     folder and Docker isolation/sudo)</li>
+     *     <li>{@link AgenticProject#getSystemPrompt()}, if the agent has a project and it's set</li>
+     *     <li>{@link Agent#getSystemPrompt()}, if set</li>
+     * </ol>
+     * All three are joined the same bare way - see the comment on the final concatenation below for
+     * why. Pure/side-effect-free (unlike {@link #buildAppendedSystemPrompt}, which also lazily
+     * backfills agent.apiToken - a backfill that never affects this method's *output*, since the
+     * token value itself is never inlined into the prompt text, only referenced by env-var name) so
+     * it doubles as the exact text shown as a read-only hint on the agent edit page - see
+     * AgentController.edit()/submit() - keeping that preview from ever drifting out of sync with
+     * what's actually sent to the CLI.
      */
     public String buildAutoAppendedSystemPrompt(Agent agent)
     {
@@ -1008,6 +1015,17 @@ public class ClaudeCliSessionService
                         + "Paketmanager) steht dir passwortloses sudo zur Verfügung - stelle Bash-Befehlen, "
                         + "die root-Rechte benötigen, einfach sudo voran.\n";
             }
+        }
+
+        // Middle tier of the hardcoded-boilerplate -> AgenticProject.systemPrompt -> Agent.systemPrompt
+        // hierarchy - only present for an agent actually assigned to a project, same gating as the
+        // structural notes just above. Joined the same bare, seamless way as agent.systemPrompt
+        // below (see that comment) - a blank-line paragraph break, no "---"/label/attribution, since
+        // that's what was found to actually work rather than trigger prompt-injection suspicion.
+        String agenticProjectSystemPrompt = agent.getAgenticProject() != null ? agent.getAgenticProject().getSystemPrompt() : null;
+
+        if (!isBlank(agenticProjectSystemPrompt)) {
+            schedulingPrompt += "\n\n" + agenticProjectSystemPrompt;
         }
 
         if (isBlank(agent.getSystemPrompt())) {

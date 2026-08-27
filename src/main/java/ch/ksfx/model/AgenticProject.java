@@ -23,6 +23,11 @@ public class AgenticProject
     private String description;
     private Date createdAt;
 
+    // Middle tier of the system-prompt hierarchy (hardcoded platform boilerplate -> this ->
+    // Agent.systemPrompt), see ClaudeCliSessionService.buildAutoAppendedSystemPrompt. Optional,
+    // like Agent.systemPrompt - a project with none set contributes nothing, same as today.
+    private String systemPrompt;
+
     // Docker isolation is opt-in and off by default - see AgenticDockerService. When disabled (the
     // default), none of the other docker* fields are ever populated or read, and ClaudeCliSessionService
     // spawns the claude CLI directly on the host exactly as for a project with isolation never touched.
@@ -61,6 +66,17 @@ public class AgenticProject
     public void setDescription(String description)
     {
         this.description = description;
+    }
+
+    @Lob
+    public String getSystemPrompt()
+    {
+        return systemPrompt;
+    }
+
+    public void setSystemPrompt(String systemPrompt)
+    {
+        this.systemPrompt = systemPrompt;
     }
 
     public Date getCreatedAt()
