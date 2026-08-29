@@ -50,6 +50,16 @@
 			<artifactId>selenium-firefox-driver</artifactId>
 			<version>4.1.4</version>
 		</dependency>
+		<!-- Trial: isolated, optional Playwright fetch path for the WebshareProxyProvider CodeLib -
+		     see the Webshare Proxy CodeLib wiki page. Unlike Selenium/geckodriver above, browser
+		     binaries are not on this classpath and are not auto-downloaded - run
+		     `mvn exec:java -e -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install"`
+		     (and `... -Dexec.args="install-deps"` once on a fresh Linux image) after adding this. -->
+		<dependency>
+			<groupId>com.microsoft.playwright</groupId>
+			<artifactId>playwright</artifactId>
+			<version>1.62.0</version>
+		</dependency>
 		<!-- Spring Boot Dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
