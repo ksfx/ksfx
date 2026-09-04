@@ -789,10 +789,12 @@ public class ClaudeCliSessionService
 
         String containerName = agenticDockerService.containerNameFor(project.getId());
         String notice = "Der Docker-Container '" + containerName + "' dieses Projekts war nicht mehr ansprechbar "
-                + "(der reguläre Stop-Befehl kam nicht mehr durch) und wurde deshalb zwangsweise neu gestartet. "
+                + "(der reguläre Stop-Befehl kam nicht mehr durch) und wurde deshalb zwangsweise neu gestartet "
+                + "(docker kill + docker start - derselbe Container, kein Neuaufbau aus dem Image). "
                 + "Alle darin laufenden Prozesse - auch die anderer Agenten in diesem Projekt - wurden dabei beendet. "
-                + "Der Container ist jetzt wieder einsatzbereit, aber alles, was er sich seit dem letzten Throw Away "
-                + "selbst installiert hatte (außer Node.js/claude aus dem Bootstrap), ist weg.";
+                + "Der Container ist jetzt wieder einsatzbereit; alles, was er sich selbst installiert hatte, ist "
+                + "weiterhin vorhanden - das geht nur bei einem expliziten Throw Away verloren, nicht bei diesem "
+                + "automatischen Restart.";
 
         for (Agent affected : agentDAO.getAgentsForAgenticProject(project.getId())) {
             AgentMessage noticeMessage = new AgentMessage();
