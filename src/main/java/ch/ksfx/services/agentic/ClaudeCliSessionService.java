@@ -414,7 +414,7 @@ public class ClaudeCliSessionService
         }
 
         if (config.getAuthMode() != AgenticAuthMode.OAUTH && isBlank(config.getApiKey())) {
-            return "API key missing (Auth Mode = API Key). Either set a key under /agentic/config/ or switch to OAuth.";
+            return "API key/token missing (Auth Mode = " + config.getAuthMode() + "). Either set one under /agentic/config/ or switch to OAuth.";
         }
 
         return null;
@@ -568,11 +568,14 @@ public class ClaudeCliSessionService
             processBuilder.directory(workspace.toFile());
 
             if (!useDocker) {
-                if (config.getAuthMode() != AgenticAuthMode.OAUTH) {
-                    processBuilder.environment().put("ANTHROPIC_API_KEY", config.getApiKey());
+                String authEnvVar = authEnvironmentVariableName(config.getAuthMode());
+
+                if (authEnvVar != null) {
+                    processBuilder.environment().put(authEnvVar, config.getApiKey());
                 }
-                // OAUTH mode: no ANTHROPIC_API_KEY set, CLI falls back to credentials from `claude
-                // login` run interactively, once, as the same OS user that starts the KSFX process.
+                // OAUTH mode: no credential env var set at all, CLI falls back to credentials from
+                // `claude login` run interactively, once, as the same OS user that starts the KSFX
+                // process.
 
                 // Passed as an env var (not a literal in the prompt text) so it never appears in
                 // stream-json output, AgentMessage.toolActivity, the chat UI, or the CLI's own on-disk
@@ -905,9 +908,11 @@ public class ClaudeCliSessionService
         command.add("-w");
         command.add("/workspace/agent-" + agent.getId());
 
-        if (config.getAuthMode() != AgenticAuthMode.OAUTH) {
+        String authEnvVar = authEnvironmentVariableName(config.getAuthMode());
+
+        if (authEnvVar != null) {
             command.add("-e");
-            command.add("ANTHROPIC_API_KEY=" + config.getApiKey());
+            command.add(authEnvVar + "=" + config.getApiKey());
         }
 
         command.add("-e");
@@ -1272,5 +1277,25 @@ public class ClaudeCliSessionService
     private boolean isBlank(String value)
     {
         return value == null || value.trim().isEmpty();
+    }
+
+    /**
+     * The env var {@link AgenticConfig#getApiKey()} needs to be passed as, or null for OAUTH (no
+     * credential env var at all - see the call sites). API_KEY and SETUP_TOKEN both carry a value
+     * in that same field, but the CLI recognizes them as different, mutually exclusive credential
+     * kinds under different variable names - see {@link AgenticAuthMode}'s Javadoc for why a
+     * setup-token value silently fails ("Invalid API key") if it ends up in ANTHROPIC_API_KEY
+     * instead of CLAUDE_CODE_OAUTH_TOKEN, or vice versa.
+     */
+    private String authEnvironmentVariableName(AgenticAuthMode authMode)
+    {
+        switch (authMode) {
+            case API_KEY:
+                return "ANTHROPIC_API_KEY";
+            case SETUP_TOKEN:
+                return "CLAUDE_CODE_OAUTH_TOKEN";
+            default:
+                return null;
+        }
     }
 }

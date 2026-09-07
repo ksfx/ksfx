@@ -27,16 +27,25 @@
                         <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="OAUTH" id="authModeOauth" />
                         <label class="form-check-label" for="authModeOauth">OAuth (claude login on the host)</label>
                     </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="SETUP_TOKEN" id="authModeSetupToken" />
+                        <label class="form-check-label" for="authModeSetupToken">Setup Token (claude setup-token, subscription-based)</label>
+                    </div>
                     <small class="form-text text-muted">
-                        With OAuth, no API key is passed to the Claude CLI process - instead, the CLI uses the login
-                        performed once interactively via <code>claude login</code> on the KSFX host (same OS user
-                        that starts the KSFX process). This cannot be triggered from this form.
+                        With OAuth, no credential is passed to the Claude CLI process - instead, the CLI uses the
+                        login performed once interactively via <code>claude login</code> on the KSFX host (same OS
+                        user that starts the KSFX process). This cannot be triggered from this form.
+                        With Setup Token, no repeated interactive login is needed either - run
+                        <code>claude setup-token</code> once (requires a Claude subscription, not API billing) and
+                        paste the resulting long-lived token below. It is <strong>not</strong> the same kind of
+                        credential as an Anthropic API key - putting it in the wrong slot fails outright rather than
+                        silently falling back, which is why this is its own Auth Mode rather than reusing API Key.
                     </small>
                 </div>
                 <div class="form-group">
-                    <label for="apiKey">Anthropic API Key</label>
-                    <input type="text" class="form-control" id="apiKey" th:field="*{apiKey}" placeholder="Anthropic API Key" />
-                    <small class="form-text text-muted">Only relevant when Auth Mode = API Key.</small>
+                    <label for="apiKey">API Key / Setup Token</label>
+                    <input type="text" class="form-control" id="apiKey" th:field="*{apiKey}" placeholder="Anthropic API Key or claude setup-token output" />
+                    <small class="form-text text-muted">Only relevant when Auth Mode = API Key or Setup Token - ignored otherwise.</small>
                 </div>
                 <div class="form-group">
                     <label for="claudeCliPath">Claude CLI Path</label>

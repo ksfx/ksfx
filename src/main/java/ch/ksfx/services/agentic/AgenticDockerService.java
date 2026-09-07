@@ -327,7 +327,7 @@ public class AgenticDockerService
                 + "since the claude CLI's own credential refresh would otherwise silently detach a one-time-mounted\n"
                 + "copy from the host's live token.\n\n"
                 + "4) Every chat turn then runs inside that same container as:\n"
-                + "docker exec -u " + CONTAINER_USER + " -w /workspace/agent-<agent-id> [-e ANTHROPIC_API_KEY=... if not OAuth]"
+                + "docker exec -u " + CONTAINER_USER + " -w /workspace/agent-<agent-id> [-e ANTHROPIC_API_KEY=... or -e CLAUDE_CODE_OAUTH_TOKEN=..., depending on Auth Mode - omitted for OAuth]"
                 + " -e KSFX_AGENT_TOKEN=... " + containerName + " claude -p \"<message>\" --output-format stream-json --verbose"
                 + " --permission-mode <mode> [--resume <session-id>] --append-system-prompt-file /workspace/agent-<agent-id>/.agentic-system-prompt.txt\n\n"
                 + "The container itself is administered as root (that's what runs the bootstrap above), but the\n"
