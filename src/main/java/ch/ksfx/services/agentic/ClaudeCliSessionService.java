@@ -397,8 +397,8 @@ public class ClaudeCliSessionService
             return AgentTriggeredTurnResult.error(error);
         }
 
-        List<AgentMessage> messages = agentMessageDAO.getMessagesForAgent(targetAgentId);
-        String reply = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getContent();
+        AgentMessage lastMessage = agentMessageDAO.getLastMessageForAgent(targetAgentId);
+        String reply = lastMessage == null ? "" : lastMessage.getContent();
 
         return AgentTriggeredTurnResult.success(reply);
     }

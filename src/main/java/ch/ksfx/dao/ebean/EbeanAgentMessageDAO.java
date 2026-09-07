@@ -6,6 +6,7 @@ import ch.ksfx.model.AgentMessageRole;
 import io.ebean.Ebean;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collections;
 import java.util.List;
 
 @Repository
@@ -30,9 +31,45 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     }
 
     @Override
-    public List<AgentMessage> getMessagesForAgent(Long agentId)
+    public List<AgentMessage> getRecentMessagesForAgent(Long agentId, int limit)
     {
-        return Ebean.find(AgentMessage.class).fetch("fromAgent").where().eq("agent.id", agentId).order().asc("id").findList();
+        return oldestFirst(Ebean.find(AgentMessage.class).fetch("fromAgent")
+                .where().eq("agent.id", agentId)
+                .order().desc("id")
+                .setMaxRows(limit)
+                .findList());
+    }
+
+    @Override
+    public List<AgentMessage> getMessagesForAgentBefore(Long agentId, Long beforeMessageId, int limit)
+    {
+        return oldestFirst(Ebean.find(AgentMessage.class).fetch("fromAgent")
+                .where().eq("agent.id", agentId).lt("id", beforeMessageId)
+                .order().desc("id")
+                .setMaxRows(limit)
+                .findList());
+    }
+
+    @Override
+    public AgentMessage getLastMessageForAgent(Long agentId)
+    {
+        return Ebean.find(AgentMessage.class)
+                .where().eq("agent.id", agentId)
+                .order().desc("id")
+                .setMaxRows(1)
+                .findOneOrEmpty()
+                .orElse(null);
+    }
+
+    /**
+     * Both paged queries above fetch newest-first (so `LIMIT` keeps the *most recent* rows, not
+     * the oldest overall) but the chat UI renders top-to-bottom oldest-first - flip in Java rather
+     * than adding a second DB round-trip or a window-function query just to get the ordering back.
+     */
+    private List<AgentMessage> oldestFirst(List<AgentMessage> newestFirst)
+    {
+        Collections.reverse(newestFirst);
+        return newestFirst;
     }
 
     @Override

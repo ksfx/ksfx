@@ -217,11 +217,17 @@ public class AgentController
         return "redirect:/agentic/edit/" + agentId;
     }
 
+    /**
+     * Also the "load older" page size (see {@link #olderMessages}) - both draw from the same
+     * conversation, same page shape, no reason for them to differ.
+     */
+    private static final int MESSAGE_PAGE_SIZE = 50;
+
     @GetMapping("/chat/{id}")
     public String chat(@PathVariable(value = "id") Long agentId, Model model)
     {
         Agent agent = agentDAO.getAgentForId(agentId);
-        List<AgentMessage> messages = agentMessageDAO.getMessagesForAgent(agentId);
+        List<AgentMessage> messages = agentMessageDAO.getRecentMessagesForAgent(agentId, MESSAGE_PAGE_SIZE);
 
         List<AgenticProject> allAgenticProjects = agenticProjectDAO.getAllAgenticProjects();
         Map<Long, List<Agent>> agentsByAgenticProject = new LinkedHashMap<>();
@@ -235,6 +241,12 @@ public class AgentController
 
         model.addAttribute("agent", agent);
         model.addAttribute("messages", messages);
+        // A full page (exactly MESSAGE_PAGE_SIZE rows) doesn't *guarantee* there's an older message
+        // still to load - the conversation could happen to have exactly that many - but it's the
+        // cheap, no-extra-query heuristic: worst case, one "Load older" click comes back empty and
+        // the button hides itself (see agentic-chat.js), instead of paying for a COUNT(*) up front
+        // on every single chat-page load just to get that one edge case exactly right.
+        model.addAttribute("hasMoreOlderMessages", messages.size() == MESSAGE_PAGE_SIZE);
         model.addAttribute("agentRunning", agentRunning);
         // Both null (not just agentRunning itself) when nothing's actually running yet - executeTurn
         // registers the RunningTurnState a moment after runningStatus, so there's a brief window
@@ -247,6 +259,27 @@ public class AgentController
         model.addAttribute("unassignedAgents", agentDAO.getAgentsWithoutAgenticProject());
 
         return "agentic/agent/agent_chat";
+    }
+
+    /**
+     * AJAX "load older messages" page, triggered from the top of the transcript - see
+     * agentic-chat.js, which infers whether to offer another page from the count of messages
+     * that come back (a full {@link #MESSAGE_PAGE_SIZE} vs. fewer/none) rather than this endpoint
+     * saying so explicitly - the response is pure rendered HTML, no side channel for a flag.
+     * Renders only the {@code messagesList} Thymeleaf fragment (no surrounding page), i.e. the
+     * exact same markup {@link #chat} uses for the initial batch, so there is exactly one place
+     * that defines what a rendered message looks like.
+     */
+    @GetMapping("/chat/{id}/messages/older")
+    public String olderMessages(@PathVariable(value = "id") Long agentId, @RequestParam Long beforeId, Model model)
+    {
+        Agent agent = agentDAO.getAgentForId(agentId);
+        List<AgentMessage> messages = agentMessageDAO.getMessagesForAgentBefore(agentId, beforeId, MESSAGE_PAGE_SIZE);
+
+        model.addAttribute("agent", agent);
+        model.addAttribute("messages", messages);
+
+        return "agentic/agent/agent_chat :: messagesList";
     }
 
     /**

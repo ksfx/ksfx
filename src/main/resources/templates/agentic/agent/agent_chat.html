@@ -88,29 +88,44 @@
              th:data-stream-endpoint="@{/agentic/chat/{id}/stream(id=${agent.id})}"
              th:data-agent-running="${agentRunning}"
              th:data-download-endpoint="@{/agentic/download/{id}(id=${agent.id})}"
+             th:data-older-messages-endpoint="@{/agentic/chat/{id}/messages/older(id=${agent.id})}"
              th:data-csrf-header="${_csrf.headerName}"
              th:data-csrf-token="${_csrf.token}">
 
             <div id="agenticMessages" class="agentic-messages">
-                <div th:each="m : ${messages}" class="agentic-msg" th:classappend="'agentic-msg--' + ${#strings.toLowerCase(m.role.name())}" th:data-message-id="${m.id}">
-                    <div class="agentic-msg-header">
-                        <div class="agentic-role-label" th:switch="${m.role.name()}">
-                            <span th:case="'USER'">You</span>
-                            <span th:case="'SYSTEM'">System</span>
-                            <span th:case="'AGENT'" th:text="${m.fromAgent != null ? 'Agent: ' + m.fromAgent.name : 'Agent'}"></span>
-                            <span th:case="*">Assistant</span>
+                <!-- Only a heuristic (see AgentController.chat()'s comment) - agentic-chat.js also
+                     hides this after a click that comes back with fewer than a full page, so a wrong
+                     "yes there's more" here just costs one extra round-trip, never a stuck button. -->
+                <button type="button" id="agenticLoadOlder" class="agentic-load-older" th:if="${hasMoreOlderMessages}">Load older messages</button>
+
+                <!-- Renders in place for this page's own initial batch, exactly like before this was
+                     named - and is also addressable as "agentic/agent/agent_chat :: messagesList",
+                     which AgentController.olderMessages() returns directly as its AJAX response view
+                     (with `agent`/`messages` set on the model, same as this page's own controller
+                     method does). th:fragment has no explicit parameter list, so both callers' full
+                     context (including `agent`, for the delete-endpoint URL below) is visible as-is.
+                     One definition, two callers, so the two can never render a message differently. -->
+                <th:block th:fragment="messagesList" th:each="m : ${messages}">
+                    <div class="agentic-msg" th:classappend="'agentic-msg--' + ${#strings.toLowerCase(m.role.name())}" th:data-message-id="${m.id}">
+                        <div class="agentic-msg-header">
+                            <div class="agentic-role-label" th:switch="${m.role.name()}">
+                                <span th:case="'USER'">You</span>
+                                <span th:case="'SYSTEM'">System</span>
+                                <span th:case="'AGENT'" th:text="${m.fromAgent != null ? 'Agent: ' + m.fromAgent.name : 'Agent'}"></span>
+                                <span th:case="*">Assistant</span>
+                            </div>
+                            <button type="button" class="agentic-msg-delete" th:attr="data-delete-endpoint=@{/agentic/chat/{id}/message/{messageId}/delete(id=${agent.id},messageId=${m.id})}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
                         </div>
-                        <button type="button" class="agentic-msg-delete" th:attr="data-delete-endpoint=@{/agentic/chat/{id}/message/{messageId}/delete(id=${agent.id},messageId=${m.id})}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
+                        <div class="agentic-bubble" th:text="${m.content}"></div>
+                        <div th:if="${m.attachments}" class="agentic-attachments" th:data-attachments="${m.attachments}"></div>
+                        <div th:if="${m.generatedFiles}" class="agentic-generated-files" th:data-generated-files="${m.generatedFiles}"></div>
+                        <details th:if="${m.toolActivity}" class="agentic-tool-activity">
+                            <summary><i class="fa fa-wrench"></i> Tool Activity</summary>
+                            <div class="agentic-tool-activity-body" th:data-tool-activity="${m.toolActivity}"></div>
+                        </details>
+                        <div th:if="${m.inputTokens != null}" class="agentic-message-tokens" th:text="${m.inputTokens + m.outputTokens} + ' tokens'"></div>
                     </div>
-                    <div class="agentic-bubble" th:text="${m.content}"></div>
-                    <div th:if="${m.attachments}" class="agentic-attachments" th:data-attachments="${m.attachments}"></div>
-                    <div th:if="${m.generatedFiles}" class="agentic-generated-files" th:data-generated-files="${m.generatedFiles}"></div>
-                    <details th:if="${m.toolActivity}" class="agentic-tool-activity">
-                        <summary><i class="fa fa-wrench"></i> Tool Activity</summary>
-                        <div class="agentic-tool-activity-body" th:data-tool-activity="${m.toolActivity}"></div>
-                    </details>
-                    <div th:if="${m.inputTokens != null}" class="agentic-message-tokens" th:text="${m.inputTokens + m.outputTokens} + ' tokens'"></div>
-                </div>
+                </th:block>
 
                 <!-- A turn still in flight when this page loaded (e.g. navigated away mid-turn and
                      back, or a schedule/other-agent-triggered turn happening while you're looking at

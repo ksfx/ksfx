@@ -15,8 +15,15 @@
 
     var chatEndpoint = root.dataset.chatEndpoint;
     var downloadEndpoint = root.dataset.downloadEndpoint;
+    var olderMessagesEndpoint = root.dataset.olderMessagesEndpoint;
     var csrfHeader = root.dataset.csrfHeader;
     var csrfToken = root.dataset.csrfToken;
+
+    // Must match AgentController.MESSAGE_PAGE_SIZE - no shared-constant channel between the two, so
+    // this is the one place on the JS side that needs to stay in sync if that ever changes. Only
+    // used to guess whether a "load older" response was a full page (there might be more) or a
+    // partial/empty one (definitely the end) - see loadOlderMessages below.
+    var MESSAGE_PAGE_SIZE = 50;
 
     // Fills the rest of the viewport below the sidebar/chat panes instead of the fixed
     // "calc(100vh - 300px)" the CSS used to hardcode - that guessed constant didn't account for
@@ -483,41 +490,53 @@
         renderPendingFiles();
     });
 
-    // Server-rendered history only embeds each message's attachments as a raw JSON string (see
-    // agent_chat.html) - render the same chips used right after sending, right here, so there's
-    // one formatting implementation instead of duplicating it in Thymeleaf.
-    document.querySelectorAll('.agentic-attachments[data-attachments]').forEach(function (el) {
-        try {
-            renderAttachmentChips(el, JSON.parse(el.dataset.attachments));
-        } catch (parseError) {
-            // malformed - leave the (empty) placeholder rather than losing the message
-        }
-    });
+    // Server-rendered history (both the page's initial batch and any "load older" page fetched
+    // later - see loadOlderMessages) only embeds each message's attachments/tool activity as raw
+    // JSON strings (see agent_chat.html) - render the same chips/cards used for live streaming,
+    // right here, so there's one formatting implementation instead of duplicating it in Thymeleaf.
+    // Idempotent by construction rather than by scoping to "just the new nodes": each data-*
+    // attribute is deleted once consumed, so a selector requiring it present can never match
+    // something already-hydrated, however many times (page load, then any number of "load older"
+    // clicks) this runs over the whole document.
+    function hydrateHistory() {
+        document.querySelectorAll('.agentic-attachments[data-attachments]').forEach(function (el) {
+            try {
+                renderAttachmentChips(el, JSON.parse(el.dataset.attachments));
+            } catch (parseError) {
+                // malformed - leave the (empty) placeholder rather than losing the message
+            }
 
-    document.querySelectorAll('.agentic-generated-files[data-generated-files]').forEach(function (el) {
-        try {
-            renderAttachmentChips(el, JSON.parse(el.dataset.generatedFiles), 'fa-download');
-        } catch (parseError) {
-            // malformed - leave the (empty) placeholder rather than losing the message
-        }
-    });
+            delete el.dataset.attachments;
+        });
 
-    // Server-rendered history only embeds each message's tool activity as a raw JSON string
-    // (see agent_chat.html) - render it into the same cards used for live streaming, right here,
-    // so there's one formatting implementation instead of duplicating it in Thymeleaf.
-    document.querySelectorAll('.agentic-tool-activity-body[data-tool-activity]').forEach(function (body) {
-        try {
-            JSON.parse(body.dataset.toolActivity).forEach(function (entry) {
-                renderToolEntry(body, entry);
-            });
-        } catch (parseError) {
-            // Pre-existing rows saved before this format changed (or anything malformed) - show
-            // as-is rather than losing the data.
-            var pre = document.createElement('pre');
-            pre.textContent = body.dataset.toolActivity;
-            body.appendChild(pre);
-        }
-    });
+        document.querySelectorAll('.agentic-generated-files[data-generated-files]').forEach(function (el) {
+            try {
+                renderAttachmentChips(el, JSON.parse(el.dataset.generatedFiles), 'fa-download');
+            } catch (parseError) {
+                // malformed - leave the (empty) placeholder rather than losing the message
+            }
+
+            delete el.dataset.generatedFiles;
+        });
+
+        document.querySelectorAll('.agentic-tool-activity-body[data-tool-activity]').forEach(function (body) {
+            try {
+                JSON.parse(body.dataset.toolActivity).forEach(function (entry) {
+                    renderToolEntry(body, entry);
+                });
+            } catch (parseError) {
+                // Pre-existing rows saved before this format changed (or anything malformed) - show
+                // as-is rather than losing the data.
+                var pre = document.createElement('pre');
+                pre.textContent = body.dataset.toolActivity;
+                body.appendChild(pre);
+            }
+
+            delete body.dataset.toolActivity;
+        });
+    }
+
+    hydrateHistory();
 
     // If this agent had a turn already running when the page loaded (see AgentController.chat()'s
     // partialText/partialToolActivity and the '#agenticInProgressMessage' block in agent_chat.html),
@@ -532,7 +551,7 @@
             ? {
                 root: inProgressEl,
                 bubble: inProgressEl.querySelector('.agentic-bubble'),
-                // Already populated by the history-hydration loop above if the server sent partial
+                // Already populated by hydrateHistory() above if the server sent partial
                 // tool activity - reusing it here (instead of leaving toolBody unset) stops
                 // ensureToolContainer from creating a second, empty <details> block alongside it.
                 toolBody: inProgressEl.querySelector('.agentic-tool-activity-body')
@@ -597,6 +616,55 @@
                 // best-effort - leave the message in place, user can retry
             });
     });
+
+    // "Load older messages" - AgentController.chat() only sends the most recent MESSAGE_PAGE_SIZE
+    // rows (a chat with months of history used to mean loading and rendering every single message,
+    // every time the page opened - unbounded growth). This fetches and prepends one page further
+    // back each click, keyed off whichever message is currently oldest in the DOM rather than a
+    // separately-tracked cursor variable, so it stays correct regardless of how many pages have
+    // already been loaded.
+    var loadOlderBtn = document.getElementById('agenticLoadOlder');
+
+    if (loadOlderBtn && olderMessagesEndpoint) {
+        loadOlderBtn.addEventListener('click', function () {
+            var oldestEl = messagesEl.querySelector('.agentic-msg[data-message-id]');
+
+            if (!oldestEl) {
+                loadOlderBtn.remove();
+                return;
+            }
+
+            loadOlderBtn.disabled = true;
+
+            var previousScrollHeight = messagesEl.scrollHeight;
+            var previousScrollTop = messagesEl.scrollTop;
+
+            fetch(olderMessagesEndpoint + '?beforeId=' + encodeURIComponent(oldestEl.dataset.messageId))
+                .then(function (response) { return response.ok ? response.text() : ''; })
+                .then(function (html) {
+                    var container = document.createElement('div');
+                    container.innerHTML = html;
+                    var fetchedCount = container.querySelectorAll('.agentic-msg').length;
+
+                    loadOlderBtn.insertAdjacentHTML('afterend', html);
+                    hydrateHistory();
+
+                    // Prepending content above the current scroll position shoves everything below
+                    // it down by the same amount - without this, the view visibly jumps and whatever
+                    // you were reading scrolls out of view instead of staying put.
+                    messagesEl.scrollTop = previousScrollTop + (messagesEl.scrollHeight - previousScrollHeight);
+
+                    if (fetchedCount < MESSAGE_PAGE_SIZE) {
+                        loadOlderBtn.remove();
+                    } else {
+                        loadOlderBtn.disabled = false;
+                    }
+                })
+                .catch(function () {
+                    loadOlderBtn.disabled = false;
+                });
+        });
+    }
 
     scrollToBottom();
     autoResize();
