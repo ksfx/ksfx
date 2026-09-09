@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -566,6 +567,18 @@ public class ClaudeCliSessionService
 
             ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(agent, config, userMessage, systemPromptFile));
             processBuilder.directory(workspace.toFile());
+            // Neither the userMessage (a -p argument) nor the system prompt (its own temp file, see
+            // above) are ever piped in via stdin - but ProcessBuilder defaults stdin to an open PIPE
+            // that KSFX never writes to or closes. The CLI itself detects that half-open pipe, waits
+            // up to 3s hoping for piped input, then fails outright ("Claude CLI process exited with
+            // exit code 1: Warning: no stdin data received in 3s..." - confirmed live in production,
+            // 2026-09-09). Redirecting from the OS's null device gives it an immediate EOF instead,
+            // exactly the fix the CLI's own warning text names ("redirect stdin explicitly: < /dev/null").
+            // Windows has no /dev/null (this app runs there too - see the claude.cmd/.exe and
+            // ProcessBuilder-argument-truncation gotchas elsewhere in this class) - its equivalent is
+            // the reserved device name "NUL", not a real path, but Redirect.from(File) doesn't care,
+            // it just opens whatever path it's given.
+            processBuilder.redirectInput(ProcessBuilder.Redirect.from(new File(nullDevicePath())));
 
             if (!useDocker) {
                 String authEnvVar = authEnvironmentVariableName(config.getAuthMode());
@@ -1297,5 +1310,11 @@ public class ClaudeCliSessionService
             default:
                 return null;
         }
+    }
+
+    /** "NUL" on Windows, "/dev/null" everywhere else - see the stdin-redirect call site. */
+    private String nullDevicePath()
+    {
+        return System.getProperty("os.name", "").toLowerCase().contains("win") ? "NUL" : "/dev/null";
     }
 }
