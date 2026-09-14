@@ -536,9 +536,13 @@
             micBtn.classList.remove('agentic-mic-btn--active');
         });
 
-        recognition.addEventListener('error', function () {
+        recognition.addEventListener('error', function (event) {
             listening = false;
             micBtn.classList.remove('agentic-mic-btn--active');
+            // event.error is the browser's own error code (e.g. 'not-allowed', 'service-not-allowed',
+            // 'audio-capture', 'network') - surfaced verbatim since it's the fastest way to tell apart
+            // "no https", "mic permission denied" and "no mic hardware" without guessing.
+            alert('Voice input failed: ' + event.error);
         });
 
         micBtn.addEventListener('click', function () {
