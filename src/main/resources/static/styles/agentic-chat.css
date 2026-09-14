@@ -630,6 +630,36 @@
     background: #eeeef3;
 }
 
+.agentic-mic-btn {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.agentic-mic-btn:hover {
+    background: #eeeef3;
+}
+
+.agentic-mic-btn--active {
+    color: #fff;
+    background: #d64545;
+    animation: agentic-mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes agentic-mic-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
 .agentic-pending-files {
     display: none;
     flex-wrap: wrap;
@@ -794,6 +824,14 @@ a.agentic-attachment-chip:hover {
 }
 
 .agentic-dark .agentic-attach-btn:hover {
+    background: #2b2b33;
+}
+
+.agentic-dark .agentic-mic-btn {
+    color: #b0b0bc;
+}
+
+.agentic-dark .agentic-mic-btn:hover {
     background: #2b2b33;
 }
 

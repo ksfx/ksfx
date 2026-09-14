@@ -70,6 +70,7 @@
     var inputEl = document.getElementById('agenticInput');
     var sendBtn = document.getElementById('agenticSendBtn');
     var attachBtn = document.getElementById('agenticAttachBtn');
+    var micBtn = document.getElementById('agenticMicBtn');
     var fileInputEl = document.getElementById('agenticFileInput');
     var pendingFilesEl = document.getElementById('agenticPendingFiles');
     var pendingFiles = [];
@@ -489,6 +490,69 @@
         fileInputEl.value = ''; // reset so picking the same file again later still fires 'change'
         renderPendingFiles();
     });
+
+    // Web Speech API (SpeechRecognition) - browser-only, no server round-trip. Hidden by default in
+    // the template; only shown if the browser actually implements it (Chrome/Edge today; Firefox has
+    // none, Safari's is limited) and only reachable at all over a secure context (https, or
+    // localhost - see the Windows/Fritzbox discussion this was built from). Dictates straight into
+    // the textarea rather than auto-sending, so a misheard word can still be corrected before Enter.
+    var SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognitionCtor && micBtn) {
+        micBtn.hidden = false;
+
+        var recognition = new SpeechRecognitionCtor();
+        recognition.lang = document.documentElement.lang || 'de-DE';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        var listening = false;
+        var baseText = '';
+
+        recognition.addEventListener('result', function (event) {
+            var finalChunk = '';
+            var interimChunk = '';
+
+            for (var i = event.resultIndex; i < event.results.length; i++) {
+                var transcript = event.results[i][0].transcript;
+
+                if (event.results[i].isFinal) {
+                    finalChunk += transcript;
+                } else {
+                    interimChunk += transcript;
+                }
+            }
+
+            if (finalChunk) {
+                baseText = (baseText ? baseText + ' ' : '') + finalChunk.trim();
+            }
+
+            inputEl.value = (baseText ? baseText + ' ' : '') + interimChunk;
+            autoResize();
+        });
+
+        recognition.addEventListener('end', function () {
+            listening = false;
+            micBtn.classList.remove('agentic-mic-btn--active');
+        });
+
+        recognition.addEventListener('error', function () {
+            listening = false;
+            micBtn.classList.remove('agentic-mic-btn--active');
+        });
+
+        micBtn.addEventListener('click', function () {
+            if (listening) {
+                recognition.stop();
+                return;
+            }
+
+            baseText = inputEl.value.trim();
+            listening = true;
+            micBtn.classList.add('agentic-mic-btn--active');
+            recognition.start();
+        });
+    }
 
     // Server-rendered history (both the page's initial batch and any "load older" page fetched
     // later - see loadOlderMessages) only embeds each message's attachments/tool activity as raw
