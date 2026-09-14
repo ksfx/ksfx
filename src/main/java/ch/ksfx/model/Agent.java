@@ -27,6 +27,7 @@ public class Agent
     private String claudeSessionId;
     private String workspacePath;
     private String permissionMode;
+    private String model;
     private String apiToken;
     private boolean enabled = true;
     private Date createdAt;
@@ -118,6 +119,20 @@ public class Agent
     public void setPermissionMode(String permissionMode)
     {
         this.permissionMode = permissionMode;
+    }
+
+    /**
+     * Overrides {@link AgenticConfig#getDefaultModel()} for this agent when set; blank/null means
+     * "use the global default" (which itself may be blank, meaning "use the CLI's own default").
+     */
+    public String getModel()
+    {
+        return model;
+    }
+
+    public void setModel(String model)
+    {
+        this.model = model;
     }
 
     /**

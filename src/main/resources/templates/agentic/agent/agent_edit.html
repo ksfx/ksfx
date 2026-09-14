@@ -47,6 +47,11 @@
                 <input type="text" class="form-control" id="permissionMode" th:field="*{permissionMode}" placeholder="empty = use global default from /agentic/config/" />
                 <small class="form-text text-muted">Optional: default / acceptEdits / bypassPermissions / plan. Leave empty to use the global default.</small>
             </div>
+            <div class="form-group">
+                <label for="model">Model (Override)</label>
+                <input type="text" class="form-control" id="model" th:field="*{model}" placeholder="empty = use global default from /agentic/config/" />
+                <small class="form-text text-muted">Optional: alias (sonnet / opus / fable) or full model name. Leave empty to use the global default.</small>
+            </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
                 <label class="form-check-label" for="enabled">Enabled</label>

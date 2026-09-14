@@ -892,6 +892,12 @@ public class ClaudeCliSessionService
         claudeArgs.add("--permission-mode");
         claudeArgs.add(!isBlank(agent.getPermissionMode()) ? agent.getPermissionMode() : config.getDefaultPermissionMode());
 
+        String model = !isBlank(agent.getModel()) ? agent.getModel() : config.getDefaultModel();
+        if (!isBlank(model)) {
+            claudeArgs.add("--model");
+            claudeArgs.add(model);
+        }
+
         if (!isBlank(agent.getClaudeSessionId())) {
             claudeArgs.add("--resume");
             claudeArgs.add(agent.getClaudeSessionId());

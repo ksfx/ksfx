@@ -16,6 +16,7 @@ public class AgenticConfig
     private String apiKey;
     private String claudeCliPath = "claude";
     private String defaultPermissionMode = "default";
+    private String defaultModel;
     private String workspaceRoot;
     private boolean enabled = false;
 
@@ -82,6 +83,20 @@ public class AgenticConfig
     public void setDefaultPermissionMode(String defaultPermissionMode)
     {
         this.defaultPermissionMode = defaultPermissionMode;
+    }
+
+    /**
+     * Model for all agents without an explicit {@link Agent#getModel()} override; blank/null means
+     * "let the CLI pick its own default".
+     */
+    public String getDefaultModel()
+    {
+        return defaultModel;
+    }
+
+    public void setDefaultModel(String defaultModel)
+    {
+        this.defaultModel = defaultModel;
     }
 
     public String getWorkspaceRoot()
