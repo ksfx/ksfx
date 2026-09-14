@@ -508,26 +508,26 @@
 
         var listening = false;
         var baseText = '';
+        // How many entries of event.results have already been folded into baseText - desktop Chrome
+        // updates a not-yet-final entry in place at the same index, but Android Chrome has been
+        // observed to instead append a new entry per revision (or hold resultIndex at 0), so summing
+        // everything from event.resultIndex onward double/triple-counts earlier revisions on mobile.
+        // Tracking our own finalized-so-far count and only ever displaying the single latest entry as
+        // "in progress" sidesteps that platform difference entirely.
+        var finalizedCount = 0;
 
         recognition.addEventListener('result', function (event) {
-            var finalChunk = '';
-            var interimChunk = '';
-
-            for (var i = event.resultIndex; i < event.results.length; i++) {
-                var transcript = event.results[i][0].transcript;
-
+            for (var i = finalizedCount; i < event.results.length; i++) {
                 if (event.results[i].isFinal) {
-                    finalChunk += transcript;
-                } else {
-                    interimChunk += transcript;
+                    baseText = (baseText ? baseText + ' ' : '') + event.results[i][0].transcript.trim();
+                    finalizedCount = i + 1;
                 }
             }
 
-            if (finalChunk) {
-                baseText = (baseText ? baseText + ' ' : '') + finalChunk.trim();
-            }
+            var lastResult = event.results[event.results.length - 1];
+            var interim = (lastResult && !lastResult.isFinal) ? lastResult[0].transcript : '';
 
-            inputEl.value = (baseText ? baseText + ' ' : '') + interimChunk;
+            inputEl.value = (baseText ? baseText + ' ' : '') + interim;
             autoResize();
         });
 
@@ -552,6 +552,7 @@
             }
 
             baseText = inputEl.value.trim();
+            finalizedCount = 0;
             listening = true;
             micBtn.classList.add('agentic-mic-btn--active');
             recognition.start();
