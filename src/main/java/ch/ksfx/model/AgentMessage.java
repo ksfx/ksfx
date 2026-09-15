@@ -23,6 +23,14 @@ public class AgentMessage
     private String generatedFiles;
     private Date createdAt;
 
+    /**
+     * True for a row that isn't a real conversation turn - currently just the voice-input cleanup
+     * call (see ClaudeCliSessionService.cleanupVoiceTranscript), persisted purely so its token usage
+     * shows up in the usage stats instead of silently not being tracked. Excluded from the chat
+     * transcript queries (AgentMessageDAO) so it never renders as a message bubble.
+     */
+    private boolean internal = false;
+
     // Usage stats for this turn (ASSISTANT-role messages only) - captured from the CLI's
     // stream-json "result" event (see ClaudeCliSessionService). Generic/provider-neutral names,
     // unlike AgenticConfig's claudeRateLimit* fields - see plan discussion for the rationale.
@@ -195,5 +203,15 @@ public class AgentMessage
     public void setDurationMs(Integer durationMs)
     {
         this.durationMs = durationMs;
+    }
+
+    public boolean getInternal()
+    {
+        return internal;
+    }
+
+    public void setInternal(boolean internal)
+    {
+        this.internal = internal;
     }
 }

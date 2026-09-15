@@ -308,11 +308,12 @@ public class AgentController
     @ResponseBody
     public SseEmitter chatMessage(@PathVariable(value = "id") Long agentId,
                                    @RequestParam("message") String message,
-                                   @RequestParam(value = "files", required = false) MultipartFile[] files)
+                                   @RequestParam(value = "files", required = false) MultipartFile[] files,
+                                   @RequestParam(value = "voiceInput", defaultValue = "false") boolean voiceInput)
     {
         SseEmitter emitter = new SseEmitter(0L);
 
-        claudeCliSessionService.runTurn(agentId, message, files, emitter);
+        claudeCliSessionService.runTurn(agentId, message, files, voiceInput, emitter);
 
         return emitter;
     }

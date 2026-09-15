@@ -74,6 +74,16 @@
     var fileInputEl = document.getElementById('agenticFileInput');
     var pendingFilesEl = document.getElementById('agenticPendingFiles');
     var pendingFiles = [];
+    // Set true by the voice-input 'result' handler below whenever any speech was recognized for
+    // the message currently being composed; read (and reset) once in sendMessage() so the server
+    // knows to run its own cleanup pass (see ClaudeCliSessionService.cleanupVoiceTranscript)
+    // instead of sending the raw, unpunctuated dictation straight to the agent.
+    var wasVoiceInput = false;
+    // No-op unless the SpeechRecognition setup below actually replaces it - called from
+    // sendMessage() unconditionally (both the Send button and pressing Enter go through it) so a
+    // still-running recording always gets stopped as part of sending, instead of silently
+    // continuing to listen in the background until the user remembers to click the mic again.
+    var stopVoiceInputIfListening = function () {};
 
     var ROLE_LABELS = { user: 'You', assistant: 'Assistant', system: 'System', agent: 'Agent' };
 
@@ -333,7 +343,7 @@
     // this at all - its listeners get eventName/data pre-split by the browser and call applyEvent
     // directly - but both paths end up rendering through the exact same applyEvent, so a live-sent
     // turn and one you reconnect to mid-flight are visually indistinguishable.
-    function handleSseEvent(rawEvent, assistantMessage) {
+    function handleSseEvent(rawEvent, assistantMessage, userMessage) {
         var eventName = 'message';
         var dataLines = [];
 
@@ -345,7 +355,25 @@
             }
         });
 
-        applyEvent(eventName, dataLines.join('\n'), assistantMessage);
+        var data = dataLines.join('\n');
+
+        // Specific to this one live send (corrects the user bubble this same sendMessage() call
+        // already rendered optimistically with the raw dictated text) rather than part of
+        // applyEvent's general event vocabulary - the EventSource reconnect path never needs this,
+        // since a reload always re-renders history from the DB, where the cleanup has already
+        // landed by the time this event would have fired.
+        if (eventName === 'voice_cleaned') {
+            if (userMessage) {
+                try {
+                    userMessage.bubble.textContent = JSON.parse(data).content;
+                } catch (parseError) {
+                    // ignore - the raw dictated text stays displayed, a harmless fallback
+                }
+            }
+            return;
+        }
+
+        applyEvent(eventName, data, assistantMessage);
     }
 
     function applyEvent(eventName, data, assistantMessage) {
@@ -393,6 +421,8 @@
     }
 
     function sendMessage() {
+        stopVoiceInputIfListening();
+
         var text = inputEl.value.trim();
 
         if (!text && pendingFiles.length === 0) {
@@ -411,6 +441,8 @@
 
         var formData = new FormData();
         formData.append('message', text);
+        formData.append('voiceInput', wasVoiceInput ? 'true' : 'false');
+        wasVoiceInput = false;
         pendingFiles.forEach(function (file) {
             formData.append('files', file);
         });
@@ -452,7 +484,7 @@
 
                     events.forEach(function (rawEvent) {
                         if (rawEvent.trim()) {
-                            handleSseEvent(rawEvent, assistantMessage);
+                            handleSseEvent(rawEvent, assistantMessage, userMessage);
                         }
                     });
 
@@ -555,6 +587,7 @@
                 }
             }
 
+            wasVoiceInput = true;
             inputEl.value = (baseText ? baseText + ' ' : '') + segments.join(' ');
             autoResize();
             // Setting .value programmatically doesn't move the caret the way actually typing does,
@@ -605,10 +638,20 @@
             alert('Voice input failed: ' + event.error);
         });
 
+        function stopListening() {
+            manualStop = true;
+            recognition.stop();
+        }
+
+        stopVoiceInputIfListening = function () {
+            if (listening) {
+                stopListening();
+            }
+        };
+
         micBtn.addEventListener('click', function () {
             if (listening) {
-                manualStop = true;
-                recognition.stop();
+                stopListening();
                 return;
             }
 

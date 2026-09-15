@@ -105,8 +105,11 @@
                 (of which cache write: <span th:text="${totalCacheCreationTokens}"></span> / cache read: <span th:text="${totalCacheReadTokens}"></span>)
             </p>
             <small class="form-text text-muted" style="margin-top:-8px;margin-bottom:8px">Cache write/read are both part of the input side (Anthropic prompt caching) - writing to or reading from a cached prompt prefix - not a separate token category from Input, and unrelated to Output, which is never cached.</small>
+            <p th:if="${totalVoiceCleanupInputTokens} > 0 or ${totalVoiceCleanupOutputTokens} > 0">
+                Of which voice-input cleanup (see the mic button in chat): <strong th:text="${totalVoiceCleanupInputTokens} + ' / ' + ${totalVoiceCleanupOutputTokens}"></strong> input/output tokens - already included in the totals above, broken out here so it doesn't go unnoticed.
+            </p>
             <table class="table table-sm" th:if="${usageByAgent.size()} > 1">
-                <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th></tr></thead>
+                <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th></tr></thead>
                 <tbody>
                 <tr th:each="u : ${usageByAgent}">
                     <td th:text="${u.agentName}"></td>
@@ -115,6 +118,7 @@
                     <td th:text="${u.outputTokens}"></td>
                     <td th:text="${u.cacheCreationTokens}"></td>
                     <td th:text="${u.cacheReadTokens}"></td>
+                    <td th:text="${u.voiceCleanupInputTokens} + ' / ' + ${u.voiceCleanupOutputTokens}"></td>
                 </tr>
                 </tbody>
             </table>
@@ -135,8 +139,11 @@
                     <strong th:text="${totalInputTokensForDay} + ' / ' + ${totalOutputTokensForDay}"></strong> input/output tokens
                     (of which cache write: <span th:text="${totalCacheCreationTokensForDay}"></span> / cache read: <span th:text="${totalCacheReadTokensForDay}"></span>)
                 </p>
+                <p th:if="${totalVoiceCleanupInputTokensForDay} > 0 or ${totalVoiceCleanupOutputTokensForDay} > 0">
+                    Of which voice-input cleanup: <strong th:text="${totalVoiceCleanupInputTokensForDay} + ' / ' + ${totalVoiceCleanupOutputTokensForDay}"></strong> input/output tokens.
+                </p>
                 <table class="table table-sm">
-                    <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th></tr></thead>
+                    <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th></tr></thead>
                     <tbody>
                     <tr th:each="u : ${usageByAgentForDay}">
                         <td th:text="${u.agentName}"></td>
@@ -145,6 +152,7 @@
                         <td th:text="${u.outputTokens}"></td>
                         <td th:text="${u.cacheCreationTokens}"></td>
                         <td th:text="${u.cacheReadTokens}"></td>
+                        <td th:text="${u.voiceCleanupInputTokens} + ' / ' + ${u.voiceCleanupOutputTokens}"></td>
                     </tr>
                     </tbody>
                 </table>

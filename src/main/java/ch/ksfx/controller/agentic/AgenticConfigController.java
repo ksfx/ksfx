@@ -105,6 +105,8 @@ public class AgenticConfigController
         model.addAttribute("totalCacheCreationTokens", allTime.totalCacheCreationTokens);
         model.addAttribute("totalCacheReadTokens", allTime.totalCacheReadTokens);
         model.addAttribute("totalTurns", allTime.totalTurns);
+        model.addAttribute("totalVoiceCleanupInputTokens", allTime.totalVoiceCleanupInputTokens);
+        model.addAttribute("totalVoiceCleanupOutputTokens", allTime.totalVoiceCleanupOutputTokens);
 
         List<AgentMessage> dayMessages = messages.stream()
                 .filter(m -> toLocalDate(m.getCreatedAt()).equals(statsDate))
@@ -119,6 +121,8 @@ public class AgenticConfigController
         model.addAttribute("totalCacheCreationTokensForDay", day.totalCacheCreationTokens);
         model.addAttribute("totalCacheReadTokensForDay", day.totalCacheReadTokens);
         model.addAttribute("totalTurnsForDay", day.totalTurns);
+        model.addAttribute("totalVoiceCleanupInputTokensForDay", day.totalVoiceCleanupInputTokens);
+        model.addAttribute("totalVoiceCleanupOutputTokensForDay", day.totalVoiceCleanupOutputTokens);
     }
 
     private LocalDate toLocalDate(java.util.Date date)
@@ -152,7 +156,23 @@ public class AgenticConfigController
             int cacheCreationTokens = message.getCacheCreationInputTokens() != null ? message.getCacheCreationInputTokens() : 0;
             int cacheReadTokens = message.getCacheReadInputTokens() != null ? message.getCacheReadInputTokens() : 0;
 
-            summary.turnCount++;
+            // Voice-cleanup calls (see ClaudeCliSessionService.persistVoiceCleanupUsage) are
+            // persisted as internal=true ASSISTANT messages purely to get their tokens counted here
+            // - folded into the same totals as regular conversation usage (so the grand total is
+            // accurate) but also broken out separately (so it's visible, not just silently merged
+            // in) rather than counted as a "turn" of its own.
+            boolean isVoiceCleanup = message.getInternal();
+
+            if (!isVoiceCleanup) {
+                summary.turnCount++;
+                result.totalTurns++;
+            } else {
+                summary.voiceCleanupInputTokens += inputTokens;
+                summary.voiceCleanupOutputTokens += outputTokens;
+                result.totalVoiceCleanupInputTokens += inputTokens;
+                result.totalVoiceCleanupOutputTokens += outputTokens;
+            }
+
             summary.inputTokens += inputTokens;
             summary.outputTokens += outputTokens;
             summary.cacheCreationTokens += cacheCreationTokens;
@@ -162,7 +182,6 @@ public class AgenticConfigController
             result.totalOutputTokens += outputTokens;
             result.totalCacheCreationTokens += cacheCreationTokens;
             result.totalCacheReadTokens += cacheReadTokens;
-            result.totalTurns++;
         }
 
         return result;
@@ -175,6 +194,8 @@ public class AgenticConfigController
         long totalOutputTokens;
         long totalCacheCreationTokens;
         long totalCacheReadTokens;
+        long totalVoiceCleanupInputTokens;
+        long totalVoiceCleanupOutputTokens;
         int totalTurns;
     }
 
@@ -186,5 +207,7 @@ public class AgenticConfigController
         public long outputTokens;
         public long cacheCreationTokens;
         public long cacheReadTokens;
+        public long voiceCleanupInputTokens;
+        public long voiceCleanupOutputTokens;
     }
 }

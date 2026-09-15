@@ -240,7 +240,7 @@ public class ClaudeCliSessionService
         agentMessageDAO.saveAgentMessage(resetMessage);
     }
 
-    public void runTurn(Long agentId, String userMessage, MultipartFile[] files, SseEmitter emitter)
+    public void runTurn(Long agentId, String userMessage, MultipartFile[] files, boolean voiceInput, SseEmitter emitter)
     {
         Agent agent = agentDAO.getAgentForId(agentId);
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
@@ -257,18 +257,46 @@ public class ClaudeCliSessionService
             return;
         }
 
+        // Runs before the CLI turn itself, on this same (request) thread - completeWithError above
+        // already proves sending on `emitter` synchronously here, before chatMessage() has even
+        // returned it to Spring, is delivered fine (Spring buffers it against the async context
+        // regardless of exact timing). Failure of any kind (timeout, CLI error, empty reply) just
+        // falls back to the raw dictated text - this is a nicety layered on top of a normal turn,
+        // never something the turn itself should fail over.
+        String messageToUse = userMessage;
+
+        if (voiceInput) {
+            runningStatus.put(agentId, "Cleaning up dictated text…");
+            VoiceCleanupResult cleanup = cleanupVoiceTranscript(agent, config, userMessage);
+
+            if (cleanup != null) {
+                messageToUse = cleanup.cleanedText;
+                persistVoiceCleanupUsage(agent, cleanup.usage);
+            }
+        }
+
         String[] attachmentsJson = new String[1];
         String messageForCli;
 
         try {
-            messageForCli = saveAttachmentsAndBuildNote(agent, config, files, userMessage, attachmentsJson);
+            messageForCli = saveAttachmentsAndBuildNote(agent, config, files, messageToUse, attachmentsJson);
         } catch (IOException e) {
             runningStatus.remove(agentId);
             completeWithError(emitter, "File upload failed: " + e.getMessage());
             return;
         }
 
-        persistUserMessage(agent, userMessage, attachmentsJson[0]);
+        AgentMessage persistedUserMessage = persistUserMessage(agent, messageToUse, attachmentsJson[0]);
+
+        if (voiceInput && !messageToUse.equals(userMessage)) {
+            // The browser already rendered the raw dictated text optimistically, before this
+            // request ever reached the server (see agentic-chat.js's sendMessage) - this is what
+            // corrects that already-visible bubble to the cleaned-up version once it's ready.
+            ObjectNode voiceCleanedPayload = objectMapper.createObjectNode();
+            voiceCleanedPayload.put("messageId", persistedUserMessage.getId());
+            voiceCleanedPayload.put("content", messageToUse);
+            trySend(emitter, SseEmitter.event().name("voice_cleaned").data(voiceCleanedPayload.toString()));
+        }
 
         // Completion/error is now broadcast from inside executeTurn itself (to every subscriber,
         // not just this one emitter) - see completeAllSubscribers - so this thread doesn't need to
@@ -421,7 +449,7 @@ public class ClaudeCliSessionService
         return null;
     }
 
-    private void persistUserMessage(Agent agent, String content, String attachmentsJson)
+    private AgentMessage persistUserMessage(Agent agent, String content, String attachmentsJson)
     {
         AgentMessage userAgentMessage = new AgentMessage();
         userAgentMessage.setAgent(agent);
@@ -430,6 +458,7 @@ public class ClaudeCliSessionService
         userAgentMessage.setAttachments(attachmentsJson);
         userAgentMessage.setCreatedAt(new Date());
         agentMessageDAO.saveAgentMessage(userAgentMessage);
+        return userAgentMessage;
     }
 
     /** Sibling of {@link #persistUserMessage} for an agent-to-agent message - see {@link #runAgentTriggeredTurn}. */
@@ -442,6 +471,164 @@ public class ClaudeCliSessionService
         message.setContent(content);
         message.setCreatedAt(new Date());
         agentMessageDAO.saveAgentMessage(message);
+    }
+
+    /** Result of {@link #cleanupVoiceTranscript} - null itself (not this) signals "couldn't clean up, keep the raw text". */
+    private static class VoiceCleanupResult
+    {
+        final String cleanedText;
+        final TurnUsage usage;
+
+        VoiceCleanupResult(String cleanedText, TurnUsage usage)
+        {
+            this.cleanedText = cleanedText;
+            this.usage = usage;
+        }
+    }
+
+    /**
+     * Turns unpunctuated, possibly misheard voice-dictated text into readable text - a small,
+     * isolated CLI call (no --resume, no tool access, no agent system prompt) that reuses the same
+     * credential setup as a normal turn (see AgenticConfig) rather than needing its own. Runs
+     * synchronously before the real turn even starts, so the real turn - and the persisted/displayed
+     * chat message - both use the cleaned-up text, not the raw dictation.
+     *
+     * Bounded by an explicit timeout unlike the main turn's CLI call: a stuck/slow cleanup call
+     * would otherwise block the user's actual message from being sent at all, with no "Stop" button
+     * to interrupt it (that only exists for a running turn). Any failure - timeout, non-zero exit,
+     * empty reply - returns null and the caller just keeps the original dictated text; this is a
+     * nicety, never something the rest of the flow should depend on succeeding.
+     */
+    private VoiceCleanupResult cleanupVoiceTranscript(Agent agent, AgenticConfig config, String rawText)
+    {
+        if (isBlank(rawText)) {
+            return null;
+        }
+
+        Path workspace;
+
+        try {
+            workspace = agentWorkspaceService.ensureWorkspace(agent, config);
+        } catch (IOException e) {
+            return null;
+        }
+
+        String prompt = "Der folgende Text stammt aus einer Spracheingabe (Diktat) und enthaelt daher "
+                + "keine Satzzeichen und moeglicherweise falsch erkannte Woerter. Gib AUSSCHLIESSLICH "
+                + "die bereinigte Version zurueck: korrigiere Gross-/Kleinschreibung und Zeichensetzung, "
+                + "und korrigiere eindeutig falsch erkannte Woerter, wenn aus dem Kontext klar ist was "
+                + "gemeint war. Erklaere nichts, gib keine Anfuehrungszeichen und keinen einleitenden "
+                + "Text aus - antworte NUR mit dem bereinigten Text selbst, in derselben Sprache wie "
+                + "der Originaltext.\n\n" + rawText;
+
+        List<String> command = new ArrayList<>();
+        command.add(config.getClaudeCliPath());
+        command.add("-p");
+        command.add(prompt);
+        command.add("--output-format");
+        command.add("stream-json");
+        command.add("--verbose");
+        command.add("--permission-mode");
+        command.add("default"); // never wants/needs tool access, regardless of the agent's own permission mode
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        processBuilder.directory(workspace.toFile());
+        processBuilder.redirectInput(ProcessBuilder.Redirect.from(new File(nullDevicePath())));
+
+        String authEnvVar = authEnvironmentVariableName(config.getAuthMode());
+
+        if (authEnvVar != null) {
+            processBuilder.environment().put(authEnvVar, config.getApiKey());
+        }
+
+        StringBuilder resultText = new StringBuilder();
+        TurnUsage usage = new TurnUsage();
+        StringBuilder stderrOutput = new StringBuilder();
+
+        try {
+            Process process = processBuilder.start();
+
+            Thread stderrDrain = new Thread(() -> drainStream(process.getErrorStream(), stderrOutput));
+            stderrDrain.start();
+
+            Thread stdoutReader = new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+
+                    while ((line = reader.readLine()) != null) {
+                        if (line.trim().isEmpty()) {
+                            continue;
+                        }
+
+                        JsonNode event = objectMapper.readTree(line);
+                        String type = event.path("type").asText("");
+
+                        if ("assistant".equals(type)) {
+                            for (JsonNode contentBlock : event.path("message").path("content")) {
+                                if ("text".equals(contentBlock.path("type").asText(""))) {
+                                    resultText.append(contentBlock.path("text").asText(""));
+                                }
+                            }
+                        } else if ("result".equals(type)) {
+                            JsonNode usageNode = event.path("usage");
+                            usage.inputTokens = usageNode.hasNonNull("input_tokens") ? usageNode.path("input_tokens").asInt() : null;
+                            usage.outputTokens = usageNode.hasNonNull("output_tokens") ? usageNode.path("output_tokens").asInt() : null;
+                            usage.cacheCreationInputTokens = usageNode.hasNonNull("cache_creation_input_tokens") ? usageNode.path("cache_creation_input_tokens").asInt() : null;
+                            usage.cacheReadInputTokens = usageNode.hasNonNull("cache_read_input_tokens") ? usageNode.path("cache_read_input_tokens").asInt() : null;
+                            usage.durationMs = event.hasNonNull("duration_ms") ? event.path("duration_ms").asInt() : null;
+                        }
+                    }
+                } catch (IOException ignored) {
+                    // process died/pipe closed - the waitFor(timeout) below decides the outcome
+                }
+            });
+            stdoutReader.start();
+
+            boolean finished = process.waitFor(20, TimeUnit.SECONDS);
+
+            if (!finished) {
+                process.destroyForcibly();
+                systemLogger.logMessage("AGENTIC", "Voice cleanup call timed out after 20s, keeping raw dictated text");
+                return null;
+            }
+
+            stdoutReader.join(TimeUnit.SECONDS.toMillis(2));
+            stderrDrain.join(TimeUnit.SECONDS.toMillis(2));
+
+            if (process.exitValue() != 0 || resultText.length() == 0) {
+                systemLogger.logMessage("AGENTIC", "Voice cleanup call failed (exit " + process.exitValue() + "), keeping raw dictated text: " + stderrOutput);
+                return null;
+            }
+        } catch (IOException | InterruptedException e) {
+            systemLogger.logMessage("AGENTIC", "Voice cleanup call failed, keeping raw dictated text", e);
+            return null;
+        }
+
+        String cleaned = resultText.toString().trim();
+
+        return isBlank(cleaned) ? null : new VoiceCleanupResult(cleaned, usage);
+    }
+
+    /**
+     * Persists the voice-cleanup call's token usage as its own hidden (internal=true) AgentMessage
+     * row tied to the same agent, so it flows into the existing usage-stats aggregation
+     * (AgenticConfigController) without a parallel tracking mechanism - broken out from regular
+     * conversation usage there, not silently merged into it.
+     */
+    private void persistVoiceCleanupUsage(Agent agent, TurnUsage usage)
+    {
+        AgentMessage cleanupMessage = new AgentMessage();
+        cleanupMessage.setAgent(agent);
+        cleanupMessage.setRole(AgentMessageRole.ASSISTANT);
+        cleanupMessage.setInternal(true);
+        cleanupMessage.setContent("[voice input cleanup]");
+        cleanupMessage.setInputTokens(usage.inputTokens);
+        cleanupMessage.setOutputTokens(usage.outputTokens);
+        cleanupMessage.setCacheCreationInputTokens(usage.cacheCreationInputTokens);
+        cleanupMessage.setCacheReadInputTokens(usage.cacheReadInputTokens);
+        cleanupMessage.setDurationMs(usage.durationMs);
+        cleanupMessage.setCreatedAt(new Date());
+        agentMessageDAO.saveAgentMessage(cleanupMessage);
     }
 
     /**

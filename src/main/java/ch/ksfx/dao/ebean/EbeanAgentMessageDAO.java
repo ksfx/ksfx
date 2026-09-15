@@ -34,7 +34,7 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     public List<AgentMessage> getRecentMessagesForAgent(Long agentId, int limit)
     {
         return oldestFirst(Ebean.find(AgentMessage.class).fetch("fromAgent")
-                .where().eq("agent.id", agentId)
+                .where().eq("agent.id", agentId).eq("internal", false)
                 .order().desc("id")
                 .setMaxRows(limit)
                 .findList());
@@ -44,7 +44,7 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     public List<AgentMessage> getMessagesForAgentBefore(Long agentId, Long beforeMessageId, int limit)
     {
         return oldestFirst(Ebean.find(AgentMessage.class).fetch("fromAgent")
-                .where().eq("agent.id", agentId).lt("id", beforeMessageId)
+                .where().eq("agent.id", agentId).eq("internal", false).lt("id", beforeMessageId)
                 .order().desc("id")
                 .setMaxRows(limit)
                 .findList());
@@ -54,7 +54,7 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     public AgentMessage getLastMessageForAgent(Long agentId)
     {
         return Ebean.find(AgentMessage.class)
-                .where().eq("agent.id", agentId)
+                .where().eq("agent.id", agentId).eq("internal", false)
                 .order().desc("id")
                 .setMaxRows(1)
                 .findOneOrEmpty()
