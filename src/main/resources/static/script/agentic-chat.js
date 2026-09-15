@@ -557,6 +557,12 @@
 
             inputEl.value = (baseText ? baseText + ' ' : '') + segments.join(' ');
             autoResize();
+            // Setting .value programmatically doesn't move the caret the way actually typing does,
+            // so once the textarea hits autoResize's 200px cap and starts scrolling internally, the
+            // view stays wherever it happened to be - typically the top - instead of following the
+            // text being dictated. Pin it to the bottom on every update so what's currently being
+            // said is always the visible part.
+            inputEl.scrollTop = inputEl.scrollHeight;
         });
 
         recognition.addEventListener('end', function () {
