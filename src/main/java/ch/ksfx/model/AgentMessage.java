@@ -39,6 +39,14 @@ public class AgentMessage
      */
     private boolean voiceInput = false;
 
+    /**
+     * Which {@link ch.ksfx.services.agentic.VoiceCompletionClient} implementation produced an
+     * internal=true voice-cleanup usage row - "cli" or "api" (see VoiceCompletionResult.getSource()).
+     * Null for every other row (real turns don't go through that abstraction). Lets the usage-stats
+     * page show a CLI-vs-API breakdown instead of that only being inferable from token magnitude.
+     */
+    private String completionSource;
+
     // Usage stats for this turn (ASSISTANT-role messages only) - captured from the CLI's
     // stream-json "result" event (see ClaudeCliSessionService). Generic/provider-neutral names,
     // unlike AgenticConfig's claudeRateLimit* fields - see plan discussion for the rationale.
@@ -231,5 +239,15 @@ public class AgentMessage
     public void setVoiceInput(boolean voiceInput)
     {
         this.voiceInput = voiceInput;
+    }
+
+    public String getCompletionSource()
+    {
+        return completionSource;
+    }
+
+    public void setCompletionSource(String completionSource)
+    {
+        this.completionSource = completionSource;
     }
 }

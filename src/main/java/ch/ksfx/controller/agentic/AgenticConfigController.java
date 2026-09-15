@@ -171,6 +171,15 @@ public class AgenticConfigController
                 summary.voiceCleanupOutputTokens += outputTokens;
                 result.totalVoiceCleanupInputTokens += inputTokens;
                 result.totalVoiceCleanupOutputTokens += outputTokens;
+
+                // completionSource is only ever "cli"/"api" (see VoiceCompletionResult.getSource())
+                // but a message from before that field existed would have it null - counted as
+                // neither rather than guessed, so historical rows don't silently skew this.
+                if ("api".equals(message.getCompletionSource())) {
+                    summary.voiceCleanupApiCount++;
+                } else if ("cli".equals(message.getCompletionSource())) {
+                    summary.voiceCleanupCliCount++;
+                }
             }
 
             summary.inputTokens += inputTokens;
@@ -209,5 +218,7 @@ public class AgenticConfigController
         public long cacheReadTokens;
         public long voiceCleanupInputTokens;
         public long voiceCleanupOutputTokens;
+        public int voiceCleanupCliCount;
+        public int voiceCleanupApiCount;
     }
 }

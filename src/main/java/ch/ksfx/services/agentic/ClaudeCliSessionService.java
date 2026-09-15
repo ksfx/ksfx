@@ -569,6 +569,7 @@ public class ClaudeCliSessionService
         cleanupMessage.setRole(AgentMessageRole.ASSISTANT);
         cleanupMessage.setInternal(true);
         cleanupMessage.setContent("[voice input cleanup via " + source + "]");
+        cleanupMessage.setCompletionSource(source);
         cleanupMessage.setInputTokens(usage.inputTokens);
         cleanupMessage.setOutputTokens(usage.outputTokens);
         cleanupMessage.setCacheCreationInputTokens(usage.cacheCreationInputTokens);

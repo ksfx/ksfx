@@ -42,4 +42,5 @@
     <include file="20260914090100_agent_model.sql" relativeToChangelogFile="true"/>
     <include file="20260915090000_agent_message_internal.sql" relativeToChangelogFile="true"/>
     <include file="20260915100000_agent_message_voice_input.sql" relativeToChangelogFile="true"/>
+    <include file="20260915110000_agent_message_completion_source.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

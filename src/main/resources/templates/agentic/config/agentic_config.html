@@ -109,7 +109,7 @@
                 Of which voice-input cleanup (see the mic button in chat): <strong th:text="${totalVoiceCleanupInputTokens} + ' / ' + ${totalVoiceCleanupOutputTokens}"></strong> input/output tokens - already included in the totals above, broken out here so it doesn't go unnoticed.
             </p>
             <table class="table table-sm" th:if="${usageByAgent.size()} > 1">
-                <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th></tr></thead>
+                <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th><th>Voice Cleanup Source</th></tr></thead>
                 <tbody>
                 <tr th:each="u : ${usageByAgent}">
                     <td th:text="${u.agentName}"></td>
@@ -119,6 +119,7 @@
                     <td th:text="${u.cacheCreationTokens}"></td>
                     <td th:text="${u.cacheReadTokens}"></td>
                     <td th:text="${u.voiceCleanupInputTokens} + ' / ' + ${u.voiceCleanupOutputTokens}"></td>
+                    <td th:text="${u.voiceCleanupCliCount} + ' via CLI / ' + ${u.voiceCleanupApiCount} + ' via API'"></td>
                 </tr>
                 </tbody>
             </table>
@@ -143,7 +144,7 @@
                     Of which voice-input cleanup: <strong th:text="${totalVoiceCleanupInputTokensForDay} + ' / ' + ${totalVoiceCleanupOutputTokensForDay}"></strong> input/output tokens.
                 </p>
                 <table class="table table-sm">
-                    <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th></tr></thead>
+                    <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th><th>Voice Cleanup Source</th></tr></thead>
                     <tbody>
                     <tr th:each="u : ${usageByAgentForDay}">
                         <td th:text="${u.agentName}"></td>
@@ -153,6 +154,7 @@
                         <td th:text="${u.cacheCreationTokens}"></td>
                         <td th:text="${u.cacheReadTokens}"></td>
                         <td th:text="${u.voiceCleanupInputTokens} + ' / ' + ${u.voiceCleanupOutputTokens}"></td>
+                        <td th:text="${u.voiceCleanupCliCount} + ' via CLI / ' + ${u.voiceCleanupApiCount} + ' via API'"></td>
                     </tr>
                     </tbody>
                 </table>
