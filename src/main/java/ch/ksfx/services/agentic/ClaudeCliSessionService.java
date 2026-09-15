@@ -77,6 +77,8 @@ public class ClaudeCliSessionService
     private final SystemLogger systemLogger;
     private final ObjectMapper objectMapper;
     private final int serverPort;
+    private final ClaudeCliCompletionClient claudeCliCompletionClient;
+    private final ClaudeApiCompletionClient claudeApiCompletionClient;
 
     private final ConcurrentHashMap<Long, String> runningStatus = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Process> runningProcesses = new ConcurrentHashMap<>();
@@ -100,7 +102,9 @@ public class ClaudeCliSessionService
                                     AgenticDockerService agenticDockerService,
                                     SystemLogger systemLogger,
                                     ObjectMapper objectMapper,
-                                    @Value("${server.port:8080}") int serverPort)
+                                    @Value("${server.port:8080}") int serverPort,
+                                    ClaudeCliCompletionClient claudeCliCompletionClient,
+                                    ClaudeApiCompletionClient claudeApiCompletionClient)
     {
         this.agenticConfigDAO = agenticConfigDAO;
         this.agentDAO = agentDAO;
@@ -110,6 +114,8 @@ public class ClaudeCliSessionService
         this.systemLogger = systemLogger;
         this.objectMapper = objectMapper;
         this.serverPort = serverPort;
+        this.claudeCliCompletionClient = claudeCliCompletionClient;
+        this.claudeApiCompletionClient = claudeApiCompletionClient;
     }
 
     public boolean isRunning(Long agentId)
@@ -271,7 +277,7 @@ public class ClaudeCliSessionService
 
             if (cleanup != null) {
                 messageToUse = cleanup.cleanedText;
-                persistVoiceCleanupUsage(agent, cleanup.usage);
+                persistVoiceCleanupUsage(agent, cleanup.usage, cleanup.source);
             }
         }
 
@@ -479,38 +485,47 @@ public class ClaudeCliSessionService
     {
         final String cleanedText;
         final TurnUsage usage;
+        final String source;
 
-        VoiceCleanupResult(String cleanedText, TurnUsage usage)
+        VoiceCleanupResult(String cleanedText, TurnUsage usage, String source)
         {
             this.cleanedText = cleanedText;
             this.usage = usage;
+            this.source = source;
         }
     }
 
     /**
-     * Turns unpunctuated, possibly misheard voice-dictated text into readable text - a small,
-     * isolated CLI call (no --resume, no tool access, no agent system prompt) that reuses the same
-     * credential setup as a normal turn (see AgenticConfig) rather than needing its own. Runs
-     * synchronously before the real turn even starts, so the real turn - and the persisted/displayed
-     * chat message - both use the cleaned-up text, not the raw dictation.
+     * Picks which {@link VoiceCompletionClient} handles voice cleanup for this instance's auth
+     * mode - the faster/cheaper direct-API one where it can authenticate at all (API_KEY,
+     * SETUP_TOKEN - see ClaudeApiCompletionClient's Javadoc for why OAUTH can't use it), the CLI
+     * one otherwise. Kept here rather than in AgenticConfig itself since it's a capability derived
+     * from the auth mode, not a separate setting to configure.
+     */
+    private VoiceCompletionClient selectVoiceCompletionClient(AgenticConfig config)
+    {
+        if (config.getAuthMode() == AgenticAuthMode.API_KEY || config.getAuthMode() == AgenticAuthMode.SETUP_TOKEN) {
+            return claudeApiCompletionClient;
+        }
+
+        return claudeCliCompletionClient;
+    }
+
+    /**
+     * Turns unpunctuated, possibly misheard voice-dictated text into readable text via whichever
+     * {@link VoiceCompletionClient} fits this instance's auth mode (see
+     * {@link #selectVoiceCompletionClient}). Runs synchronously before the real turn even starts,
+     * so the real turn - and the persisted/displayed chat message - both use the cleaned-up text,
+     * not the raw dictation.
      *
-     * Bounded by an explicit timeout unlike the main turn's CLI call: a stuck/slow cleanup call
-     * would otherwise block the user's actual message from being sent at all, with no "Stop" button
-     * to interrupt it (that only exists for a running turn). Any failure - timeout, non-zero exit,
-     * empty reply - returns null and the caller just keeps the original dictated text; this is a
-     * nicety, never something the rest of the flow should depend on succeeding.
+     * Any failure - timeout, HTTP/exit error, empty reply, unsupported auth mode - is the
+     * completion client returning null; this method just adapts that into the DAO/persistence
+     * shape used by the rest of this class. Never something the rest of the flow should depend on
+     * succeeding - the caller falls back to the original dictated text either way.
      */
     private VoiceCleanupResult cleanupVoiceTranscript(Agent agent, AgenticConfig config, String rawText)
     {
         if (isBlank(rawText)) {
-            return null;
-        }
-
-        Path workspace;
-
-        try {
-            workspace = agentWorkspaceService.ensureWorkspace(agent, config);
-        } catch (IOException e) {
             return null;
         }
 
@@ -522,107 +537,38 @@ public class ClaudeCliSessionService
                 + "Text aus - antworte NUR mit dem bereinigten Text selbst, in derselben Sprache wie "
                 + "der Originaltext.\n\n" + rawText;
 
-        List<String> command = new ArrayList<>();
-        command.add(config.getClaudeCliPath());
-        command.add("-p");
-        command.add(prompt);
-        command.add("--output-format");
-        command.add("stream-json");
-        command.add("--verbose");
-        command.add("--permission-mode");
-        command.add("default"); // never wants/needs tool access, regardless of the agent's own permission mode
+        VoiceCompletionResult result = selectVoiceCompletionClient(config).complete(prompt, agent, config);
 
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        processBuilder.directory(workspace.toFile());
-        processBuilder.redirectInput(ProcessBuilder.Redirect.from(new File(nullDevicePath())));
-
-        String authEnvVar = authEnvironmentVariableName(config.getAuthMode());
-
-        if (authEnvVar != null) {
-            processBuilder.environment().put(authEnvVar, config.getApiKey());
-        }
-
-        StringBuilder resultText = new StringBuilder();
-        TurnUsage usage = new TurnUsage();
-        StringBuilder stderrOutput = new StringBuilder();
-
-        try {
-            Process process = processBuilder.start();
-
-            Thread stderrDrain = new Thread(() -> drainStream(process.getErrorStream(), stderrOutput));
-            stderrDrain.start();
-
-            Thread stdoutReader = new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-
-                    while ((line = reader.readLine()) != null) {
-                        if (line.trim().isEmpty()) {
-                            continue;
-                        }
-
-                        JsonNode event = objectMapper.readTree(line);
-                        String type = event.path("type").asText("");
-
-                        if ("assistant".equals(type)) {
-                            for (JsonNode contentBlock : event.path("message").path("content")) {
-                                if ("text".equals(contentBlock.path("type").asText(""))) {
-                                    resultText.append(contentBlock.path("text").asText(""));
-                                }
-                            }
-                        } else if ("result".equals(type)) {
-                            JsonNode usageNode = event.path("usage");
-                            usage.inputTokens = usageNode.hasNonNull("input_tokens") ? usageNode.path("input_tokens").asInt() : null;
-                            usage.outputTokens = usageNode.hasNonNull("output_tokens") ? usageNode.path("output_tokens").asInt() : null;
-                            usage.cacheCreationInputTokens = usageNode.hasNonNull("cache_creation_input_tokens") ? usageNode.path("cache_creation_input_tokens").asInt() : null;
-                            usage.cacheReadInputTokens = usageNode.hasNonNull("cache_read_input_tokens") ? usageNode.path("cache_read_input_tokens").asInt() : null;
-                            usage.durationMs = event.hasNonNull("duration_ms") ? event.path("duration_ms").asInt() : null;
-                        }
-                    }
-                } catch (IOException ignored) {
-                    // process died/pipe closed - the waitFor(timeout) below decides the outcome
-                }
-            });
-            stdoutReader.start();
-
-            boolean finished = process.waitFor(20, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-                systemLogger.logMessage("AGENTIC", "Voice cleanup call timed out after 20s, keeping raw dictated text");
-                return null;
-            }
-
-            stdoutReader.join(TimeUnit.SECONDS.toMillis(2));
-            stderrDrain.join(TimeUnit.SECONDS.toMillis(2));
-
-            if (process.exitValue() != 0 || resultText.length() == 0) {
-                systemLogger.logMessage("AGENTIC", "Voice cleanup call failed (exit " + process.exitValue() + "), keeping raw dictated text: " + stderrOutput);
-                return null;
-            }
-        } catch (IOException | InterruptedException e) {
-            systemLogger.logMessage("AGENTIC", "Voice cleanup call failed, keeping raw dictated text", e);
+        if (result == null || isBlank(result.getText())) {
             return null;
         }
 
-        String cleaned = resultText.toString().trim();
+        TurnUsage usage = new TurnUsage();
+        usage.inputTokens = result.getInputTokens();
+        usage.outputTokens = result.getOutputTokens();
+        usage.cacheCreationInputTokens = result.getCacheCreationInputTokens();
+        usage.cacheReadInputTokens = result.getCacheReadInputTokens();
+        usage.durationMs = result.getDurationMs();
 
-        return isBlank(cleaned) ? null : new VoiceCleanupResult(cleaned, usage);
+        return new VoiceCleanupResult(result.getText().trim(), usage, result.getSource());
     }
 
     /**
      * Persists the voice-cleanup call's token usage as its own hidden (internal=true) AgentMessage
      * row tied to the same agent, so it flows into the existing usage-stats aggregation
      * (AgenticConfigController) without a parallel tracking mechanism - broken out from regular
-     * conversation usage there, not silently merged into it.
+     * conversation usage there, not silently merged into it. The content string records which
+     * VoiceCompletionClient actually ran ("cli" vs "api") - token count/duration hint at this too
+     * (the CLI's fixed harness overhead vs. the API's minimal prompt are very different orders of
+     * magnitude) but that's an inference, not something to have to notice - this is the direct answer.
      */
-    private void persistVoiceCleanupUsage(Agent agent, TurnUsage usage)
+    private void persistVoiceCleanupUsage(Agent agent, TurnUsage usage, String source)
     {
         AgentMessage cleanupMessage = new AgentMessage();
         cleanupMessage.setAgent(agent);
         cleanupMessage.setRole(AgentMessageRole.ASSISTANT);
         cleanupMessage.setInternal(true);
-        cleanupMessage.setContent("[voice input cleanup]");
+        cleanupMessage.setContent("[voice input cleanup via " + source + "]");
         cleanupMessage.setInputTokens(usage.inputTokens);
         cleanupMessage.setOutputTokens(usage.outputTokens);
         cleanupMessage.setCacheCreationInputTokens(usage.cacheCreationInputTokens);
@@ -1439,15 +1385,7 @@ public class ClaudeCliSessionService
 
     private void drainStream(InputStream inputStream, StringBuilder target)
     {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                target.append(line).append("\n");
-            }
-        } catch (IOException e) {
-            // best-effort diagnostic capture only, process outcome is judged by exit code
-        }
+        ClaudeCliEnvironment.drainStream(inputStream, target);
     }
 
     private void completeWithError(SseEmitter emitter, String message)
@@ -1496,19 +1434,12 @@ public class ClaudeCliSessionService
      */
     private String authEnvironmentVariableName(AgenticAuthMode authMode)
     {
-        switch (authMode) {
-            case API_KEY:
-                return "ANTHROPIC_API_KEY";
-            case SETUP_TOKEN:
-                return "CLAUDE_CODE_OAUTH_TOKEN";
-            default:
-                return null;
-        }
+        return ClaudeCliEnvironment.authEnvironmentVariableName(authMode);
     }
 
     /** "NUL" on Windows, "/dev/null" everywhere else - see the stdin-redirect call site. */
     private String nullDevicePath()
     {
-        return System.getProperty("os.name", "").toLowerCase().contains("win") ? "NUL" : "/dev/null";
+        return ClaudeCliEnvironment.nullDevicePath();
     }
 }
