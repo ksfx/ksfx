@@ -296,13 +296,41 @@
 .agentic-toolbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 10px;
     margin-bottom: 10px;
 }
 
 .agentic-main-title {
     font-weight: 600;
     font-size: 1.05rem;
+}
+
+.agentic-toolbar-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* Icon+label actions for the ACTIVE agent (Files, Schedules) - deliberately in the toolbar next
+   to its name, not in the sidebar rows: those only carry per-agent management (Edit). */
+.agentic-toolbar-action {
+    border: 1px solid #d5d5de;
+    background: #f7f7fa;
+    border-radius: 6px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: #444;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.agentic-toolbar-action:hover {
+    background: #ececf2;
+    color: #222;
+    text-decoration: none;
 }
 
 .agentic-messages {
@@ -793,6 +821,17 @@ a.agentic-attachment-chip:hover {
 
 .agentic-dark .agentic-main-title {
     color: #e8e8ef;
+}
+
+.agentic-dark .agentic-toolbar-action {
+    background: #2b2b33;
+    border-color: #3a3a44;
+    color: #d8d8e0;
+}
+
+.agentic-dark .agentic-toolbar-action:hover {
+    background: #33333d;
+    color: #fff;
 }
 
 .agentic-dark .agentic-tool-call,

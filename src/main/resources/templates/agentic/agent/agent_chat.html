@@ -8,6 +8,7 @@
      element), so page-specific CSS can't live there - it's linked here in <body> instead, which
      HTML5 permits and keeps this file self-contained without touching layout.html. -->
 <link rel="stylesheet" th:href="@{/styles/agentic-chat.css}" />
+<link rel="stylesheet" th:href="@{/styles/agentic-file-browser.css}" />
 <header th:replace="layout :: site-header"/>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
@@ -42,7 +43,6 @@
                     </a>
                     <button type="button" class="agentic-sidebar-item-icon agentic-sidebar-item-stop" th:data-stop-endpoint="@{/agentic/chat/{id}/stop(id=${a.id})}" title="Stop" aria-label="Stop"><i class="fa fa-stop"></i></button>
                     <span class="agentic-sidebar-item-actions">
-                        <a th:href="@{/agentic/schedule/{id}/(id=${a.id})}" class="agentic-sidebar-item-icon" title="Schedules" aria-label="Schedules"><i class="fa fa-clock-o"></i></a>
                         <a th:href="@{/agentic/edit/{id}(id=${a.id})}" class="agentic-sidebar-item-icon" title="Edit Agent" aria-label="Edit Agent"><i class="fa fa-pencil"></i></a>
                     </span>
                 </div>
@@ -62,7 +62,6 @@
                     </a>
                     <button type="button" class="agentic-sidebar-item-icon agentic-sidebar-item-stop" th:data-stop-endpoint="@{/agentic/chat/{id}/stop(id=${a.id})}" title="Stop" aria-label="Stop"><i class="fa fa-stop"></i></button>
                     <span class="agentic-sidebar-item-actions">
-                        <a th:href="@{/agentic/schedule/{id}/(id=${a.id})}" class="agentic-sidebar-item-icon" title="Schedules" aria-label="Schedules"><i class="fa fa-clock-o"></i></a>
                         <a th:href="@{/agentic/edit/{id}(id=${a.id})}" class="agentic-sidebar-item-icon" title="Edit Agent" aria-label="Edit Agent"><i class="fa fa-pencil"></i></a>
                     </span>
                 </div>
@@ -80,6 +79,10 @@
         <div class="agentic-toolbar">
             <button type="button" class="agentic-sidebar-toggle" id="agenticSidebarToggle" title="Agents" aria-label="Toggle agent list"><i class="fa fa-bars"></i></button>
             <span class="agentic-main-title" th:text="${agent.name}">Agent</span>
+            <span class="agentic-toolbar-actions">
+                <button type="button" id="agenticFilesBtn" class="agentic-toolbar-action" title="Browse workspace files"><i class="fa fa-folder-open-o"></i> Files</button>
+                <a th:href="@{/agentic/schedule/{id}/(id=${agent.id})}" class="agentic-toolbar-action" title="Schedules"><i class="fa fa-clock-o"></i> Schedules</a>
+            </span>
         </div>
 
         <div id="agenticChatRoot" class="agentic-chat-wrapper"
@@ -161,9 +164,13 @@
             </div>
         </div>
     </div>
+
+    <!-- Inside .agentic-layout so the .agentic-dark descendant selectors reach the overlay too. -->
+    <div th:replace="agentic/agent/agentic_file_browser :: browserOverlay"></div>
 </div>
 
 <footer th:replace="layout :: site-footer" />
 <script th:src="@{/script/agentic-chat.js}"></script>
+<script th:src="@{/script/agentic-file-browser.js}"></script>
 </body>
 </html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Overlay shell, included once by agent_chat.html (th:replace). Static: only the
+     #agenticFileBrowserBody content changes, swapped wholesale by agentic-file-browser.js with
+     the fileList fragment below - same server-rendered-fragment pattern as the chat's
+     "load older messages". -->
+<div th:fragment="browserOverlay" id="agenticFileBrowser" class="agentic-filebrowser-backdrop" hidden="hidden"
+     th:data-files-endpoint="@{/agentic/files/{id}(id=${agent.id})}"
+     th:data-csrf-header="${_csrf.headerName}"
+     th:data-csrf-token="${_csrf.token}">
+    <div class="agentic-filebrowser" role="dialog" aria-label="Agent files">
+        <div class="agentic-filebrowser-header">
+            <span class="agentic-filebrowser-title"><i class="fa fa-folder-open-o"></i> Files</span>
+            <span class="agentic-filebrowser-actions">
+                <button type="button" id="agenticFbUploadBtn" class="agentic-filebrowser-btn" title="Upload files"><i class="fa fa-upload"></i> Upload</button>
+                <input id="agenticFbUploadInput" type="file" multiple hidden="hidden" />
+                <button type="button" id="agenticFbMkdirBtn" class="agentic-filebrowser-btn" title="New folder"><i class="fa fa-folder"></i> New folder</button>
+                <button type="button" id="agenticFbCloseBtn" class="agentic-filebrowser-btn" title="Close" aria-label="Close"><i class="fa fa-times"></i></button>
+            </span>
+        </div>
+        <div id="agenticFileBrowserBody" class="agentic-filebrowser-body">
+            <!-- fileList fragment lands here -->
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic listing, returned by every AgenticFileBrowserController endpoint. Everything the JS
+     needs to navigate (root, current path, per-entry relative paths) rides along as data-*
+     attributes so the JS keeps no state of its own beyond "which agent". -->
+<div th:fragment="fileList" id="agenticFbListing"
+     th:data-root="${browserRoot}"
+     th:data-path="${browserPath}">
+
+    <div class="agentic-filebrowser-tabs" th:if="${hasSharedRoot}">
+        <button type="button" class="agentic-filebrowser-tab" data-fb-root="workspace"
+                th:classappend="${browserRoot == 'workspace'} ? ' agentic-filebrowser-tab--active' : ''">Workspace</button>
+        <button type="button" class="agentic-filebrowser-tab" data-fb-root="shared"
+                th:classappend="${browserRoot == 'shared'} ? ' agentic-filebrowser-tab--active' : ''">Shared</button>
+    </div>
+
+    <div class="agentic-filebrowser-pathbar">
+        <!-- No data-fb-nav here on purpose: Thymeleaf drops data-* attributes whose value is the
+             empty string, which is exactly what the parent of a first-level directory is - the JS
+             derives the parent from the current path instead (see agentic-file-browser.js). -->
+        <button type="button" class="agentic-filebrowser-up" th:if="${browserParentPath != null}"
+                title="Up" aria-label="Up"><i class="fa fa-level-up"></i></button>
+        <span class="agentic-filebrowser-path" th:text="'/' + ${browserPath}">/</span>
+    </div>
+
+    <table class="agentic-filebrowser-table">
+        <tbody>
+        <tr th:if="${#lists.isEmpty(browserEntries)}">
+            <td colspan="4" class="agentic-filebrowser-empty">Empty directory</td>
+        </tr>
+        <tr th:each="e : ${browserEntries}" class="agentic-filebrowser-row" th:classappend="${e.directory} ? ' agentic-filebrowser-row--dir' : ''">
+            <td class="agentic-filebrowser-cell-name">
+                <a th:if="${e.directory}" href="#" th:data-fb-nav="${e.path}">
+                    <i class="fa fa-folder"></i> <span th:text="${e.name}"></span>
+                </a>
+                <a th:unless="${e.directory}" th:href="@{/agentic/files/{id}/download(id=${agent.id},root=${browserRoot},path=${e.path})}" target="_blank">
+                    <i class="fa fa-file-o"></i> <span th:text="${e.name}"></span>
+                </a>
+            </td>
+            <td class="agentic-filebrowser-cell-size" th:text="${e.size}"></td>
+            <td class="agentic-filebrowser-cell-date" th:text="${e.modified}"></td>
+            <td class="agentic-filebrowser-cell-actions">
+                <button type="button" class="agentic-filebrowser-iconbtn" th:data-fb-rename="${e.name}" title="Rename" aria-label="Rename"><i class="fa fa-pencil"></i></button>
+                <button type="button" class="agentic-filebrowser-iconbtn" th:data-fb-delete="${e.name}" th:data-fb-delete-dir="${e.directory}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
