@@ -508,6 +508,15 @@
 
         var listening = false;
         var baseText = '';
+        // True only while the button itself is asking recognition to stop - lets the 'end' handler
+        // tell "user clicked the button" apart from "the browser/OS ended the session on its own"
+        // (Android in particular has been seen to stop after a few seconds of silence, or after its
+        // own internal max-duration cap, even with continuous=true set below).
+        var manualStop = false;
+        // Set by the 'error' handler for a real failure (bad permissions, no mic, ...) so the 'end'
+        // handler that always follows it doesn't also try to transparently restart into the same
+        // failure - see both handlers below.
+        var fatalError = false;
 
         // Two earlier versions of this handler both assumed event.results entries are disjoint
         // chunks that should simply be concatenated - one summed from event.resultIndex onward
@@ -551,13 +560,39 @@
         });
 
         recognition.addEventListener('end', function () {
-            listening = false;
-            micBtn.classList.remove('agentic-mic-btn--active');
+            if (manualStop || fatalError) {
+                manualStop = false;
+                fatalError = false;
+                listening = false;
+                micBtn.classList.remove('agentic-mic-btn--active');
+                return;
+            }
+
+            // Neither the user nor a real error ended this - the browser/OS did, on its own.
+            // Restart transparently so the mic stays "listening" for as long as the button says it
+            // is. A fresh start() begins a brand new event.results array from scratch, so whatever
+            // was recognized in the session that just ended has to be folded into baseText first,
+            // exactly like a manual click-to-start does - otherwise the restart would silently wipe
+            // it from the field.
+            baseText = inputEl.value.trim();
+
+            try {
+                recognition.start();
+            } catch (e) {
+                listening = false;
+                micBtn.classList.remove('agentic-mic-btn--active');
+            }
         });
 
         recognition.addEventListener('error', function (event) {
-            listening = false;
-            micBtn.classList.remove('agentic-mic-btn--active');
+            // 'no-speech' is the OS/browser's own silence timeout, not a real failure - it's
+            // immediately followed by 'end' (handled above), which is what actually restarts.
+            // 'aborted' is what stop()/abort() themselves report; ignored here for the same reason.
+            if (event.error === 'no-speech' || event.error === 'aborted') {
+                return;
+            }
+
+            fatalError = true;
             // event.error is the browser's own error code (e.g. 'not-allowed', 'service-not-allowed',
             // 'audio-capture', 'network') - surfaced verbatim since it's the fastest way to tell apart
             // "no https", "mic permission denied" and "no mic hardware" without guessing.
@@ -566,6 +601,7 @@
 
         micBtn.addEventListener('click', function () {
             if (listening) {
+                manualStop = true;
                 recognition.stop();
                 return;
             }
