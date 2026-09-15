@@ -31,6 +31,14 @@ public class AgentMessage
      */
     private boolean internal = false;
 
+    /**
+     * True for a USER-role message that was composed via the mic button and went through
+     * ClaudeCliSessionService.cleanupVoiceTranscript before being stored - lets the chat UI show a
+     * small indicator, so a cleanup mistake (wrong word, over-corrected phrasing) is easy to spot
+     * and attribute to voice input rather than to something the user actually typed.
+     */
+    private boolean voiceInput = false;
+
     // Usage stats for this turn (ASSISTANT-role messages only) - captured from the CLI's
     // stream-json "result" event (see ClaudeCliSessionService). Generic/provider-neutral names,
     // unlike AgenticConfig's claudeRateLimit* fields - see plan discussion for the rationale.
@@ -213,5 +221,15 @@ public class AgentMessage
     public void setInternal(boolean internal)
     {
         this.internal = internal;
+    }
+
+    public boolean getVoiceInput()
+    {
+        return voiceInput;
+    }
+
+    public void setVoiceInput(boolean voiceInput)
+    {
+        this.voiceInput = voiceInput;
     }
 }

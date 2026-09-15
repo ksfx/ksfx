@@ -117,6 +117,7 @@
                                 <span th:case="'AGENT'" th:text="${m.fromAgent != null ? 'Agent: ' + m.fromAgent.name : 'Agent'}"></span>
                                 <span th:case="*">Assistant</span>
                             </div>
+                            <i th:if="${m.voiceInput}" class="fa fa-microphone agentic-voice-indicator" title="Sent via voice input - cleaned up automatically, worth a glance if something reads oddly"></i>
                             <button type="button" class="agentic-msg-delete" th:attr="data-delete-endpoint=@{/agentic/chat/{id}/message/{messageId}/delete(id=${agent.id},messageId=${m.id})}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
                         </div>
                         <div class="agentic-bubble" th:text="${m.content}"></div>

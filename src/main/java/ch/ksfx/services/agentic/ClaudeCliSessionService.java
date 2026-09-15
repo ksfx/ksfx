@@ -286,7 +286,7 @@ public class ClaudeCliSessionService
             return;
         }
 
-        AgentMessage persistedUserMessage = persistUserMessage(agent, messageToUse, attachmentsJson[0]);
+        AgentMessage persistedUserMessage = persistUserMessage(agent, messageToUse, attachmentsJson[0], voiceInput);
 
         if (voiceInput && !messageToUse.equals(userMessage)) {
             // The browser already rendered the raw dictated text optimistically, before this
@@ -327,7 +327,7 @@ public class ClaudeCliSessionService
             return SKIPPED_RESULT;
         }
 
-        persistUserMessage(agent, taskPrompt, null);
+        persistUserMessage(agent, taskPrompt, null, false);
 
         return executeTurn(agent, config, taskPrompt, null);
     }
@@ -449,13 +449,14 @@ public class ClaudeCliSessionService
         return null;
     }
 
-    private AgentMessage persistUserMessage(Agent agent, String content, String attachmentsJson)
+    private AgentMessage persistUserMessage(Agent agent, String content, String attachmentsJson, boolean voiceInput)
     {
         AgentMessage userAgentMessage = new AgentMessage();
         userAgentMessage.setAgent(agent);
         userAgentMessage.setRole(AgentMessageRole.USER);
         userAgentMessage.setContent(content);
         userAgentMessage.setAttachments(attachmentsJson);
+        userAgentMessage.setVoiceInput(voiceInput);
         userAgentMessage.setCreatedAt(new Date());
         agentMessageDAO.saveAgentMessage(userAgentMessage);
         return userAgentMessage;

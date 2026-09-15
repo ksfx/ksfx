@@ -432,6 +432,16 @@
         var userMessage = createMessageEl('user');
         userMessage.bubble.textContent = text;
 
+        // Mirrors the server-rendered icon (agent_chat.html, for m.voiceInput) so a message shows
+        // it immediately, not just after the next page reload - read before wasVoiceInput gets
+        // reset below.
+        if (wasVoiceInput) {
+            var voiceIcon = document.createElement('i');
+            voiceIcon.className = 'fa fa-microphone agentic-voice-indicator';
+            voiceIcon.title = 'Sent via voice input - cleaned up automatically, worth a glance if something reads oddly';
+            userMessage.root.querySelector('.agentic-role-label').appendChild(voiceIcon);
+        }
+
         if (pendingFiles.length > 0) {
             var attachDiv = document.createElement('div');
             attachDiv.className = 'agentic-attachments';
@@ -598,12 +608,49 @@
             inputEl.scrollTop = inputEl.scrollHeight;
         });
 
+        // Screen Wake Lock API - keeps the display (not the CPU/mic) from sleeping while actively
+        // dictating, so a phone locking itself mid-sentence doesn't silently kill the recording.
+        // Chrome/Edge only (desktop and Android) as of writing, same rough support picture as
+        // SpeechRecognition itself - feature-detected, so unsupported browsers just keep today's
+        // behavior (screen can sleep, exactly as before this was added).
+        var wakeLock = null;
+
+        function requestWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                return;
+            }
+
+            navigator.wakeLock.request('screen').then(function (lock) {
+                wakeLock = lock;
+            }).catch(function () {
+                // Permission/policy denied (e.g. battery saver) - dictation still works fine, the
+                // screen just might time out during a long recording, same as before this existed.
+            });
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock) {
+                wakeLock.release().catch(function () {});
+                wakeLock = null;
+            }
+        }
+
+        // The OS/browser force-releases the lock whenever the page is hidden (switching apps,
+        // locking the screen manually) - it does NOT come back on its own once the page is visible
+        // again, so a recording that's still going needs to explicitly re-request it.
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible' && listening) {
+                requestWakeLock();
+            }
+        });
+
         recognition.addEventListener('end', function () {
             if (manualStop || fatalError) {
                 manualStop = false;
                 fatalError = false;
                 listening = false;
                 micBtn.classList.remove('agentic-mic-btn--active');
+                releaseWakeLock();
                 return;
             }
 
@@ -658,6 +705,7 @@
             baseText = inputEl.value.trim();
             listening = true;
             micBtn.classList.add('agentic-mic-btn--active');
+            requestWakeLock();
             recognition.start();
         });
     }
