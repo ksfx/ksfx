@@ -508,26 +508,45 @@
 
         var listening = false;
         var baseText = '';
-        // How many entries of event.results have already been folded into baseText - desktop Chrome
-        // updates a not-yet-final entry in place at the same index, but Android Chrome has been
-        // observed to instead append a new entry per revision (or hold resultIndex at 0), so summing
-        // everything from event.resultIndex onward double/triple-counts earlier revisions on mobile.
-        // Tracking our own finalized-so-far count and only ever displaying the single latest entry as
-        // "in progress" sidesteps that platform difference entirely.
-        var finalizedCount = 0;
 
+        // Two earlier versions of this handler both assumed event.results entries are disjoint
+        // chunks that should simply be concatenated - one summed from event.resultIndex onward
+        // (double-counted revisions of the same entry), the other rebuilt the whole array fresh
+        // each event but still joined every entry (double-counted across separate entries instead).
+        // Neither matches what was actually observed on Android Chrome, 2026-09-15: multiple
+        // entries marked isFinal, each one a fuller revision of the last, e.g. "hallo" / "hallo" /
+        // "hallo das" / "hallo das ist" / ... / "hallo das ist nur ein Test" all landing as
+        // separate array entries - i.e. Android re-finalizes the same growing utterance repeatedly
+        // instead of updating one entry in place. Concatenating those repeats the shared prefix
+        // every time ("hallo hallo hallo das hallo das ist..."). Fix: when the next chunk already
+        // starts with everything accumulated so far, it's a fuller revision of the same utterance -
+        // replace instead of append. Only append when the chunk is genuinely new (doesn't extend
+        // what's already there), which is what lets multiple distinct sentences within one
+        // continuous session still accumulate correctly.
         recognition.addEventListener('result', function (event) {
-            for (var i = finalizedCount; i < event.results.length; i++) {
-                if (event.results[i].isFinal) {
-                    baseText = (baseText ? baseText + ' ' : '') + event.results[i][0].transcript.trim();
-                    finalizedCount = i + 1;
+            // Compared against the last committed segment only, not the whole accumulated text -
+            // comparing against everything would (and, while building this fix, briefly did) wrongly
+            // merge two genuinely separate sentences whenever the second one doesn't happen to start
+            // with the first one's text too.
+            var segments = [];
+
+            for (var i = 0; i < event.results.length; i++) {
+                var chunk = event.results[i][0].transcript.trim();
+
+                if (!chunk) {
+                    continue;
+                }
+
+                var lastSegment = segments.length ? segments[segments.length - 1] : '';
+
+                if (lastSegment && chunk.toLowerCase().indexOf(lastSegment.toLowerCase()) === 0) {
+                    segments[segments.length - 1] = chunk;
+                } else {
+                    segments.push(chunk);
                 }
             }
 
-            var lastResult = event.results[event.results.length - 1];
-            var interim = (lastResult && !lastResult.isFinal) ? lastResult[0].transcript : '';
-
-            inputEl.value = (baseText ? baseText + ' ' : '') + interim;
+            inputEl.value = (baseText ? baseText + ' ' : '') + segments.join(' ');
             autoResize();
         });
 
@@ -552,7 +571,6 @@
             }
 
             baseText = inputEl.value.trim();
-            finalizedCount = 0;
             listening = true;
             micBtn.classList.add('agentic-mic-btn--active');
             recognition.start();
