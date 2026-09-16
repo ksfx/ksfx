@@ -163,6 +163,32 @@ public class AgenticFileBrowserController
     }
 
     /**
+     * Overwrites (or creates) one direct child of the current directory with the given text content
+     * - currently only reachable from the browser for .md files opened via the Toast UI editor (see
+     * agentic-file-browser.js), but not restricted to that extension server-side; the traversal
+     * check is what actually matters for safety, not the caller's UI.
+     */
+    @PostMapping("/{agentId}/write")
+    public String write(@PathVariable Long agentId,
+                        @RequestParam(defaultValue = ROOT_WORKSPACE) String root,
+                        @RequestParam(defaultValue = "") String path,
+                        @RequestParam String name,
+                        @RequestParam(defaultValue = "") String content,
+                        Model model) throws IOException
+    {
+        Path directory = resolveDirectory(agentId, root, path);
+        Path target = directory.resolve(requireSimpleName(name)).normalize();
+
+        if (!target.startsWith(directory)) {
+            throw new IllegalArgumentException("Invalid target path");
+        }
+
+        Files.write(target, content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        return renderListing(agentId, root, path, model);
+    }
+
+    /**
      * Download supporting both roots - the existing /agentic/download/{agentId}/** endpoint only
      * knows the agent workspace, and extending it would mean touching proven code; a second,
      * self-contained endpoint here keeps this feature isolated (same inline-disposition/UTF-8

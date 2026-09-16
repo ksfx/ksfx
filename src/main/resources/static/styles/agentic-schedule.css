@@ -1,0 +1,204 @@
+/* Schedule overlay for the Agentic module - see agentic_schedule_overlay.html /
+   agentic-schedule.js. Deliberately mirrors agentic-file-browser.css's visual language (same
+   backdrop/panel/header/button conventions) under its own class names rather than sharing them -
+   keeps the two overlays independently swappable/removable, same reasoning as keeping their
+   controllers/JS separate. */
+
+.agentic-schedule-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.agentic-schedule-backdrop[hidden] {
+    display: none;
+}
+
+.agentic-schedule-panel {
+    background: #fff;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 640px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.agentic-schedule-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e3e3ea;
+}
+
+.agentic-schedule-title {
+    font-weight: 600;
+}
+
+.agentic-schedule-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.agentic-schedule-btn {
+    border: 1px solid #d5d5de;
+    background: #f7f7fa;
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.agentic-schedule-btn:hover {
+    background: #ececf2;
+}
+
+.agentic-schedule-body {
+    overflow-y: auto;
+    padding: 10px 14px 14px;
+}
+
+.agentic-schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.agentic-schedule-table td, .agentic-schedule-table th {
+    padding: 6px 8px;
+    border-bottom: 1px solid #f0f0f4;
+    vertical-align: middle;
+    text-align: left;
+}
+
+.agentic-schedule-table tbody tr:hover td {
+    background: #f7f7fb;
+}
+
+.agentic-schedule-cell-actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.agentic-schedule-iconbtn {
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+
+.agentic-schedule-iconbtn:hover {
+    color: #333;
+}
+
+.agentic-schedule-error-icon {
+    color: #d64545;
+    margin-left: 4px;
+}
+
+.agentic-schedule-empty {
+    color: #999;
+    text-align: center;
+    padding: 18px 0;
+}
+
+/* Create/edit form - the file browser overlay never needed form styling, this is new */
+.agentic-schedule-field {
+    margin-bottom: 12px;
+}
+
+.agentic-schedule-field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.agentic-schedule-input {
+    width: 100%;
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+.agentic-schedule-textarea {
+    height: 160px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.agentic-schedule-checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.agentic-schedule-checkbox-field label {
+    margin-bottom: 0;
+}
+
+.agentic-schedule-error {
+    color: #d64545;
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+}
+
+.agentic-schedule-lastrun {
+    color: #666;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.agentic-schedule-form-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* Dark mode - .agentic-dark sits on .agentic-layout, the overlay lives inside it */
+.agentic-dark .agentic-schedule-panel {
+    background: #23232a;
+    color: #d8d8e0;
+}
+
+.agentic-dark .agentic-schedule-header {
+    border-bottom-color: #33333c;
+}
+
+.agentic-dark .agentic-schedule-btn {
+    background: #2b2b33;
+    border-color: #3a3a44;
+    color: #d8d8e0;
+}
+
+.agentic-dark .agentic-schedule-btn:hover {
+    background: #33333d;
+}
+
+.agentic-dark .agentic-schedule-table td {
+    border-bottom-color: #2e2e37;
+}
+
+.agentic-dark .agentic-schedule-table tbody tr:hover td {
+    background: #2a2a32;
+}
+
+.agentic-dark .agentic-schedule-input {
+    background: #2b2b33;
+    border-color: #3a3a44;
+    color: #d8d8e0;
+}
+
+.agentic-dark .agentic-schedule-lastrun {
+    color: #9a9aa5;
+}

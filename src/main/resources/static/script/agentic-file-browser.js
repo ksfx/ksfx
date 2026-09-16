@@ -18,6 +18,8 @@
     var filesEndpoint = overlay.dataset.filesEndpoint;
     var csrfHeader = overlay.dataset.csrfHeader;
     var csrfToken = overlay.dataset.csrfToken;
+    var toastuiJs = overlay.dataset.toastuiJs;
+    var toastuiCss = overlay.dataset.toastuiCss;
 
     var body = document.getElementById('agenticFileBrowserBody');
     var openBtn = document.getElementById('agenticFilesBtn');
@@ -25,6 +27,7 @@
     var uploadBtn = document.getElementById('agenticFbUploadBtn');
     var uploadInput = document.getElementById('agenticFbUploadInput');
     var mkdirBtn = document.getElementById('agenticFbMkdirBtn');
+    var newMdBtn = document.getElementById('agenticFbNewMdBtn');
 
     function currentListing() {
         return document.getElementById('agenticFbListing');
@@ -46,6 +49,22 @@
 
     function swapListing(html) {
         body.innerHTML = html;
+    }
+
+    // Client-side only, against whatever's currently rendered - the write endpoint itself happily
+    // overwrites an existing file (that's exactly what Save on an already-open file needs to do),
+    // so "New .md" checks this first rather than risk silently wiping an existing file's content
+    // just because the user typed a name that happens to collide with one already in this directory.
+    function nameExistsInCurrentListing(name) {
+        var nameSpans = body.querySelectorAll('.agentic-filebrowser-cell-name span');
+
+        for (var i = 0; i < nameSpans.length; i++) {
+            if (nameSpans[i].textContent === name) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     function showError(message) {
@@ -72,7 +91,10 @@
             .catch(function (error) { showError(error.message); });
     }
 
-    function postAction(action, params, formData) {
+    // Returns the raw response text (the refreshed listing fragment) without swapping it in - lets
+    // a caller that wants different follow-up behavior (createMarkdownFile jumps into the editor
+    // instead) reuse the same request/CSRF/error plumbing as postAction below.
+    function postActionRaw(action, params, formData) {
         var url = filesEndpoint + '/' + action;
         var options = { method: 'POST', headers: {} };
         options.headers[csrfHeader] = csrfToken;
@@ -87,11 +109,14 @@
             }).join('&');
         }
 
-        fetch(url, options)
-            .then(function (response) {
-                if (!response.ok) { return failWithBody(response); }
-                return response.text();
-            })
+        return fetch(url, options).then(function (response) {
+            if (!response.ok) { return failWithBody(response); }
+            return response.text();
+        });
+    }
+
+    function postAction(action, params, formData) {
+        postActionRaw(action, params, formData)
             .then(swapListing)
             .catch(function (error) { showError(error.message); });
     }
@@ -142,9 +167,144 @@
         postAction('mkdir', { root: currentRoot(), path: currentPath(), name: name.trim() });
     });
 
+    newMdBtn.addEventListener('click', function () {
+        var name = prompt('New markdown file name:');
+
+        if (!name || !name.trim()) {
+            return;
+        }
+
+        var fileName = name.trim();
+
+        if (!/\.md$/i.test(fileName)) {
+            fileName += '.md';
+        }
+
+        if (nameExistsInCurrentListing(fileName)) {
+            alert('A file named "' + fileName + '" already exists here.');
+            return;
+        }
+
+        createMarkdownFile(fileName);
+    });
+
+    // Lazily loads the vendored (see static/vendor/toastui-editor/) WYSIWYG markdown editor only
+    // when a .md file is actually opened - most file-browser sessions never touch it, no reason to
+    // ship ~500KB on every chat page load. Cached as a promise so re-opening a second file doesn't
+    // re-fetch/re-inject the same <link>/<script> tags.
+    var toastuiReady = null;
+
+    function loadToastUiAssets() {
+        if (toastuiReady) {
+            return toastuiReady;
+        }
+
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = toastuiCss;
+        document.head.appendChild(link);
+
+        toastuiReady = new Promise(function (resolve, reject) {
+            var script = document.createElement('script');
+            script.src = toastuiJs;
+            script.onload = resolve;
+            script.onerror = function () { reject(new Error('Could not load the markdown editor.')); };
+            document.head.appendChild(script);
+        });
+
+        return toastuiReady;
+    }
+
+    // Creates an empty file via the same /write endpoint Save already uses (it creates-or-
+    // overwrites unconditionally - nameExistsInCurrentListing's check above is what actually
+    // prevents this from clobbering an existing file), then jumps straight into the editor for it
+    // instead of dropping back to the listing - one less click than "create, then find it, then
+    // click Edit."
+    function createMarkdownFile(name) {
+        var root = currentRoot();
+        var path = currentPath();
+
+        postActionRaw('write', { root: root, path: path, name: name, content: '' })
+            .then(function () { openEditor(name); })
+            .catch(function (error) { showError(error.message); });
+    }
+
+    var activeEditor = null;
+
+    function openEditor(name) {
+        var root = currentRoot();
+        var dirPath = currentPath();
+        var filePath = dirPath ? dirPath + '/' + name : name;
+        var downloadUrl = filesEndpoint + '/download?root=' + encodeURIComponent(root) + '&path=' + encodeURIComponent(filePath);
+
+        Promise.all([loadToastUiAssets(), fetch(downloadUrl).then(function (r) {
+            if (!r.ok) { return failWithBody(r); }
+            return r.text();
+        })]).then(function (results) {
+            var content = results[1];
+
+            body.innerHTML = '';
+
+            var toolbar = document.createElement('div');
+            toolbar.className = 'agentic-filebrowser-editor-toolbar';
+
+            var title = document.createElement('span');
+            title.className = 'agentic-filebrowser-editor-title';
+            title.textContent = name;
+
+            var saveBtn = document.createElement('button');
+            saveBtn.type = 'button';
+            saveBtn.className = 'agentic-filebrowser-btn';
+            saveBtn.textContent = 'Save';
+
+            var cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'agentic-filebrowser-btn';
+            cancelBtn.textContent = 'Cancel';
+
+            toolbar.appendChild(title);
+            toolbar.appendChild(saveBtn);
+            toolbar.appendChild(cancelBtn);
+
+            var mount = document.createElement('div');
+            mount.id = 'agenticFbEditorMount';
+
+            body.appendChild(toolbar);
+            body.appendChild(mount);
+
+            activeEditor = new toastui.Editor({
+                el: mount,
+                height: '420px',
+                initialEditType: 'wysiwyg',
+                previewStyle: 'tab',
+                initialValue: content
+            });
+
+            saveBtn.addEventListener('click', function () {
+                var markdown = activeEditor.getMarkdown();
+                activeEditor = null;
+                postAction('write', { root: root, path: dirPath, name: name, content: markdown });
+            });
+
+            cancelBtn.addEventListener('click', function () {
+                activeEditor = null;
+                loadListing(root, dirPath);
+            });
+        }).catch(function (error) {
+            showError(error.message);
+        });
+    }
+
     // Navigation, rename and delete are per-row controls inside the swapped fragment, so one
     // delegated listener on the stable overlay body instead of rebinding after every swap.
     body.addEventListener('click', function (event) {
+        var editEl = event.target.closest('[data-fb-edit]');
+
+        if (editEl) {
+            openEditor(editEl.dataset.fbEdit);
+            return;
+        }
+
         var upEl = event.target.closest('.agentic-filebrowser-up');
 
         if (upEl) {

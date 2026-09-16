@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Overlay shell, included once by agent_chat.html (th:replace) - same shape as the file browser
+     overlay (agentic_file_browser.html): only #agenticScheduleBody's content changes, swapped
+     wholesale by agentic-schedule.js with the fragments below. -->
+<div th:fragment="scheduleOverlay" id="agenticScheduleOverlay" class="agentic-schedule-backdrop" hidden="hidden"
+     th:data-schedules-endpoint="@{/agentic/schedules/{id}(id=${agent.id})}"
+     th:data-csrf-header="${_csrf.headerName}"
+     th:data-csrf-token="${_csrf.token}">
+    <div class="agentic-schedule-panel" role="dialog" aria-label="Agent schedules">
+        <div class="agentic-schedule-header">
+            <span class="agentic-schedule-title"><i class="fa fa-clock-o"></i> Schedules</span>
+            <span class="agentic-schedule-actions">
+                <button type="button" id="agenticScheduleNewBtn" class="agentic-schedule-btn" title="New schedule"><i class="fa fa-plus"></i> New schedule</button>
+                <button type="button" id="agenticScheduleCloseBtn" class="agentic-schedule-btn" title="Close" aria-label="Close"><i class="fa fa-times"></i></button>
+            </span>
+        </div>
+        <div id="agenticScheduleBody" class="agentic-schedule-body">
+            <!-- scheduleList/scheduleForm fragment lands here -->
+        </div>
+    </div>
+</div>
+
+<!-- List of an agent's schedules, returned by list/save/delete - same columns as the original
+     full-page agent_schedule.html, just rendered as fragment rows with data-* actions instead of
+     plain links, matching the file browser's click-delegation pattern. -->
+<div th:fragment="scheduleList" id="agenticScheduleList">
+    <table class="agentic-schedule-table">
+        <thead>
+        <tr><th>Name</th><th>Cron</th><th>Active</th><th>Last Run</th><th>Status</th><th>Next Run</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:if="${#lists.isEmpty(schedules)}">
+            <td colspan="7" class="agentic-schedule-empty">No schedules yet</td>
+        </tr>
+        <tr th:each="schedule : ${schedules}">
+            <td th:text="${schedule.name}"></td>
+            <td th:text="${schedule.cronSchedule}"></td>
+            <td th:text="${schedule.cronScheduleEnabled} ? 'Yes' : 'No'"></td>
+            <td th:text="${schedule.lastRunAt != null ? #dates.format(schedule.lastRunAt, 'yyyy-MM-dd HH:mm') : '-'}"></td>
+            <td>
+                <span th:text="${schedule.lastRunStatus}"></span>
+                <i th:if="${schedule.lastRunError}" class="fa fa-exclamation-triangle agentic-schedule-error-icon" th:title="${schedule.lastRunError}"></i>
+            </td>
+            <td th:if="${schedule.cronScheduleEnabled}" th:text="${schedulerService.getNextFireTime('AgentSchedule' + schedule.id + 'Trigger')}"></td>
+            <td th:unless="${schedule.cronScheduleEnabled}">-</td>
+            <td class="agentic-schedule-cell-actions">
+                <button type="button" class="agentic-schedule-iconbtn" th:data-sched-edit="${schedule.id}" title="Edit" aria-label="Edit"><i class="fa fa-pencil"></i></button>
+                <button type="button" class="agentic-schedule-iconbtn" th:data-sched-delete="${schedule.id}" th:data-sched-delete-name="${schedule.name}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Create/edit form, same fields as the original agent_schedule_edit.html. th:object requires
+     Spring's BindingResult machinery, which is why this is server-rendered (not built client-side
+     like the mkdir/rename prompt() dialogs) - validation errors need to re-render inline. -->
+<form th:fragment="scheduleForm" id="agenticScheduleForm" th:object="${agentSchedule}" onsubmit="return false;">
+    <input type="hidden" id="scheduleId" th:field="*{id}" />
+    <div class="agentic-schedule-field">
+        <label for="scheduleName">Name</label>
+        <div class="agentic-schedule-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+        <input type="text" class="agentic-schedule-input" id="scheduleName" th:field="*{name}" />
+    </div>
+    <div class="agentic-schedule-field">
+        <label for="scheduleTaskPrompt">Task Prompt</label>
+        <textarea class="agentic-schedule-input agentic-schedule-textarea" id="scheduleTaskPrompt" th:field="*{taskPrompt}"></textarea>
+    </div>
+    <div class="agentic-schedule-field">
+        <label for="scheduleCron">Cron Schedule</label>
+        <div class="agentic-schedule-error" th:if="${#fields.hasErrors('cronSchedule')}" th:errors="*{cronSchedule}"></div>
+        <input type="text" class="agentic-schedule-input" id="scheduleCron" th:field="*{cronSchedule}" placeholder="0 0 9 * * ?" />
+    </div>
+    <div class="agentic-schedule-field agentic-schedule-checkbox-field">
+        <input type="checkbox" id="scheduleEnabled" th:field="*{cronScheduleEnabled}" />
+        <label for="scheduleEnabled">Active</label>
+    </div>
+    <div class="agentic-schedule-field" th:if="${agentSchedule.lastRunAt}">
+        <label>Last Run</label>
+        <p class="agentic-schedule-lastrun" th:text="${agentSchedule.lastRunStatus} + ' @ ' + ${#dates.format(agentSchedule.lastRunAt, 'yyyy-MM-dd HH:mm')}"></p>
+    </div>
+
+    <div class="agentic-schedule-form-actions">
+        <button type="button" id="agenticScheduleSaveBtn" class="agentic-schedule-btn">Save</button>
+        <button type="button" id="agenticScheduleCancelBtn" class="agentic-schedule-btn">Cancel</button>
+    </div>
+</form>
+
+</body>
+</html>

@@ -39,6 +39,18 @@
     font-weight: 600;
 }
 
+.agentic-filebrowser-editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.agentic-filebrowser-editor-title {
+    font-weight: 600;
+    margin-right: auto;
+}
+
 .agentic-filebrowser-actions {
     display: flex;
     gap: 6px;

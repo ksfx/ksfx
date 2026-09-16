@@ -9,6 +9,7 @@
      HTML5 permits and keeps this file self-contained without touching layout.html. -->
 <link rel="stylesheet" th:href="@{/styles/agentic-chat.css}" />
 <link rel="stylesheet" th:href="@{/styles/agentic-file-browser.css}" />
+<link rel="stylesheet" th:href="@{/styles/agentic-schedule.css}" />
 <header th:replace="layout :: site-header"/>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
@@ -81,7 +82,7 @@
             <span class="agentic-main-title" th:text="${agent.name}">Agent</span>
             <span class="agentic-toolbar-actions">
                 <button type="button" id="agenticFilesBtn" class="agentic-toolbar-action" title="Browse workspace files"><i class="fa fa-folder-open-o"></i> Files</button>
-                <a th:href="@{/agentic/schedule/{id}/(id=${agent.id})}" class="agentic-toolbar-action" title="Schedules"><i class="fa fa-clock-o"></i> Schedules</a>
+                <button type="button" id="agenticScheduleBtn" class="agentic-toolbar-action" title="Schedules"><i class="fa fa-clock-o"></i> Schedules</button>
             </span>
         </div>
 
@@ -168,10 +169,12 @@
 
     <!-- Inside .agentic-layout so the .agentic-dark descendant selectors reach the overlay too. -->
     <div th:replace="agentic/agent/agentic_file_browser :: browserOverlay"></div>
+    <div th:replace="agentic/schedule/agentic_schedule_overlay :: scheduleOverlay"></div>
 </div>
 
 <footer th:replace="layout :: site-footer" />
 <script th:src="@{/script/agentic-chat.js}"></script>
 <script th:src="@{/script/agentic-file-browser.js}"></script>
+<script th:src="@{/script/agentic-schedule.js}"></script>
 </body>
 </html>
