@@ -10,6 +10,7 @@
 <link rel="stylesheet" th:href="@{/styles/agentic-chat.css}" />
 <link rel="stylesheet" th:href="@{/styles/agentic-file-browser.css}" />
 <link rel="stylesheet" th:href="@{/styles/agentic-schedule.css}" />
+<link rel="stylesheet" th:href="@{/styles/agentic-search.css}" />
 <header th:replace="layout :: site-header"/>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
@@ -26,7 +27,10 @@
            th:data-csrf-header="${_csrf.headerName}" th:data-csrf-token="${_csrf.token}">
         <div class="agentic-sidebar-header">
             <span>Agents</span>
-            <a th:href="@{/agentic/edit}" class="agentic-sidebar-new" title="New Agent" aria-label="New Agent"><i class="fa fa-plus"></i></a>
+            <span class="agentic-sidebar-header-actions">
+                <button type="button" id="agenticSearchBtn" class="agentic-sidebar-search" title="Search chats" aria-label="Search chats"><i class="fa fa-search"></i></button>
+                <a th:href="@{/agentic/edit}" class="agentic-sidebar-new" title="New Agent" aria-label="New Agent"><i class="fa fa-plus"></i></a>
+            </span>
         </div>
         <div class="agentic-sidebar-list">
             <div th:each="p : ${allAgenticProjects}" class="agentic-sidebar-project">
@@ -170,11 +174,13 @@
     <!-- Inside .agentic-layout so the .agentic-dark descendant selectors reach the overlay too. -->
     <div th:replace="agentic/agent/agentic_file_browser :: browserOverlay"></div>
     <div th:replace="agentic/schedule/agentic_schedule_overlay :: scheduleOverlay"></div>
+    <div th:replace="agentic/search/agentic_search_overlay :: searchOverlay"></div>
 </div>
 
 <footer th:replace="layout :: site-footer" />
 <script th:src="@{/script/agentic-chat.js}"></script>
 <script th:src="@{/script/agentic-file-browser.js}"></script>
 <script th:src="@{/script/agentic-schedule.js}"></script>
+<script th:src="@{/script/agentic-search.js}"></script>
 </body>
 </html>

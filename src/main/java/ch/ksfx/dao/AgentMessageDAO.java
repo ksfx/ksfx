@@ -22,5 +22,19 @@ public interface AgentMessageDAO
     /** Just the single most recent message, or null - avoids loading the whole history for it. */
     public AgentMessage getLastMessageForAgent(Long agentId);
 
+    /**
+     * Up to {@code limit} messages newer than {@code afterMessageId}, oldest first - the "N
+     * messages after" half of a search-result context window (see
+     * {@link #getMessagesForAgentBefore} for the "before" half, already used by chat pagination).
+     */
+    public List<AgentMessage> getMessagesForAgentAfter(Long agentId, Long afterMessageId, int limit);
+
     public List<AgentMessage> getAssistantMessagesWithUsage();
+
+    /**
+     * Up to {@code limit} messages (across every agent, not just one) whose content contains
+     * {@code term}, most recent first. Backs the cross-agent search overlay - see
+     * AgenticSearchController.
+     */
+    public List<AgentMessage> searchMessages(String term, int limit);
 }

@@ -106,6 +106,21 @@
     text-decoration: none;
 }
 
+.agentic-sidebar-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.agentic-sidebar-search {
+    border: none;
+    background: transparent;
+    color: #5b5bd6;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1rem;
+}
+
 .agentic-sidebar-list {
     flex: 1 1 auto;
     overflow-y: auto;

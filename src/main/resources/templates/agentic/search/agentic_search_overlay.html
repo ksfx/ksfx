@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Overlay shell, included once by agent_chat.html (th:replace) - same shape as the file browser
+     and schedule overlays: only #agenticSearchBody's content changes, swapped wholesale by
+     agentic-search.js. Not agent-scoped (no data-*-endpoint agent id) since a search spans every
+     agent - see AgenticSearchController's class comment. -->
+<div th:fragment="searchOverlay" id="agenticSearchOverlay" class="agentic-search-backdrop" hidden="hidden"
+     th:data-search-endpoint="@{/agentic/search}">
+    <div class="agentic-search-panel" role="dialog" aria-label="Search agent chats">
+        <div class="agentic-search-header">
+            <span class="agentic-search-title"><i class="fa fa-search"></i> Search</span>
+            <span class="agentic-search-actions">
+                <button type="button" id="agenticSearchBackBtn" class="agentic-search-btn" title="Back to results" hidden="hidden"><i class="fa fa-arrow-left"></i> Back</button>
+                <button type="button" id="agenticSearchCloseBtn" class="agentic-search-btn" title="Close" aria-label="Close"><i class="fa fa-times"></i></button>
+            </span>
+        </div>
+        <div class="agentic-search-input-row">
+            <input type="text" id="agenticSearchInput" class="agentic-search-input" placeholder="Search across all agent chats..." autocomplete="off" />
+        </div>
+        <div id="agenticSearchBody" class="agentic-search-body">
+            <!-- searchResults fragment (or a context view built client-side around the reused
+                 agent_chat :: messagesList fragment) lands here -->
+        </div>
+    </div>
+</div>
+
+<!-- Result list, returned by /agentic/search/query. Each row carries the data-* the click handler
+     needs to load its context view - agent name/id aren't part of the reused messagesList fragment
+     (that fragment only ever rendered inside a single already-known agent's page before now), so
+     they're threaded through here instead of re-fetched. -->
+<div th:fragment="searchResults" id="agenticSearchResults">
+    <div th:if="${#strings.isEmpty(query)}" class="agentic-search-empty">Type to search across all agent chats.</div>
+    <div th:if="${not #strings.isEmpty(query) and #lists.isEmpty(results)}" class="agentic-search-empty">No matches for &quot;<span th:text="${query}"></span>&quot;.</div>
+    <div class="agentic-search-result" th:each="r : ${results}"
+         th:data-search-context="${r.messageId}"
+         th:data-search-context-agent="${r.agentName}"
+         th:data-search-context-agent-id="${r.agentId}">
+        <div class="agentic-search-result-meta">
+            <span class="agentic-search-result-agent" th:text="${r.agentName}"></span>
+            <span class="agentic-search-result-role" th:text="${#strings.toLowerCase(r.role)}"></span>
+            <span class="agentic-search-result-date" th:text="${r.createdAt != null ? #dates.format(r.createdAt, 'yyyy-MM-dd HH:mm') : ''}"></span>
+        </div>
+        <div class="agentic-search-result-snippet" th:utext="${r.snippetHtml}"></div>
+    </div>
+    <div th:if="${not #lists.isEmpty(results) and #lists.size(results) == resultLimit}" class="agentic-search-limit-note">
+        Showing the first <span th:text="${resultLimit}"></span> matches - refine your search for more.
+    </div>
+</div>
+
+</body>
+</html>

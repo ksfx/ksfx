@@ -73,8 +73,30 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     }
 
     @Override
+    public List<AgentMessage> getMessagesForAgentAfter(Long agentId, Long afterMessageId, int limit)
+    {
+        // Already oldest-first by construction (ascending id) - no reversal needed, unlike the
+        // "before"/"recent" queries above.
+        return Ebean.find(AgentMessage.class).fetch("fromAgent")
+                .where().eq("agent.id", agentId).eq("internal", false).gt("id", afterMessageId)
+                .order().asc("id")
+                .setMaxRows(limit)
+                .findList();
+    }
+
+    @Override
     public List<AgentMessage> getAssistantMessagesWithUsage()
     {
         return Ebean.find(AgentMessage.class).where().eq("role", AgentMessageRole.ASSISTANT).isNotNull("inputTokens").order().desc("createdAt").findList();
+    }
+
+    @Override
+    public List<AgentMessage> searchMessages(String term, int limit)
+    {
+        return Ebean.find(AgentMessage.class).fetch("agent").fetch("fromAgent")
+                .where().eq("internal", false).icontains("content", term)
+                .order().desc("id")
+                .setMaxRows(limit)
+                .findList();
     }
 }

@@ -758,6 +758,13 @@
 
     hydrateHistory();
 
+    // Exposed globally so agentic-search.js can reuse this exact rendering logic for the message
+    // bubbles it injects into the search-context view (see its loadContext()), instead of
+    // duplicating attachment/tool-activity chip rendering there. Idempotent (see the comment on the
+    // function itself), so calling it again for a document that already contains hydrated history
+    // elsewhere is harmless.
+    window.agenticHydrateHistory = hydrateHistory;
+
     // If this agent had a turn already running when the page loaded (see AgentController.chat()'s
     // partialText/partialToolActivity and the '#agenticInProgressMessage' block in agent_chat.html),
     // catch up on it: show the busy indicator and keep appending everything still to come, exactly
