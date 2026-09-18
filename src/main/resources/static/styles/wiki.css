@@ -1,0 +1,691 @@
+/* The in-house Wiki - see WikiController. Two-pane layout (sidebar tree + main content), same idea
+   as agentic-chat.css's .agentic-layout but real pages (not an overlay) since wiki pages need
+   bookmarkable URLs. Independent class names/file, not shared with agentic-*.css, for the same
+   reason those overlays stay independently removable from each other. */
+
+.wiki-layout {
+    display: flex;
+    min-height: calc(100vh - 160px);
+    border: 1px solid #e4e4e9;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.wiki-sidebar {
+    width: 260px;
+    flex: 0 0 260px;
+    border-right: 1px solid #e4e4e9;
+    background: #fafafc;
+    overflow-y: auto;
+}
+
+/* Hidden on desktop - only shown (via the media query below) as the hamburger that opens the
+   sidebar as an overlay on narrow screens. Same pattern as .agentic-sidebar-toggle. */
+.wiki-sidebar-toggle {
+    display: none;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    color: inherit;
+    padding: 10px 14px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.wiki-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1040;
+}
+
+.wiki-backdrop--visible {
+    display: block;
+}
+
+/* Below this width the fixed 260px sidebar plus the page content no longer both fit - stack
+   instead, and turn the sidebar into a slide-in overlay (wiki-sidebar-toggle opens it, tapping the
+   backdrop or Escape closes it - see wiki.js). Same breakpoint and mechanics as the Agentic chat
+   sidebar. */
+@media (max-width: 768px) {
+    .wiki-layout {
+        display: block;
+    }
+
+    .wiki-sidebar-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        border-bottom: 1px solid #e4e4e9;
+    }
+
+    .wiki-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1050;
+        width: 82vw;
+        max-width: 300px;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+    }
+
+    .wiki-sidebar--open {
+        transform: translateX(0);
+    }
+}
+
+.wiki-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #666;
+    border-bottom: 1px solid #e4e4e9;
+}
+
+.wiki-sidebar-header-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.wiki-sidebar-header-actions button {
+    border: none;
+    background: transparent;
+    color: #5b5bd6;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 0.9rem;
+}
+
+.wiki-sidebar-header-actions button:hover {
+    color: #4a4ac2;
+}
+
+.wiki-switcher {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e4e4e9;
+}
+
+.wiki-switcher-select {
+    flex: 1 1 auto;
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 5px 6px;
+    font-size: 0.85rem;
+    background: #fff;
+    color: #333;
+}
+
+.wiki-switcher-new-btn {
+    border: 1px solid #d5d5de;
+    background: #f7f7fa;
+    border-radius: 6px;
+    padding: 5px 8px;
+    cursor: pointer;
+    color: #5b5bd6;
+}
+
+.wiki-switcher-new-btn:hover {
+    background: #ececf2;
+}
+
+.wiki-switcher-delete-btn {
+    color: #999;
+}
+
+.wiki-switcher-delete-btn:hover {
+    color: #d64545;
+}
+
+.wiki-sidebar-tree {
+    padding: 8px;
+}
+
+.wiki-tree-list {
+    list-style: none;
+    margin: 0;
+    padding-left: 14px;
+}
+
+.wiki-sidebar-tree > .wiki-tree-list {
+    padding-left: 0;
+}
+
+.wiki-tree-item {
+    margin: 2px 0;
+}
+
+.wiki-tree-folder-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 5px;
+    padding-right: 2px;
+}
+
+.wiki-tree-folder-row:hover {
+    background: #f0f0f6;
+}
+
+.wiki-tree-folder-label {
+    display: block;
+    padding: 3px 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #888;
+}
+
+.wiki-tree-folder-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.1s;
+}
+
+.wiki-tree-folder-row:hover .wiki-tree-folder-actions {
+    opacity: 1;
+}
+
+.wiki-tree-folder-actions button {
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 0.75rem;
+}
+
+.wiki-tree-folder-actions button:hover {
+    color: #333;
+}
+
+.wiki-tree-page-link {
+    display: block;
+    padding: 4px 6px;
+    border-radius: 5px;
+    font-size: 0.88rem;
+    color: #333;
+    text-decoration: none;
+}
+
+.wiki-tree-page-link:hover {
+    background: #eeeef7;
+    text-decoration: none;
+}
+
+.wiki-tree-page-link--active {
+    background: #5b5bd6;
+    color: #fff;
+}
+
+.wiki-main {
+    flex: 1 1 auto;
+    padding: 20px 26px;
+    overflow-y: auto;
+}
+
+.wiki-empty {
+    color: #888;
+    text-align: center;
+    padding: 60px 0;
+}
+
+.wiki-btn {
+    display: inline-block;
+    border: 1px solid #d5d5de;
+    background: #f7f7fa;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #333;
+    text-decoration: none;
+}
+
+.wiki-btn:hover {
+    background: #ececf2;
+    color: #333;
+    text-decoration: none;
+}
+
+.wiki-btn-primary {
+    background: #5b5bd6;
+    border-color: #5b5bd6;
+    color: #fff;
+}
+
+.wiki-btn-primary:hover {
+    background: #4a4ac2;
+    color: #fff;
+}
+
+.wiki-btn-danger {
+    color: #d64545;
+}
+
+.wiki-inline-form {
+    display: inline;
+}
+
+.wiki-page-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.wiki-page-title {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.wiki-page-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.wiki-page-meta {
+    color: #888;
+    font-size: 0.82rem;
+    margin: 4px 0 18px;
+}
+
+.wiki-page-meta > span {
+    margin-right: 4px;
+}
+
+.wiki-page-content {
+    max-width: 900px;
+}
+
+.wiki-edit-fields {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.wiki-field {
+    flex: 1 1 260px;
+}
+
+.wiki-field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.wiki-field input,
+.wiki-field select {
+    width: 100%;
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+.wiki-field input[readonly] {
+    background: #f2f2f6;
+    color: #666;
+}
+
+.wiki-edit-hint {
+    color: #888;
+    font-size: 0.8rem;
+    margin: -8px 0 14px;
+}
+
+.wiki-editor-mount {
+    max-width: 900px;
+}
+
+.wiki-edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    align-items: center;
+}
+
+.wiki-move {
+    margin-left: auto;
+    font-size: 0.8rem;
+}
+
+.wiki-move a {
+    color: #999;
+    text-decoration: none;
+}
+
+.wiki-move a:hover {
+    color: #5b5bd6;
+    text-decoration: underline;
+}
+
+.wiki-move select {
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 0.8rem;
+}
+
+.wiki-history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 900px;
+}
+
+.wiki-history-item {
+    border: 1px solid #e4e4e9;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+}
+
+.wiki-history-item-meta {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 6px;
+}
+
+.wiki-history-current-badge {
+    background: #5b5bd6;
+    color: #fff;
+    border-radius: 10px;
+    padding: 1px 9px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.wiki-history-preview pre {
+    background: #f7f7fa;
+    border-radius: 6px;
+    padding: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.82rem;
+    margin: 8px 0;
+}
+
+.wiki-attachments {
+    max-width: 900px;
+    margin-top: 28px;
+    border-top: 1px solid #e4e4e9;
+    padding-top: 12px;
+}
+
+.wiki-attachments-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.wiki-attachments-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+}
+
+.wiki-attachments-upload-label {
+    margin-bottom: 0;
+    font-weight: 400;
+}
+
+.wiki-attachments-empty {
+    color: #999;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.wiki-attachments-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.wiki-attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 4px;
+    border-bottom: 1px solid #f0f0f4;
+}
+
+.wiki-attachment-link {
+    color: #333;
+    text-decoration: none;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wiki-attachment-link:hover {
+    color: #5b5bd6;
+    text-decoration: none;
+}
+
+.wiki-attachment-meta {
+    display: flex;
+    gap: 10px;
+    color: #999;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.wiki-attachment-delete {
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+
+.wiki-attachment-delete:hover {
+    color: #d64545;
+}
+
+.wiki-create-first-form {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 14px;
+}
+
+.wiki-create-first-input {
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 0.9rem;
+    width: 260px;
+}
+
+/* Dark mode - layout.html swaps in bootstrap-dark.css site-wide based on the same session attribute
+   (see WikiController templates' th:classappend on .wiki-layout), but that only covers Bootstrap's
+   own components - everything under .wiki-* is custom and needs its own overrides here. */
+.wiki-dark {
+    border-color: #33333c;
+}
+
+.wiki-dark .wiki-sidebar {
+    background: #202027;
+    border-right-color: #33333c;
+}
+
+.wiki-dark .wiki-sidebar-toggle {
+    color: #d8d8e0;
+    border-bottom-color: #33333c;
+}
+
+.wiki-dark .wiki-sidebar-header,
+.wiki-dark .wiki-switcher {
+    color: #9a9aa5;
+    border-bottom-color: #33333c;
+}
+
+.wiki-dark .wiki-switcher-select,
+.wiki-dark .wiki-switcher-new-btn,
+.wiki-dark .wiki-btn {
+    background: #2b2b33;
+    border-color: #3a3a44;
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-switcher-new-btn:hover,
+.wiki-dark .wiki-btn:hover {
+    background: #33333d;
+}
+
+.wiki-dark .wiki-btn-primary {
+    background: #5b5bd6;
+    border-color: #5b5bd6;
+    color: #fff;
+}
+
+.wiki-dark .wiki-tree-folder-label {
+    color: #9a9aa5;
+}
+
+.wiki-dark .wiki-tree-folder-row:hover {
+    background: #2a2a32;
+}
+
+.wiki-dark .wiki-tree-folder-actions button {
+    color: #75757f;
+}
+
+.wiki-dark .wiki-tree-folder-actions button:hover {
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-sidebar-header-actions button {
+    color: #8f8fe8;
+}
+
+.wiki-dark .wiki-tree-page-link {
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-tree-page-link:hover {
+    background: #2a2a32;
+}
+
+.wiki-dark .wiki-page-meta,
+.wiki-dark .wiki-empty,
+.wiki-dark .wiki-history-item-meta {
+    color: #9a9aa5;
+}
+
+.wiki-dark .wiki-history-item {
+    border-color: #33333c;
+}
+
+.wiki-dark .wiki-history-preview pre {
+    background: #202027;
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-field input,
+.wiki-dark .wiki-field select,
+.wiki-dark .wiki-create-first-input {
+    background: #2b2b33;
+    border-color: #3a3a44;
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-field input[readonly] {
+    background: #26262d;
+    color: #9a9aa5;
+}
+
+.wiki-dark .wiki-edit-hint {
+    color: #75757f;
+}
+
+.wiki-dark .wiki-move a {
+    color: #75757f;
+}
+
+.wiki-dark .wiki-move a:hover {
+    color: #8f8fe8;
+}
+
+.wiki-dark .wiki-move select {
+    background: #2b2b33;
+    border-color: #3a3a44;
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-attachments {
+    border-top-color: #33333c;
+}
+
+.wiki-dark .wiki-attachments-title {
+    color: #9a9aa5;
+}
+
+.wiki-dark .wiki-attachment-item {
+    border-bottom-color: #2e2e37;
+}
+
+.wiki-dark .wiki-attachment-link {
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-attachment-link:hover {
+    color: #8f8fe8;
+}
+
+.wiki-dark .wiki-page-title {
+    color: #d8d8e0;
+}
+
+/* The vendored Toast UI Viewer bakes in its own light-theme text/background colors on the rendered
+   markdown (no dark theme vendored - see agentic-file-browser's editor, same situation) - override
+   broadly rather than chasing its exact selectors/specificity, scoped tightly to .wiki-page-content
+   so nothing outside a rendered wiki page is affected. */
+.wiki-dark .wiki-page-content {
+    background: #202027;
+    border-radius: 8px;
+    padding: 4px 14px;
+}
+
+.wiki-dark .wiki-page-content,
+.wiki-dark .wiki-page-content .toastui-editor-contents,
+.wiki-dark .wiki-page-content .toastui-editor-contents * {
+    color: #d8d8e0 !important;
+    background: transparent !important;
+}
+
+.wiki-dark .wiki-page-content .toastui-editor-contents pre,
+.wiki-dark .wiki-page-content .toastui-editor-contents code {
+    background: #2b2b33 !important;
+}
+
+.wiki-dark .wiki-page-content .toastui-editor-contents a {
+    color: #8f8fe8 !important;
+}

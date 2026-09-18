@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Recursive folder tree, called from every wiki page (index/page/edit/history) with the root
+     WikiController.WikiTreeNode built from real WikiFolder rows + WikiPage.folder (see buildTree -
+     folders are real, manageable rows now, not derived from path strings, so an empty folder still
+     renders). Self-references by full template path (not "this") for the recursive case, same as
+     every other cross-template th:replace in this app. ${currentPageId}, when present in the
+     calling page's model, highlights the page currently being viewed/edited - absent (null) on the
+     index page, where nothing is active. ${currentWiki} isn't an explicit fragment parameter (only
+     ${node} varies per recursive call) - it's inherited from the calling page's own model, same as
+     ${currentPageId}.
+
+     Folder action icons (new page/new subfolder/rename/delete) are hover-revealed buttons with
+     data-* attributes, handled by one delegated click listener in wiki.js rather than per-row
+     listeners - same reasoning as the file browser/schedule overlays' click delegation. -->
+<ul th:fragment="treeChildren(node)" class="wiki-tree-list">
+    <li th:each="folder : ${node.folders}" class="wiki-tree-item wiki-tree-item--folder">
+        <div class="wiki-tree-folder-row">
+            <span class="wiki-tree-folder-label"><i class="fa fa-folder-o"></i> <span th:text="${folder.name}"></span></span>
+            <span class="wiki-tree-folder-actions">
+                <button type="button" th:data-folder-newpage="${folder.folderId}" title="New page here" aria-label="New page here"><i class="fa fa-file-o"></i></button>
+                <button type="button" th:data-folder-newfolder="${folder.folderId}" title="New subfolder" aria-label="New subfolder"><i class="fa fa-folder-o"></i></button>
+                <button type="button" th:data-folder-rename="${folder.folderId}" th:data-folder-rename-name="${folder.name}" title="Rename" aria-label="Rename"><i class="fa fa-pencil"></i></button>
+                <button type="button" th:data-folder-delete="${folder.folderId}" th:data-folder-delete-name="${folder.name}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
+            </span>
+        </div>
+        <div th:replace="~{wiki/wiki_tree :: treeChildren(node=${folder})}"></div>
+    </li>
+    <li th:each="p : ${node.pages}" class="wiki-tree-item wiki-tree-item--page">
+        <a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${p.id})}" class="wiki-tree-page-link"
+           th:classappend="${currentPageId != null and p.id == currentPageId} ? ' wiki-tree-page-link--active' : ''">
+            <i class="fa fa-file-text-o"></i>
+            <span th:text="${p.title}"></span>
+        </a>
+    </li>
+</ul>
+
+<!-- Wiki switcher dropdown, shown above the tree on every wiki-scoped page (see WikiController's
+     class comment on multi-wiki support). Parameterless like every other fragment here - reads
+     ${allWikis}/${currentWiki} straight from the calling page's model. "+ New wiki" is a separate
+     button rather than a special dropdown option, so it can submit the always-present,
+     Thymeleaf-rendered #wikiCreateForm below (CSRF handled automatically by Thymeleaf for a real
+     th:action form) instead of needing to fabricate a CSRF token from scratch in JS for a
+     dynamically-built one - see wiki.js. -->
+<div th:fragment="switcher" class="wiki-switcher">
+    <select id="wikiSwitcherSelect" class="wiki-switcher-select" title="Switch wiki">
+        <option th:each="w : ${allWikis}" th:value="${w.id}" th:text="${w.name}"
+                th:selected="${currentWiki != null and w.id == currentWiki.id}"></option>
+    </select>
+    <button type="button" id="wikiSwitcherNewBtn" class="wiki-switcher-new-btn" title="New wiki" aria-label="New wiki"><i class="fa fa-plus"></i></button>
+    <!-- Deletes the whole CURRENT wiki - rare and maximally destructive, so wiki.js guards it with
+         a confirm() plus typing the wiki's name (a plain confirm is too easy to click through for
+         "everything in this wiki is gone"). -->
+    <button type="button" id="wikiDeleteBtn" class="wiki-switcher-new-btn wiki-switcher-delete-btn" title="Delete this wiki" aria-label="Delete this wiki"
+            th:data-wiki-name="${currentWiki.name}"><i class="fa fa-trash-o"></i></button>
+    <form id="wikiCreateForm" th:action="@{/wiki/create}" method="post" hidden="hidden">
+        <input type="hidden" id="wikiCreateNameInput" name="name" />
+    </form>
+    <form id="wikiDeleteForm" th:action="@{/wiki/{wikiId}/delete(wikiId=${currentWiki.id})}" method="post" hidden="hidden"></form>
+</div>
+
+<!-- The whole sidebar (switcher + pages header + tree), one definition shared by
+     index/page/edit/history so those four templates don't each duplicate this structure. Order
+     reflects the hierarchy: the wiki switcher comes FIRST (it decides which wiki everything below
+     acts on), then the "Pages" row whose new-page/new-folder buttons are scoped to that wiki
+     (data-folder-newpage/-newfolder with no value = root, same handler as the per-folder ones in
+     treeChildren above), then the tree itself.
+
+     The backdrop + hamburger toggle around it are the same narrow-screen pattern as the Agentic
+     chat's sidebar (see agentic-chat.css/.js): both invisible on desktop; below 768px the sidebar
+     becomes a slide-in overlay, the hamburger (rendered in normal flow, so it sits as a small bar
+     above the page content once .wiki-layout stacks) opens it, backdrop tap or Escape closes it. -->
+<th:block th:fragment="sidebar">
+    <div class="wiki-backdrop" id="wikiBackdrop"></div>
+    <button type="button" class="wiki-sidebar-toggle" id="wikiSidebarToggle" title="Wiki navigation" aria-label="Toggle wiki navigation"><i class="fa fa-bars"></i> <span th:text="${currentWiki.name}"></span></button>
+    <aside class="wiki-sidebar"
+           th:data-csrf-header="${_csrf.headerName}" th:data-csrf-token="${_csrf.token}"
+           th:data-wiki-id="${currentWiki.id}">
+        <div th:replace="wiki/wiki_tree :: switcher"></div>
+        <div class="wiki-sidebar-header">
+            <span>Pages</span>
+            <span class="wiki-sidebar-header-actions">
+                <button type="button" data-folder-newpage="" title="New page" aria-label="New page"><i class="fa fa-file-o"></i></button>
+                <button type="button" data-folder-newfolder="" title="New folder" aria-label="New folder"><i class="fa fa-folder-o"></i></button>
+            </span>
+        </div>
+        <!-- th:insert (not th:replace) - keeps this wrapping div (and its padding) instead of being
+             replaced outright by the fragment's own <ul> root tag. -->
+        <div class="wiki-sidebar-tree" th:insert="~{wiki/wiki_tree :: treeChildren(node=${tree})}"></div>
+    </aside>
+</th:block>
+
+</body>
+</html>

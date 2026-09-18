@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title th:text="'KSFX - Wiki - History - ' + ${page.title}">KSFX - Wiki</title>
+</head>
+<body>
+<link rel="stylesheet" th:href="@{/styles/wiki.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/wiki/{wikiId}/(wikiId=${currentWiki.id})}" th:text="${currentWiki.name}">Wiki</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${page.id})}" th:text="${page.title}">Page</a></li>
+        <li class="breadcrumb-item active">History</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div class="wiki-layout" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' wiki-dark' : ''">
+    <div th:replace="wiki/wiki_tree :: sidebar"></div>
+
+    <div class="wiki-main">
+        <h1 class="wiki-page-title" th:text="'History - ' + ${page.title}">History</h1>
+
+        <ul class="wiki-history-list">
+            <li th:each="v, iter : ${versions}" class="wiki-history-item">
+                <div class="wiki-history-item-meta">
+                    <span th:if="${iter.first}" class="wiki-history-current-badge">Current</span>
+                    <span th:if="${v.editedByAgent != null}">Agent <strong th:text="${v.editedByAgent.name}"></strong></span>
+                    <span th:if="${v.editedByUser != null}"><strong th:text="${v.editedByUser.username}"></strong></span>
+                    <span th:if="${v.editedByAgent == null and v.editedByUser == null}">Unknown</span>
+                    <span th:text="${#dates.format(v.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                </div>
+                <details class="wiki-history-preview">
+                    <summary>Preview</summary>
+                    <pre th:text="${v.content}"></pre>
+                </details>
+                <form th:unless="${iter.first}" th:action="@{/wiki/{wikiId}/page/{pageId}/restore(wikiId=${currentWiki.id},pageId=${page.id})}" method="post" class="wiki-inline-form"
+                      onsubmit="return confirm('Restore this version? This adds a new version on top of the current one.');">
+                    <input type="hidden" name="versionId" th:value="${v.id}" />
+                    <button type="submit" class="wiki-btn"><i class="fa fa-undo"></i> Restore</button>
+                </form>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+<script th:src="@{/script/wiki.js}"></script>
+</body>
+</html>

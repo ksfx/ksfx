@@ -1175,6 +1175,29 @@ public class ClaudeCliSessionService
             schedulingPrompt += directory;
         }
 
+        schedulingPrompt += "\nDu kannst außerdem die KSFX-Wikis lesen und beschreiben (Markdown-Seiten, organisiert "
+                + "in Ordnern) - ebenfalls per curl mit $KSFX_AGENT_TOKEN. Deine Schreibzugriffe werden automatisch "
+                + "dir als Agent zugeordnet und versioniert.\n"
+                + "Endpunkte:\n"
+                + "- GET  /agentic/api/wiki/wikis                  -> alle Wikis (id + name)\n"
+                + "- GET  /agentic/api/wiki/{wikiId}/pages         -> alle Seiten eines Wikis (pageId, folderPath, title)\n"
+                + "- GET  /agentic/api/wiki/{wikiId}/page/{pageId} -> eine Seite inkl. Markdown-Content\n"
+                + "- GET  /agentic/api/wiki/{wikiId}/page?folderPath=team/onboarding&title=Setup -> Seite per Ort statt id\n"
+                + "- POST /agentic/api/wiki/{wikiId}/page          -> Seite anlegen/aktualisieren (Upsert), JSON-Body: "
+                + "{\"folderPath\":\"team/onboarding\",\"title\":\"Setup\",\"content\":\"# Markdown...\"} - "
+                + "folderPath ist optional (weglassen = oberste Ebene), fehlende Ordner werden automatisch angelegt; "
+                + "alternativ {\"pageId\":<id>,...} für gezieltes Aktualisieren\n"
+                + "- POST /agentic/api/wiki/asset                  -> Datei-Upload (multipart, Feld \"file\"; optional "
+                + "Feld \"pageId\" um die Datei als Anhang an eine Seite zu hängen; ohne pageId bekommst du eine URL "
+                + "zum Einbetten in Markdown zurück)\n"
+                + "Beispiel-Aufruf:\n"
+                + "curl -s -X POST " + agentApiBaseUrl + "/agentic/api/wiki/1/page "
+                + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
+                + "-d '{\"folderPath\":\"notizen\",\"title\":\"Mein Bericht\",\"content\":\"# Titel\\n\\nInhalt...\"}'\n"
+                + "WICHTIG: Ein POST auf eine bestehende Seite (gleicher folderPath + title, oder pageId) ersetzt "
+                + "deren Inhalt komplett (als neue Version, alte bleiben erhalten). Zum Ergänzen also erst die Seite "
+                + "lesen, dann den erweiterten Gesamtinhalt schreiben.\n";
+
         schedulingPrompt += "\nFür Coding-Aufgaben (z.B. Git-Checkouts, größere Projektstrukturen) legst du diese, "
                 + "sofern nicht explizit anders gewünscht, unter einem Unterordner code/ in deinem Arbeitsverzeichnis "
                 + "an, nicht direkt im Hauptverzeichnis.\n";

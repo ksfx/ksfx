@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title th:text="'KSFX - Wiki - ' + ${page.title}">KSFX - Wiki</title>
+</head>
+<body>
+<link rel="stylesheet" th:href="@{/styles/wiki.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/wiki/{wikiId}/(wikiId=${currentWiki.id})}" th:text="${currentWiki.name}">Wiki</a></li>
+        <li class="breadcrumb-item active" th:text="${page.title}">Page</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div class="wiki-layout" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' wiki-dark' : ''">
+    <div th:replace="wiki/wiki_tree :: sidebar"></div>
+
+    <div class="wiki-main">
+        <div class="wiki-page-toolbar">
+            <h1 class="wiki-page-title" th:text="${page.title}">Title</h1>
+            <span class="wiki-page-actions">
+                <a th:href="@{/wiki/{wikiId}/page/{pageId}/edit(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-pencil"></i> Edit</a>
+                <a th:href="@{/wiki/{wikiId}/page/{pageId}/history(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-history"></i> History</a>
+                <form th:action="@{/wiki/{wikiId}/page/{pageId}/delete(wikiId=${currentWiki.id},pageId=${page.id})}" method="post" class="wiki-inline-form"
+                      onsubmit="return confirm('Delete this page and its whole history?');">
+                    <button type="submit" class="wiki-btn wiki-btn-danger"><i class="fa fa-trash-o"></i> Delete</button>
+                </form>
+            </span>
+        </div>
+        <div class="wiki-page-meta">
+            <span th:if="${version != null and version.editedByAgent != null}">Last edited by agent <strong th:text="${version.editedByAgent.name}"></strong></span>
+            <span th:if="${version != null and version.editedByUser != null}">Last edited by <strong th:text="${version.editedByUser.username}"></strong></span>
+            <span th:if="${version != null}" th:text="' on ' + ${#dates.format(version.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+        </div>
+
+        <textarea id="wikiPageMarkdown" hidden="hidden" th:text="${version != null ? version.content : ''}"></textarea>
+        <div id="wikiPageViewer" class="wiki-page-content"
+             th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
+             th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"></div>
+
+        <div class="wiki-attachments">
+            <div class="wiki-attachments-header">
+                <span class="wiki-attachments-title"><i class="fa fa-paperclip"></i> Attachments</span>
+                <!-- No separate upload button: picking files IS the upload (wiki.js submits this
+                     form on the input's change event), one click less for the common case. -->
+                <form th:action="@{/wiki/{wikiId}/page/{pageId}/attachment/upload(wikiId=${currentWiki.id},pageId=${page.id})}"
+                      method="post" enctype="multipart/form-data" class="wiki-inline-form">
+                    <label class="wiki-btn wiki-attachments-upload-label">
+                        <i class="fa fa-upload"></i> Upload
+                        <input type="file" id="wikiAttachmentInput" name="files" multiple="multiple" hidden="hidden" />
+                    </label>
+                </form>
+            </div>
+            <p class="wiki-attachments-empty" th:if="${#lists.isEmpty(attachments)}">No attachments.</p>
+            <ul class="wiki-attachments-list" th:unless="${#lists.isEmpty(attachments)}">
+                <li th:each="a : ${attachments}" class="wiki-attachment-item">
+                    <a th:href="@{/wiki/assets/{id}(id=${a.id})}" class="wiki-attachment-link" target="_blank">
+                        <i class="fa fa-file-o"></i> <span th:text="${a.fileName}"></span>
+                    </a>
+                    <span class="wiki-attachment-meta">
+                        <span th:if="${a.fileSize != null}"
+                              th:text="${a.fileSize < 1024 ? a.fileSize + ' B' : (a.fileSize < 1048576 ? #numbers.formatDecimal(a.fileSize / 1024.0, 1, 1) + ' KB' : #numbers.formatDecimal(a.fileSize / 1048576.0, 1, 1) + ' MB')}"></span>
+                        <span th:if="${a.uploadedByAgent != null}" th:text="'agent ' + ${a.uploadedByAgent.name}"></span>
+                        <span th:if="${a.uploadedByUser != null}" th:text="${a.uploadedByUser.username}"></span>
+                        <span th:text="${#dates.format(a.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                    </span>
+                    <!-- confirm() lives in wiki.js (delegated submit listener keyed on the class +
+                         data-filename) rather than an inline onsubmit - a filename containing
+                         quotes would break inline-generated JS. -->
+                    <form th:action="@{/wiki/{wikiId}/page/{pageId}/attachment/{assetId}/delete(wikiId=${currentWiki.id},pageId=${page.id},assetId=${a.id})}"
+                          method="post" class="wiki-inline-form wiki-attachment-delete-form" th:data-filename="${a.fileName}">
+                        <button type="submit" class="wiki-attachment-delete" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+<script th:src="@{/script/wiki.js}"></script>
+</body>
+</html>

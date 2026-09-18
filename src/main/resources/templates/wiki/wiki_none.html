@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Wiki</title>
+</head>
+<body>
+<link rel="stylesheet" th:href="@{/styles/wiki.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Wiki</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' wiki-dark' : ''">
+    <div class="wiki-empty">
+        <p>There are no wikis yet.</p>
+        <form th:action="@{/wiki/create}" method="post" class="wiki-create-first-form">
+            <input type="text" name="name" placeholder="e.g. Project Phoenix" required="required" class="wiki-create-first-input" />
+            <button type="submit" class="wiki-btn wiki-btn-primary">Create wiki</button>
+        </form>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title th:text="${isNew} ? 'KSFX - Wiki - New page' : 'KSFX - Wiki - Edit ' + ${title}">KSFX - Wiki</title>
+</head>
+<body>
+<link rel="stylesheet" th:href="@{/styles/wiki.css}" />
+<link rel="stylesheet" th:href="@{/vendor/toastui-editor/toastui-editor.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/wiki/{wikiId}/(wikiId=${currentWiki.id})}" th:text="${currentWiki.name}">Wiki</a></li>
+        <li class="breadcrumb-item active" th:text="${isNew} ? 'New page' : 'Edit'">Edit</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div class="wiki-layout" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' wiki-dark' : ''">
+    <div th:replace="wiki/wiki_tree :: sidebar"></div>
+
+    <div class="wiki-main">
+        <form id="wikiEditForm" th:action="@{/wiki/{wikiId}/page/save(wikiId=${currentWiki.id})}" method="post" onsubmit="return false;">
+            <input type="hidden" name="pageId" th:if="${pageId != null}" th:value="${pageId}" />
+
+            <!-- New page: the target folder is already decided by which "new page" button was
+                 clicked (a folder's row action, or the header's root-level one) - it rides along as
+                 a hidden field instead of asking again. When EDITING, moving is possible but rare,
+                 so it hides behind the small "Move to another folder" link below the editor (see
+                 wiki.js) instead of a permanently visible form field. -->
+            <input type="hidden" name="folderId" th:if="${isNew}" th:value="${folderId}" />
+
+            <div class="wiki-edit-fields">
+                <div class="wiki-field">
+                    <label for="wikiEditTitle">Title</label>
+                    <input type="text" id="wikiEditTitle" name="title" th:value="${title}" required="required" autofocus="autofocus" />
+                </div>
+            </div>
+            <p class="wiki-edit-hint" th:if="${isNew}">The page's filename is generated automatically from the title.</p>
+
+            <div id="wikiEditorMount" class="wiki-editor-mount"
+                 th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
+                 th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"
+                 th:data-asset-upload-endpoint="@{/wiki/asset/upload}"
+                 th:data-csrf-header="${_csrf.headerName}"
+                 th:data-csrf-token="${_csrf.token}"></div>
+            <textarea id="wikiEditContent" name="content" hidden="hidden" th:text="${content}"></textarea>
+
+            <div class="wiki-edit-actions">
+                <button type="button" id="wikiEditSaveBtn" class="wiki-btn wiki-btn-primary"><i class="fa fa-check"></i> Save</button>
+                <a th:if="${!isNew}" th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${pageId})}" class="wiki-btn">Cancel</a>
+                <a th:if="${isNew}" th:href="@{/wiki/{wikiId}/(wikiId=${currentWiki.id})}" class="wiki-btn">Cancel</a>
+
+                <!-- Moving a page is rare - a quiet link that reveals the folder select on demand
+                     (see wiki.js). The select is in the form (and submits its pre-selected current
+                     folder) whether revealed or not, so an untouched save never moves anything. -->
+                <span class="wiki-move" th:if="${!isNew}">
+                    <a href="#" id="wikiMoveToggle">Move to another folder&#8230;</a>
+                    <span id="wikiMoveField" hidden="hidden">
+                        <select id="wikiEditFolder" name="folderId">
+                            <option value="">(top level)</option>
+                            <option th:each="f : ${folderOptions}" th:value="${f.id}"
+                                    th:text="${#strings.repeat('-- ', f.depth)} + ${f.name}"
+                                    th:selected="${folderId != null and f.id == folderId}"></option>
+                        </select>
+                    </span>
+                </span>
+            </div>
+        </form>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+<script th:src="@{/script/wiki.js}"></script>
+</body>
+</html>
