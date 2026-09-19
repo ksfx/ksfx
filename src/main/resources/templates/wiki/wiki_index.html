@@ -20,7 +20,9 @@
     <div class="wiki-main">
         <div class="wiki-empty" th:if="${pageCount == 0}">
             <p>This wiki is empty.</p>
-            <a th:href="@{/wiki/{wikiId}/page/new(wikiId=${currentWiki.id})}" class="wiki-btn wiki-btn-primary">Create the first page</a>
+            <!-- title=Home nudges toward the home-page convention: a top-level page titled "Home"
+                 (slug home.md) becomes what /wiki/{id}/ lands on - see WikiController.index. -->
+            <a th:href="@{/wiki/{wikiId}/page/new(wikiId=${currentWiki.id},title='Home')}" class="wiki-btn wiki-btn-primary">Create the first page</a>
         </div>
         <div class="wiki-empty" th:unless="${pageCount == 0}">
             <p>Pick a page from the tree, or create a new one.</p>

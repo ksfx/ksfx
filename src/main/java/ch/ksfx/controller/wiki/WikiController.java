@@ -113,10 +113,22 @@ public class WikiController
         return "redirect:/wiki/";
     }
 
+    /**
+     * A top-level page with slug "home.md" is the wiki's home page by convention (same convention
+     * as GitHub wikis - no schema/config needed, and the empty-wiki "Create the first page" flow
+     * nudges toward it by pre-filling the title "Home") - landing on the wiki goes straight there.
+     * Without one, the pick-a-page index renders as before.
+     */
     @GetMapping("/{wikiId}/")
     public String index(@PathVariable Long wikiId, Model model)
     {
         Wiki wiki = requireWiki(wikiId);
+        WikiPage homePage = wikiPageDAO.getPageForFolderAndSlug(wikiId, null, "home.md");
+
+        if (homePage != null) {
+            return "redirect:/wiki/" + wikiId + "/page/" + homePage.getId();
+        }
+
         List<WikiPage> allPages = wikiPageDAO.getAllWikiPages(wikiId);
 
         baseModel(model, wiki);
@@ -140,9 +152,15 @@ public class WikiController
         return "wiki/wiki_page";
     }
 
-    /** Title-only creation form, optionally pre-scoped to a folder (see the sidebar's "New page here"). */
+    /**
+     * Title-only creation form, optionally pre-scoped to a folder (see the sidebar's "New page
+     * here"). {@code title} pre-fills the title field - currently only used by the empty-wiki
+     * "Create the first page" button to suggest "Home", nudging toward the home-page convention
+     * (see {@link #index}).
+     */
     @GetMapping("/{wikiId}/page/new")
-    public String newPage(@PathVariable Long wikiId, @RequestParam(required = false) Long folderId, Model model)
+    public String newPage(@PathVariable Long wikiId, @RequestParam(required = false) Long folderId,
+                           @RequestParam(defaultValue = "") String title, Model model)
     {
         Wiki wiki = requireWiki(wikiId);
         WikiFolder folder = folderId != null ? requireFolder(wikiId, folderId) : null;
@@ -150,7 +168,7 @@ public class WikiController
         baseModel(model, wiki);
         model.addAttribute("isNew", true);
         model.addAttribute("pageId", null);
-        model.addAttribute("title", "");
+        model.addAttribute("title", title);
         model.addAttribute("content", "");
         model.addAttribute("folderId", folderId);
         model.addAttribute("folderOptions", folderOptions(wikiId));
