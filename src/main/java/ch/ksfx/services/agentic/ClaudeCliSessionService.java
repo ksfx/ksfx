@@ -1198,6 +1198,31 @@ public class ClaudeCliSessionService
                 + "deren Inhalt komplett (als neue Version, alte bleiben erhalten). Zum Ergänzen also erst die Seite "
                 + "lesen, dann den erweiterten Gesamtinhalt schreiben.\n";
 
+        schedulingPrompt += "\nDu kannst außerdem die KSFX-Issue-Tracker vollständig nutzen (Issues lesen/anlegen/"
+                + "aktualisieren, kommentieren, Dateien anhängen) - ebenfalls per curl mit $KSFX_AGENT_TOKEN. Deine "
+                + "Issues und Kommentare werden automatisch dir als Agent zugeordnet.\n"
+                + "Endpunkte:\n"
+                + "- GET  /agentic/api/issues/trackers                     -> alle Tracker (id + name)\n"
+                + "- GET  /agentic/api/issues/assignees                    -> mögliche Assignees (Menschen und Agenten, als \"user:{id}\"/\"agent:{id}\")\n"
+                + "- GET  /agentic/api/issues/{trackerId}/issues?status=open|closed|all -> Issue-Liste (open = OPEN + IN_PROGRESS)\n"
+                + "- GET  /agentic/api/issues/{trackerId}/issue/{issueId}  -> ein Issue inkl. Beschreibung, Kommentaren und Anhängen\n"
+                + "- POST /agentic/api/issues/{trackerId}/issue            -> Issue anlegen, JSON-Body: "
+                + "{\"title\":\"...\",\"description\":\"Markdown...\",\"priority\":\"LOW|MEDIUM|HIGH|CRITICAL\","
+                + "\"labels\":[\"bug\",\"urgent\"],\"assignee\":\"agent:2\"} - nur title ist Pflicht; unbekannte "
+                + "Label-Namen werden automatisch angelegt\n"
+                + "- POST /agentic/api/issues/{trackerId}/issue/{issueId}  -> Issue aktualisieren (partiell: nur "
+                + "gesendete Felder ändern sich, z.B. nur {\"status\":\"CLOSED\"}; assignee \"\" = niemand)\n"
+                + "- POST /agentic/api/issues/{trackerId}/issue/{issueId}/comment -> Kommentar, JSON-Body: {\"content\":\"Markdown...\"}\n"
+                + "- POST /agentic/api/issues/asset                        -> Datei-Upload (multipart, Feld \"file\"; "
+                + "optional Feld \"issueId\" um die Datei als Anhang an ein Issue zu hängen)\n"
+                + "Status-Werte: OPEN, IN_PROGRESS, CLOSED. Beispiel-Aufruf:\n"
+                + "curl -s -X POST " + agentApiBaseUrl + "/agentic/api/issues/1/issue "
+                + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
+                + "-d '{\"title\":\"Login schlägt fehl\",\"description\":\"## Details\\n...\",\"priority\":\"HIGH\",\"labels\":[\"bug\"]}'\n"
+                + "WICHTIG: Wenn dir ein Issue zugewiesen wird oder du eines bearbeitest, halte den Status aktuell "
+                + "(IN_PROGRESS beim Start, CLOSED wenn erledigt) und dokumentiere Ergebnisse als Kommentar statt "
+                + "die Beschreibung zu überschreiben.\n";
+
         schedulingPrompt += "\nFür Coding-Aufgaben (z.B. Git-Checkouts, größere Projektstrukturen) legst du diese, "
                 + "sofern nicht explizit anders gewünscht, unter einem Unterordner code/ in deinem Arbeitsverzeichnis "
                 + "an, nicht direkt im Hauptverzeichnis.\n";

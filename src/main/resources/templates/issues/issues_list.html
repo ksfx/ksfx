@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title th:text="'KSFX - Issues - ' + ${currentTracker.name}">KSFX - Issues</title>
+</head>
+<body>
+<link rel="stylesheet" th:href="@{/styles/issues.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" th:text="${currentTracker.name}">Tracker</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div class="issues-layout" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' issues-dark' : ''">
+    <div th:replace="issues/issues_sidebar :: sidebar"></div>
+
+    <div class="issues-main">
+        <div class="issues-empty" th:if="${#lists.isEmpty(issues)}">
+            <p th:if="${filter == 'closed'}">No closed issues.</p>
+            <p th:unless="${filter == 'closed'}">No issues here yet.</p>
+            <a th:href="@{/issues/{trackerId}/issue/new(trackerId=${currentTracker.id})}" class="issues-btn issues-btn-primary">Create the first issue</a>
+        </div>
+
+        <ul class="issues-list" th:unless="${#lists.isEmpty(issues)}">
+            <li th:each="i : ${issues}" class="issues-list-item">
+                <div class="issues-list-item-main">
+                    <a th:href="@{/issues/{trackerId}/issue/{issueId}(trackerId=${currentTracker.id},issueId=${i.id})}" class="issues-list-item-title">
+                        <span th:replace="issues/issues_sidebar :: statusBadge(status=${i.status})"></span>
+                        <span th:text="${i.title}"></span>
+                    </a>
+                    <span th:replace="issues/issues_sidebar :: labelChips(issueLabels=${i.labels})"></span>
+                </div>
+                <div class="issues-list-item-meta">
+                    <span class="issues-list-item-number" th:text="'#' + ${i.id}"></span>
+                    <span th:replace="issues/issues_sidebar :: priorityBadge(priority=${i.priority})"></span>
+                    <span th:if="${i.assigneeAgent != null}" class="issues-assignee"><i class="fa fa-android"></i> <span th:text="${i.assigneeAgent.name}"></span></span>
+                    <span th:if="${i.assigneeUser != null}" class="issues-assignee"><i class="fa fa-user-o"></i> <span th:text="${i.assigneeUser.username}"></span></span>
+                    <span th:if="${commentCounts[i.id] != null and commentCounts[i.id] > 0}" class="issues-comment-count"><i class="fa fa-comment-o"></i> <span th:text="${commentCounts[i.id]}"></span></span>
+                    <span class="issues-updated" th:text="${#dates.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}"></span>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+<script th:src="@{/script/issues.js}"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title th:text="${isNew} ? 'KSFX - Issues - New issue' : 'KSFX - Issues - Edit #' + ${issue.id}">KSFX - Issues</title>
+</head>
+<body>
+<link rel="stylesheet" th:href="@{/styles/issues.css}" />
+<link rel="stylesheet" th:href="@{/vendor/toastui-editor/toastui-editor.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id})}" th:text="${currentTracker.name}">Tracker</a></li>
+        <li class="breadcrumb-item active" th:text="${isNew} ? 'New issue' : 'Edit #' + ${issue.id}">Edit</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div class="issues-layout" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' issues-dark' : ''">
+    <div th:replace="issues/issues_sidebar :: sidebar"></div>
+
+    <div class="issues-main">
+        <form id="issuesEditForm" th:action="@{/issues/{trackerId}/issue/save(trackerId=${currentTracker.id})}" method="post" onsubmit="return false;">
+            <input type="hidden" name="issueId" th:if="${!isNew}" th:value="${issue.id}" />
+
+            <div class="issues-field">
+                <label for="issuesEditTitle">Title</label>
+                <input type="text" id="issuesEditTitle" name="title" th:value="${isNew} ? '' : ${issue.title}" required="required" autofocus="autofocus" />
+            </div>
+
+            <div class="issues-edit-fields">
+                <div class="issues-field">
+                    <label for="issuesEditStatus">Status</label>
+                    <select id="issuesEditStatus" name="status">
+                        <option th:each="s : ${allStatuses}" th:value="${s.name()}"
+                                th:text="${s.name() == 'IN_PROGRESS'} ? 'In progress' : ${#strings.capitalize(#strings.toLowerCase(s.name()))}"
+                                th:selected="${!isNew and issue.status == s}"></option>
+                    </select>
+                </div>
+                <div class="issues-field">
+                    <label for="issuesEditPriority">Priority</label>
+                    <select id="issuesEditPriority" name="priority">
+                        <option th:each="p : ${allPriorities}" th:value="${p.name()}"
+                                th:text="${#strings.capitalize(#strings.toLowerCase(p.name()))}"
+                                th:selected="${isNew} ? ${p.name() == 'MEDIUM'} : ${issue.priority == p}"></option>
+                    </select>
+                </div>
+                <div class="issues-field">
+                    <label for="issuesEditAssignee">Assignee</label>
+                    <select id="issuesEditAssignee" name="assignee">
+                        <option value="">(unassigned)</option>
+                        <optgroup label="Agents">
+                            <option th:each="a : ${allAgents}" th:value="'agent:' + ${a.id}" th:text="${a.name}"
+                                    th:selected="${!isNew and issue.assigneeAgent != null and issue.assigneeAgent.id == a.id}"></option>
+                        </optgroup>
+                        <optgroup label="Users">
+                            <option th:each="u : ${allUsers}" th:value="'user:' + ${u.id}" th:text="${u.username}"
+                                    th:selected="${!isNew and issue.assigneeUser != null and issue.assigneeUser.id == u.id}"></option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+
+            <div class="issues-field" th:unless="${#lists.isEmpty(trackerLabels)}">
+                <label>Labels</label>
+                <div class="issues-label-checkboxes">
+                    <label th:each="l : ${trackerLabels}" class="issues-label-checkbox">
+                        <input type="checkbox" name="labelIds" th:value="${l.id}" th:checked="${selectedLabelIds.contains(l.id)}" />
+                        <span class="issues-label-chip" th:style="'background:' + ${l.color}" th:text="${l.name}"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="issues-field">
+                <label>Description</label>
+                <div id="issuesEditorMount" class="issues-editor-mount"
+                     th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
+                     th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"
+                     th:data-asset-upload-endpoint="@{/issues/asset/upload}"
+                     th:data-csrf-header="${_csrf.headerName}"
+                     th:data-csrf-token="${_csrf.token}"></div>
+                <textarea id="issuesEditContent" name="description" hidden="hidden" th:text="${isNew} ? '' : ${issue.description}"></textarea>
+            </div>
+
+            <div class="issues-edit-actions">
+                <button type="button" id="issuesEditSaveBtn" class="issues-btn issues-btn-primary"><i class="fa fa-check"></i> Save</button>
+                <a th:if="${!isNew}" th:href="@{/issues/{trackerId}/issue/{issueId}(trackerId=${currentTracker.id},issueId=${issue.id})}" class="issues-btn">Cancel</a>
+                <a th:if="${isNew}" th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id})}" class="issues-btn">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+<script th:src="@{/script/issues.js}"></script>
+</body>
+</html>

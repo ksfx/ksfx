@@ -1,0 +1,788 @@
+/* The built-in issue tracker - see IssueController. Same two-pane layout and visual language as
+   wiki.css (sidebar + main, same buttons/colors/breakpoint), independent class names/file per the
+   established one-feature-one-stylesheet convention. */
+
+.issues-layout {
+    display: flex;
+    min-height: calc(100vh - 160px);
+    border: 1px solid #e4e4e9;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.issues-sidebar {
+    width: 260px;
+    flex: 0 0 260px;
+    border-right: 1px solid #e4e4e9;
+    background: #fafafc;
+    overflow-y: auto;
+}
+
+.issues-sidebar-toggle {
+    display: none;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    color: inherit;
+    padding: 10px 14px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.issues-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1040;
+}
+
+.issues-backdrop--visible {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .issues-layout {
+        display: block;
+    }
+
+    .issues-sidebar-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        border-bottom: 1px solid #e4e4e9;
+    }
+
+    .issues-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1050;
+        width: 82vw;
+        max-width: 300px;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+    }
+
+    .issues-sidebar--open {
+        transform: translateX(0);
+    }
+}
+
+.issues-switcher {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e4e4e9;
+}
+
+.issues-switcher-select {
+    flex: 1 1 auto;
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 5px 6px;
+    font-size: 0.85rem;
+    background: #fff;
+    color: #333;
+}
+
+.issues-switcher-btn {
+    border: 1px solid #d5d5de;
+    background: #f7f7fa;
+    border-radius: 6px;
+    padding: 5px 8px;
+    cursor: pointer;
+    color: #5b5bd6;
+}
+
+.issues-switcher-btn:hover {
+    background: #ececf2;
+}
+
+.issues-switcher-delete-btn {
+    color: #999;
+}
+
+.issues-switcher-delete-btn:hover {
+    color: #d64545;
+}
+
+.issues-new-issue-btn {
+    display: block;
+    margin: 12px 14px;
+    padding: 7px 12px;
+    background: #5b5bd6;
+    border-radius: 6px;
+    color: #fff;
+    text-align: center;
+    font-size: 0.88rem;
+    text-decoration: none;
+}
+
+.issues-new-issue-btn:hover {
+    background: #4a4ac2;
+    color: #fff;
+    text-decoration: none;
+}
+
+.issues-sidebar-section {
+    padding: 4px 14px 12px;
+}
+
+.issues-sidebar-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #888;
+    margin-bottom: 6px;
+}
+
+.issues-labels-manage {
+    color: #999;
+}
+
+.issues-labels-manage:hover {
+    color: #5b5bd6;
+}
+
+.issues-filter-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 5px;
+    color: #333;
+    font-size: 0.88rem;
+    text-decoration: none;
+}
+
+.issues-filter-link:hover {
+    background: #eeeef7;
+    text-decoration: none;
+}
+
+.issues-filter-link--active {
+    background: #5b5bd6;
+    color: #fff;
+}
+
+.issues-filter-count {
+    margin-left: auto;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    padding: 0 8px;
+    font-size: 0.75rem;
+}
+
+.issues-sidebar-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.issues-sidebar-empty {
+    color: #999;
+    font-size: 0.8rem;
+}
+
+.issues-main {
+    flex: 1 1 auto;
+    padding: 20px 26px;
+    overflow-y: auto;
+}
+
+.issues-empty {
+    color: #888;
+    text-align: center;
+    padding: 60px 0;
+}
+
+.issues-btn {
+    display: inline-block;
+    border: 1px solid #d5d5de;
+    background: #f7f7fa;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #333;
+    text-decoration: none;
+}
+
+.issues-btn:hover {
+    background: #ececf2;
+    color: #333;
+    text-decoration: none;
+}
+
+.issues-btn-primary {
+    background: #5b5bd6;
+    border-color: #5b5bd6;
+    color: #fff;
+}
+
+.issues-btn-primary:hover {
+    background: #4a4ac2;
+    color: #fff;
+}
+
+.issues-btn-danger {
+    color: #d64545;
+}
+
+.issues-inline-form {
+    display: inline;
+}
+
+/* --- List --- */
+.issues-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 1000px;
+}
+
+.issues-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px 12px;
+    border: 1px solid #ececf1;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.issues-list-item:hover {
+    background: #fafafc;
+}
+
+.issues-list-item-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.issues-list-item-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #222;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+}
+
+.issues-list-item-title:hover {
+    color: #5b5bd6;
+    text-decoration: none;
+}
+
+.issues-list-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #888;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.issues-list-item-number {
+    color: #aaa;
+}
+
+.issues-assignee,
+.issues-comment-count,
+.issues-updated {
+    color: #888;
+}
+
+/* --- Badges & chips --- */
+.issues-status-badge,
+.issues-priority-badge {
+    display: inline-block;
+    border-radius: 10px;
+    padding: 1px 9px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.issues-status-badge--open { background: #2da44e; }
+.issues-status-badge--in_progress { background: #bf8700; }
+.issues-status-badge--closed { background: #8250df; }
+
+.issues-priority-badge--low { background: #8a8a93; }
+.issues-priority-badge--medium { background: #4a7dcf; }
+.issues-priority-badge--high { background: #d47616; }
+.issues-priority-badge--critical { background: #d64545; }
+
+.issues-label-chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.issues-label-chip {
+    display: inline-block;
+    border-radius: 10px;
+    padding: 1px 9px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* --- Detail view --- */
+.issues-view-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.issues-view-title {
+    font-size: 1.4rem;
+    margin: 0;
+}
+
+.issues-view-number {
+    color: #aaa;
+    font-weight: 400;
+}
+
+.issues-view-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.issues-view-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 8px 0 2px;
+    font-size: 0.85rem;
+}
+
+.issues-view-byline {
+    color: #888;
+    font-size: 0.82rem;
+    margin-bottom: 16px;
+}
+
+.issues-description {
+    max-width: 900px;
+}
+
+.issues-no-description {
+    color: #999;
+    font-style: italic;
+}
+
+/* --- Attachments (same shape as the wiki's) --- */
+.issues-attachments {
+    max-width: 900px;
+    margin-top: 24px;
+    border-top: 1px solid #e4e4e9;
+    padding-top: 12px;
+}
+
+.issues-attachments-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.issues-attachments-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+}
+
+.issues-attachments-upload-label {
+    margin-bottom: 0;
+    font-weight: 400;
+}
+
+.issues-attachments-empty {
+    color: #999;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.issues-attachments-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.issues-attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 4px;
+    border-bottom: 1px solid #f0f0f4;
+}
+
+.issues-attachment-link {
+    color: #333;
+    text-decoration: none;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.issues-attachment-link:hover {
+    color: #5b5bd6;
+    text-decoration: none;
+}
+
+.issues-attachment-meta {
+    display: flex;
+    gap: 10px;
+    color: #999;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.issues-icon-delete {
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+
+.issues-icon-delete:hover {
+    color: #d64545;
+}
+
+/* --- Comments --- */
+.issues-comments {
+    max-width: 900px;
+    margin-top: 24px;
+    border-top: 1px solid #e4e4e9;
+    padding-top: 12px;
+}
+
+.issues-comments-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.issues-comment {
+    border: 1px solid #ececf1;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.issues-comment-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background: #fafafc;
+    border-bottom: 1px solid #ececf1;
+    border-radius: 8px 8px 0 0;
+    font-size: 0.82rem;
+    color: #555;
+}
+
+.issues-comment-date {
+    color: #999;
+}
+
+.issues-comment-header .issues-inline-form {
+    margin-left: auto;
+}
+
+.issues-comment-body {
+    padding: 4px 12px;
+}
+
+.issues-comment-editor {
+    margin-top: 12px;
+}
+
+.issues-comment-actions {
+    margin-top: 8px;
+}
+
+/* --- Edit form --- */
+.issues-edit-fields {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.issues-edit-fields .issues-field {
+    flex: 1 1 180px;
+}
+
+.issues-field {
+    margin-bottom: 14px;
+}
+
+.issues-field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.issues-field input[type="text"],
+.issues-field select {
+    width: 100%;
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+.issues-label-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.issues-label-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 400;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.issues-editor-mount {
+    max-width: 900px;
+}
+
+.issues-edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+/* --- Labels page --- */
+.issues-label-create-form,
+.issues-label-edit-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.issues-label-create-form {
+    margin-bottom: 18px;
+}
+
+.issues-label-name-input {
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 6px 9px;
+    font-size: 0.88rem;
+    width: 220px;
+}
+
+.issues-label-color-input {
+    width: 40px;
+    height: 32px;
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 2px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.issues-labels-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 640px;
+}
+
+.issues-labels-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 4px;
+    border-bottom: 1px solid #f0f0f4;
+}
+
+/* --- Create-first form (no-trackers page) --- */
+.issues-create-first-form {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 14px;
+}
+
+.issues-create-first-input {
+    border: 1px solid #d5d5de;
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 0.9rem;
+    width: 260px;
+}
+
+/* --- Dark mode - same approach as wiki.css: bootstrap-dark covers Bootstrap, everything
+   .issues-* custom needs explicit overrides. --- */
+.issues-dark {
+    border-color: #33333c;
+}
+
+.issues-dark .issues-sidebar {
+    background: #202027;
+    border-right-color: #33333c;
+}
+
+.issues-dark .issues-sidebar-toggle {
+    color: #d8d8e0;
+    border-bottom-color: #33333c;
+}
+
+.issues-dark .issues-switcher {
+    border-bottom-color: #33333c;
+}
+
+.issues-dark .issues-switcher-select,
+.issues-dark .issues-switcher-btn,
+.issues-dark .issues-btn,
+.issues-dark .issues-field input[type="text"],
+.issues-dark .issues-field select,
+.issues-dark .issues-label-name-input,
+.issues-dark .issues-create-first-input {
+    background: #2b2b33;
+    border-color: #3a3a44;
+    color: #d8d8e0;
+}
+
+.issues-dark .issues-switcher-btn:hover,
+.issues-dark .issues-btn:hover {
+    background: #33333d;
+}
+
+.issues-dark .issues-btn-primary {
+    background: #5b5bd6;
+    border-color: #5b5bd6;
+    color: #fff;
+}
+
+.issues-dark .issues-sidebar-heading {
+    color: #9a9aa5;
+}
+
+.issues-dark .issues-filter-link {
+    color: #d8d8e0;
+}
+
+.issues-dark .issues-filter-link:hover {
+    background: #2a2a32;
+}
+
+.issues-dark .issues-filter-link--active {
+    background: #5b5bd6;
+    color: #fff;
+}
+
+.issues-dark .issues-filter-count {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.issues-dark .issues-list-item {
+    border-color: #33333c;
+}
+
+.issues-dark .issues-list-item:hover {
+    background: #24242b;
+}
+
+.issues-dark .issues-list-item-title {
+    color: #d8d8e0;
+}
+
+.issues-dark .issues-view-title {
+    color: #d8d8e0;
+}
+
+.issues-dark .issues-empty,
+.issues-dark .issues-view-byline,
+.issues-dark .issues-attachments-empty,
+.issues-dark .issues-sidebar-empty {
+    color: #9a9aa5;
+}
+
+.issues-dark .issues-attachments,
+.issues-dark .issues-comments {
+    border-top-color: #33333c;
+}
+
+.issues-dark .issues-attachments-title,
+.issues-dark .issues-comments-title {
+    color: #9a9aa5;
+}
+
+.issues-dark .issues-attachment-item,
+.issues-dark .issues-labels-list-item {
+    border-bottom-color: #2e2e37;
+}
+
+.issues-dark .issues-attachment-link {
+    color: #d8d8e0;
+}
+
+.issues-dark .issues-comment {
+    border-color: #33333c;
+}
+
+.issues-dark .issues-comment-header {
+    background: #24242b;
+    border-bottom-color: #33333c;
+    color: #b8b8c2;
+}
+
+/* Toast UI viewer light-theme override, scoped to rendered markdown - see wiki.css's identical
+   block for the reasoning. */
+.issues-dark .issues-md-viewer {
+    background: #202027;
+    border-radius: 8px;
+    padding: 4px 14px;
+}
+
+.issues-dark .issues-md-viewer,
+.issues-dark .issues-md-viewer .toastui-editor-contents,
+.issues-dark .issues-md-viewer .toastui-editor-contents * {
+    color: #d8d8e0 !important;
+    background: transparent !important;
+}
+
+.issues-dark .issues-md-viewer .toastui-editor-contents pre,
+.issues-dark .issues-md-viewer .toastui-editor-contents code {
+    background: #2b2b33 !important;
+}
+
+.issues-dark .issues-md-viewer .toastui-editor-contents a {
+    color: #8f8fe8 !important;
+}

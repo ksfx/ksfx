@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title th:text="'KSFX - Issues - Labels - ' + ${currentTracker.name}">KSFX - Issues</title>
+</head>
+<body>
+<link rel="stylesheet" th:href="@{/styles/issues.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id})}" th:text="${currentTracker.name}">Tracker</a></li>
+        <li class="breadcrumb-item active">Labels</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div class="issues-layout" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' issues-dark' : ''">
+    <div th:replace="issues/issues_sidebar :: sidebar"></div>
+
+    <div class="issues-main">
+        <h1 class="issues-view-title">Labels</h1>
+
+        <form th:action="@{/issues/{trackerId}/labels/create(trackerId=${currentTracker.id})}" method="post" class="issues-label-create-form">
+            <input type="text" name="name" placeholder="Label name" required="required" class="issues-label-name-input" />
+            <input type="color" name="color" value="#5b5bd6" class="issues-label-color-input" title="Label color" />
+            <button type="submit" class="issues-btn issues-btn-primary"><i class="fa fa-plus"></i> Add label</button>
+        </form>
+
+        <p class="issues-empty" th:if="${#lists.isEmpty(trackerLabels)}">No labels yet.</p>
+        <ul class="issues-labels-list" th:unless="${#lists.isEmpty(trackerLabels)}">
+            <li th:each="l : ${trackerLabels}" class="issues-labels-list-item">
+                <form th:action="@{/issues/{trackerId}/labels/{labelId}/update(trackerId=${currentTracker.id},labelId=${l.id})}" method="post" class="issues-label-edit-form">
+                    <span class="issues-label-chip" th:style="'background:' + ${l.color}" th:text="${l.name}"></span>
+                    <input type="text" name="name" th:value="${l.name}" required="required" class="issues-label-name-input" />
+                    <input type="color" name="color" th:value="${l.color}" class="issues-label-color-input" title="Label color" />
+                    <button type="submit" class="issues-btn">Save</button>
+                </form>
+                <form th:action="@{/issues/{trackerId}/labels/{labelId}/delete(trackerId=${currentTracker.id},labelId=${l.id})}" method="post" class="issues-inline-form"
+                      onsubmit="return confirm('Delete this label? It will be removed from all issues.');">
+                    <button type="submit" class="issues-icon-delete" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
+                </form>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+<script th:src="@{/script/issues.js}"></script>
+</body>
+</html>

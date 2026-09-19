@@ -44,4 +44,5 @@
     <include file="20260915100000_agent_message_voice_input.sql" relativeToChangelogFile="true"/>
     <include file="20260915110000_agent_message_completion_source.sql" relativeToChangelogFile="true"/>
     <include file="20260918070000_wiki.sql" relativeToChangelogFile="true"/>
+    <include file="20260919090000_issues.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

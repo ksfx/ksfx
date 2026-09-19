@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Issues</title>
+</head>
+<body>
+<link rel="stylesheet" th:href="@{/styles/issues.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Issues</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' issues-dark' : ''">
+    <div class="issues-empty">
+        <p>There are no issue trackers yet.</p>
+        <form th:action="@{/issues/create}" method="post" class="issues-create-first-form">
+            <input type="text" name="name" placeholder="e.g. Project Phoenix" required="required" class="issues-create-first-input" />
+            <button type="submit" class="issues-btn issues-btn-primary">Create tracker</button>
+        </form>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

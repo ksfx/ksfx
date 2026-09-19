@@ -198,6 +198,9 @@
                         <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'agentic')} ? 'nav-item active' : 'nav-item'">
                             <a class="nav-link" th:href="@{/agentic/}">Agentic</a>
                         </li>
+                        <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'issues')} ? 'nav-item active' : 'nav-item'">
+                            <a class="nav-link" th:href="@{/issues/}">Issues</a>
+                        </li>
                         <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'wiki')} ? 'nav-item active' : 'nav-item'">
                             <a class="nav-link" th:href="@{/wiki/}">Wiki</a>
                         </li>

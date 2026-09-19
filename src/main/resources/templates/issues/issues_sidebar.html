@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- The whole Issues sidebar (tracker switcher + new issue + filters + labels), one definition
+     shared by list/view/edit/labels - same one-definition-many-callers pattern as the wiki's
+     sidebar fragment (wiki_tree.html), including the narrow-screen backdrop + hamburger slide-in
+     (see issues.js / issues.css, same 768px breakpoint as wiki and agentic chat). -->
+<th:block th:fragment="sidebar">
+    <div class="issues-backdrop" id="issuesBackdrop"></div>
+    <button type="button" class="issues-sidebar-toggle" id="issuesSidebarToggle" title="Issues navigation" aria-label="Toggle issues navigation"><i class="fa fa-bars"></i> <span th:text="${currentTracker.name}"></span></button>
+    <aside class="issues-sidebar" th:data-tracker-id="${currentTracker.id}">
+        <div class="issues-switcher">
+            <select id="issuesSwitcherSelect" class="issues-switcher-select" title="Switch tracker">
+                <option th:each="t : ${allTrackers}" th:value="${t.id}" th:text="${t.name}"
+                        th:selected="${currentTracker != null and t.id == currentTracker.id}"></option>
+            </select>
+            <button type="button" id="issuesSwitcherNewBtn" class="issues-switcher-btn" title="New tracker" aria-label="New tracker"><i class="fa fa-plus"></i></button>
+            <!-- Same double guard as deleting a wiki: confirm + type the name - see issues.js. -->
+            <button type="button" id="issuesTrackerDeleteBtn" class="issues-switcher-btn issues-switcher-delete-btn" title="Delete this tracker" aria-label="Delete this tracker"
+                    th:data-tracker-name="${currentTracker.name}"><i class="fa fa-trash-o"></i></button>
+            <form id="issuesTrackerCreateForm" th:action="@{/issues/create}" method="post" hidden="hidden">
+                <input type="hidden" id="issuesTrackerCreateNameInput" name="name" />
+            </form>
+            <form id="issuesTrackerDeleteForm" th:action="@{/issues/{trackerId}/delete(trackerId=${currentTracker.id})}" method="post" hidden="hidden"></form>
+        </div>
+
+        <a th:href="@{/issues/{trackerId}/issue/new(trackerId=${currentTracker.id})}" class="issues-new-issue-btn"><i class="fa fa-plus"></i> New Issue</a>
+
+        <div class="issues-sidebar-section">
+            <div class="issues-sidebar-heading">Filter</div>
+            <a th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id},filter='open')}" class="issues-filter-link"
+               th:classappend="${filter != null and filter == 'open'} ? ' issues-filter-link--active' : ''">
+                <i class="fa fa-dot-circle-o"></i> Open <span class="issues-filter-count" th:text="${openCount}"></span>
+            </a>
+            <a th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id},filter='closed')}" class="issues-filter-link"
+               th:classappend="${filter != null and filter == 'closed'} ? ' issues-filter-link--active' : ''">
+                <i class="fa fa-check-circle-o"></i> Closed <span class="issues-filter-count" th:text="${closedCount}"></span>
+            </a>
+            <a th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id},filter='all')}" class="issues-filter-link"
+               th:classappend="${filter != null and filter == 'all'} ? ' issues-filter-link--active' : ''">
+                <i class="fa fa-list"></i> All
+            </a>
+        </div>
+
+        <div class="issues-sidebar-section">
+            <div class="issues-sidebar-heading">
+                Labels
+                <a th:href="@{/issues/{trackerId}/labels(trackerId=${currentTracker.id})}" class="issues-labels-manage" title="Manage labels" aria-label="Manage labels"><i class="fa fa-cog"></i></a>
+            </div>
+            <div class="issues-sidebar-labels">
+                <span th:each="l : ${trackerLabels}" class="issues-label-chip" th:style="'background:' + ${l.color}" th:text="${l.name}"></span>
+                <span th:if="${#lists.isEmpty(trackerLabels)}" class="issues-sidebar-empty">No labels yet</span>
+            </div>
+        </div>
+    </aside>
+</th:block>
+
+<!-- Colored label chips for one issue - used by both the list rows and the detail view. -->
+<span th:fragment="labelChips(issueLabels)" class="issues-label-chips">
+    <span th:each="l : ${issueLabels}" class="issues-label-chip" th:style="'background:' + ${l.color}" th:text="${l.name}"></span>
+</span>
+
+<!-- Status + priority badges - shared by list rows and the detail view. -->
+<span th:fragment="statusBadge(status)" class="issues-status-badge"
+      th:classappend="' issues-status-badge--' + ${#strings.toLowerCase(status.name())}"
+      th:text="${status.name() == 'IN_PROGRESS'} ? 'In progress' : ${#strings.capitalize(#strings.toLowerCase(status.name()))}"></span>
+
+<span th:fragment="priorityBadge(priority)" class="issues-priority-badge"
+      th:classappend="' issues-priority-badge--' + ${#strings.toLowerCase(priority.name())}"
+      th:text="${#strings.capitalize(#strings.toLowerCase(priority.name()))}"></span>
+
+</body>
+</html>

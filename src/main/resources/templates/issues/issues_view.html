@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="layout :: site-head">
+    <title th:text="'KSFX - Issues - #' + ${issue.id} + ' ' + ${issue.title}">KSFX - Issues</title>
+</head>
+<body>
+<link rel="stylesheet" th:href="@{/styles/issues.css}" />
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id})}" th:text="${currentTracker.name}">Tracker</a></li>
+        <li class="breadcrumb-item active" th:text="'#' + ${issue.id}">#1</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div class="issues-layout" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' issues-dark' : ''">
+    <div th:replace="issues/issues_sidebar :: sidebar"></div>
+
+    <div class="issues-main">
+        <div class="issues-view-header">
+            <h1 class="issues-view-title"><span th:text="${issue.title}"></span> <span class="issues-view-number" th:text="'#' + ${issue.id}"></span></h1>
+            <span class="issues-view-actions">
+                <a th:href="@{/issues/{trackerId}/issue/{issueId}/edit(trackerId=${currentTracker.id},issueId=${issue.id})}" class="issues-btn"><i class="fa fa-pencil"></i> Edit</a>
+                <form th:if="${issue.status.name() != 'CLOSED'}" th:action="@{/issues/{trackerId}/issue/{issueId}/status(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" class="issues-inline-form">
+                    <input type="hidden" name="status" value="CLOSED" />
+                    <button type="submit" class="issues-btn"><i class="fa fa-check"></i> Close</button>
+                </form>
+                <form th:if="${issue.status.name() == 'OPEN'}" th:action="@{/issues/{trackerId}/issue/{issueId}/status(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" class="issues-inline-form">
+                    <input type="hidden" name="status" value="IN_PROGRESS" />
+                    <button type="submit" class="issues-btn"><i class="fa fa-play"></i> Start progress</button>
+                </form>
+                <form th:if="${issue.status.name() == 'CLOSED'}" th:action="@{/issues/{trackerId}/issue/{issueId}/status(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" class="issues-inline-form">
+                    <input type="hidden" name="status" value="OPEN" />
+                    <button type="submit" class="issues-btn"><i class="fa fa-refresh"></i> Reopen</button>
+                </form>
+                <form th:action="@{/issues/{trackerId}/issue/{issueId}/delete(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" class="issues-inline-form"
+                      onsubmit="return confirm('Delete this issue with all comments and attachments?');">
+                    <button type="submit" class="issues-btn issues-btn-danger"><i class="fa fa-trash-o"></i> Delete</button>
+                </form>
+            </span>
+        </div>
+
+        <div class="issues-view-meta">
+            <span th:replace="issues/issues_sidebar :: statusBadge(status=${issue.status})"></span>
+            <span th:replace="issues/issues_sidebar :: priorityBadge(priority=${issue.priority})"></span>
+            <span th:replace="issues/issues_sidebar :: labelChips(issueLabels=${issue.labels})"></span>
+            <span th:if="${issue.assigneeAgent != null}" class="issues-assignee">assigned to agent <strong th:text="${issue.assigneeAgent.name}"></strong></span>
+            <span th:if="${issue.assigneeUser != null}" class="issues-assignee">assigned to <strong th:text="${issue.assigneeUser.username}"></strong></span>
+            <span th:if="${issue.assigneeAgent == null and issue.assigneeUser == null}" class="issues-assignee">unassigned</span>
+        </div>
+        <div class="issues-view-byline">
+            <span th:if="${issue.createdByAgent != null}">Opened by agent <strong th:text="${issue.createdByAgent.name}"></strong></span>
+            <span th:if="${issue.createdByUser != null}">Opened by <strong th:text="${issue.createdByUser.username}"></strong></span>
+            <span th:text="' on ' + ${#dates.format(issue.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+        </div>
+
+        <textarea class="issues-md-source" hidden="hidden" th:text="${issue.description}"></textarea>
+        <div class="issues-md-viewer issues-description"
+             th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
+             th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"></div>
+
+        <div class="issues-attachments">
+            <div class="issues-attachments-header">
+                <span class="issues-attachments-title"><i class="fa fa-paperclip"></i> Attachments</span>
+                <form th:action="@{/issues/{trackerId}/issue/{issueId}/attachment/upload(trackerId=${currentTracker.id},issueId=${issue.id})}"
+                      method="post" enctype="multipart/form-data" class="issues-inline-form">
+                    <label class="issues-btn issues-attachments-upload-label">
+                        <i class="fa fa-upload"></i> Upload
+                        <input type="file" id="issuesAttachmentInput" name="files" multiple="multiple" hidden="hidden" />
+                    </label>
+                </form>
+            </div>
+            <p class="issues-attachments-empty" th:if="${#lists.isEmpty(attachments)}">No attachments.</p>
+            <ul class="issues-attachments-list" th:unless="${#lists.isEmpty(attachments)}">
+                <li th:each="a : ${attachments}" class="issues-attachment-item">
+                    <a th:href="@{/issues/assets/{id}(id=${a.id})}" class="issues-attachment-link" target="_blank">
+                        <i class="fa fa-file-o"></i> <span th:text="${a.fileName}"></span>
+                    </a>
+                    <span class="issues-attachment-meta">
+                        <span th:if="${a.fileSize != null}"
+                              th:text="${a.fileSize < 1024 ? a.fileSize + ' B' : (a.fileSize < 1048576 ? #numbers.formatDecimal(a.fileSize / 1024.0, 1, 1) + ' KB' : #numbers.formatDecimal(a.fileSize / 1048576.0, 1, 1) + ' MB')}"></span>
+                        <span th:if="${a.uploadedByAgent != null}" th:text="'agent ' + ${a.uploadedByAgent.name}"></span>
+                        <span th:if="${a.uploadedByUser != null}" th:text="${a.uploadedByUser.username}"></span>
+                        <span th:text="${#dates.format(a.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                    </span>
+                    <form th:action="@{/issues/{trackerId}/issue/{issueId}/attachment/{assetId}/delete(trackerId=${currentTracker.id},issueId=${issue.id},assetId=${a.id})}"
+                          method="post" class="issues-inline-form issues-attachment-delete-form" th:data-filename="${a.fileName}">
+                        <button type="submit" class="issues-icon-delete" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+
+        <div class="issues-comments">
+            <div class="issues-comments-title"><i class="fa fa-comments-o"></i> Comments</div>
+            <div th:each="c : ${comments}" class="issues-comment">
+                <div class="issues-comment-header">
+                    <span th:if="${c.createdByAgent != null}">Agent <strong th:text="${c.createdByAgent.name}"></strong></span>
+                    <span th:if="${c.createdByUser != null}"><strong th:text="${c.createdByUser.username}"></strong></span>
+                    <span th:if="${c.createdByAgent == null and c.createdByUser == null}">Unknown</span>
+                    <span class="issues-comment-date" th:text="${#dates.format(c.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                    <form th:action="@{/issues/{trackerId}/issue/{issueId}/comment/{commentId}/delete(trackerId=${currentTracker.id},issueId=${issue.id},commentId=${c.id})}"
+                          method="post" class="issues-inline-form" onsubmit="return confirm('Delete this comment?');">
+                        <button type="submit" class="issues-icon-delete" title="Delete comment" aria-label="Delete comment"><i class="fa fa-trash-o"></i></button>
+                    </form>
+                </div>
+                <textarea class="issues-md-source" hidden="hidden" th:text="${c.content}"></textarea>
+                <div class="issues-md-viewer issues-comment-body"
+                     th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
+                     th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"></div>
+            </div>
+
+            <form id="issuesCommentForm" th:action="@{/issues/{trackerId}/issue/{issueId}/comment(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" onsubmit="return false;">
+                <div id="issuesCommentEditorMount" class="issues-comment-editor"
+                     th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
+                     th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"
+                     th:data-asset-upload-endpoint="@{/issues/asset/upload}"
+                     th:data-csrf-header="${_csrf.headerName}"
+                     th:data-csrf-token="${_csrf.token}"></div>
+                <textarea id="issuesCommentContent" name="content" hidden="hidden"></textarea>
+                <div class="issues-comment-actions">
+                    <button type="button" id="issuesCommentSubmitBtn" class="issues-btn issues-btn-primary"><i class="fa fa-comment-o"></i> Comment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+<script th:src="@{/script/issues.js}"></script>
+</body>
+</html>
