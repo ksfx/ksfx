@@ -143,10 +143,16 @@ public class WikiController
         Wiki wiki = requireWiki(wikiId);
         WikiPage page = requirePage(wikiId, pageId);
 
+        WikiPageVersion version = wikiPageVersionDAO.getLatestVersionForPage(page.getId());
+
         baseModel(model, wiki);
         model.addAttribute("currentPageId", pageId);
         model.addAttribute("page", page);
-        model.addAttribute("version", wikiPageVersionDAO.getLatestVersionForPage(page.getId()));
+        model.addAttribute("version", version);
+        // What the viewer actually renders: [[wikilinks]] resolved to real links (see
+        // WikiService.renderWikilinks) - the stored markdown itself keeps the [[...]] form, which
+        // is why the edit view keeps using the raw version content.
+        model.addAttribute("renderedContent", version != null ? wikiService.renderWikilinks(wiki, version.getContent()) : "");
         model.addAttribute("attachments", wikiAssetDAO.getAssetsForPage(pageId));
 
         return "wiki/wiki_page";

@@ -20,7 +20,14 @@
 
     <div class="wiki-main">
         <div class="wiki-page-toolbar">
-            <h1 class="wiki-page-title" th:text="${page.title}">Title</h1>
+            <h1 class="wiki-page-title">
+                <span th:text="${page.title}">Title</span>
+                <!-- Copies a ready-to-paste, id-based markdown link (survives renames/moves) -
+                     handy for linking from OUTSIDE this wiki too (issues, chat). Within wiki pages,
+                     [[Title]] wikilinks are usually the nicer choice - see wiki.js. -->
+                <button type="button" id="wikiCopyLinkBtn" class="wiki-copylink-btn" title="Copy markdown link to this page" aria-label="Copy link"
+                        th:data-markdown-link="'[' + ${page.title} + '](/wiki/' + ${currentWiki.id} + '/page/' + ${page.id} + ')'"><i class="fa fa-link"></i></button>
+            </h1>
             <span class="wiki-page-actions">
                 <a th:href="@{/wiki/{wikiId}/page/{pageId}/edit(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-pencil"></i> Edit</a>
                 <a th:href="@{/wiki/{wikiId}/page/{pageId}/history(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-history"></i> History</a>
@@ -36,7 +43,7 @@
             <span th:if="${version != null}" th:text="' on ' + ${#dates.format(version.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
         </div>
 
-        <textarea id="wikiPageMarkdown" hidden="hidden" th:text="${version != null ? version.content : ''}"></textarea>
+        <textarea id="wikiPageMarkdown" hidden="hidden" th:text="${renderedContent}"></textarea>
         <div id="wikiPageViewer" class="wiki-page-content"
              th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
              th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"></div>

@@ -1196,7 +1196,11 @@ public class ClaudeCliSessionService
                 + "-d '{\"folderPath\":\"notizen\",\"title\":\"Mein Bericht\",\"content\":\"# Titel\\n\\nInhalt...\"}'\n"
                 + "WICHTIG: Ein POST auf eine bestehende Seite (gleicher folderPath + title, oder pageId) ersetzt "
                 + "deren Inhalt komplett (als neue Version, alte bleiben erhalten). Zum Ergänzen also erst die Seite "
-                + "lesen, dann den erweiterten Gesamtinhalt schreiben.\n";
+                + "lesen, dann den erweiterten Gesamtinhalt schreiben.\n"
+                + "Interne Links zwischen Wiki-Seiten schreibst du als Wikilinks: [[Seitentitel]], "
+                + "[[ordner/pfad/Seitentitel]] oder [[Ziel|angezeigter Text]] - sie werden beim Anzeigen automatisch "
+                + "aufgeloest (auch nach Umbenennungen) und Links auf noch fehlende Seiten erscheinen rot mit "
+                + "Direktlink zum Anlegen. Nutze Wikilinks statt harter URLs, wann immer du Wiki-Seiten verlinkst.\n";
 
         schedulingPrompt += "\nDu kannst außerdem die KSFX-Issue-Tracker vollständig nutzen (Issues lesen/anlegen/"
                 + "aktualisieren, kommentieren, Dateien anhängen) - ebenfalls per curl mit $KSFX_AGENT_TOKEN. Deine "

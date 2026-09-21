@@ -43,9 +43,39 @@
                 viewer: true,
                 initialValue: markdown
             });
+
+            // "Red links": a [[wikilink]] whose target page doesn't exist resolves server-side to
+            // a /page/new?... URL (see WikiService.renderWikilinks) - marked up here after render,
+            // since pure markdown can't carry a CSS class.
+            viewerMount.querySelectorAll('a[href*="/page/new"]').forEach(function (a) {
+                a.classList.add('wiki-missing-link');
+                a.title = 'This page does not exist yet - click to create it';
+            });
         }).catch(function (error) {
             viewerMount.textContent = markdown;
             console.error(error);
+        });
+    }
+
+    // --- Copy-markdown-link button on the page view ----------------------------------------------
+    var copyLinkBtn = document.getElementById('wikiCopyLinkBtn');
+
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', function () {
+            var link = copyLinkBtn.dataset.markdownLink;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(link).then(function () {
+                    var icon = copyLinkBtn.querySelector('i');
+                    icon.className = 'fa fa-check';
+                    setTimeout(function () { icon.className = 'fa fa-link'; }, 1500);
+                }).catch(function () {
+                    window.prompt('Copy this link:', link);
+                });
+            } else {
+                // No clipboard API (plain-HTTP non-localhost deployments) - show it for manual copy.
+                window.prompt('Copy this link:', link);
+            }
         });
     }
 

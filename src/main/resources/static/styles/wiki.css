@@ -294,6 +294,27 @@
     margin: 0;
 }
 
+.wiki-copylink-btn {
+    border: none;
+    background: transparent;
+    color: #bbb;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px 6px;
+    vertical-align: middle;
+}
+
+.wiki-copylink-btn:hover {
+    color: #5b5bd6;
+}
+
+/* A [[wikilink]] whose target page doesn't exist - MediaWiki-style red, styled via JS after the
+   Toast UI viewer renders (see wiki.js). */
+.wiki-page-content a.wiki-missing-link {
+    color: #d64545 !important;
+    text-decoration: underline dotted;
+}
+
 .wiki-page-actions {
     display: flex;
     gap: 8px;
@@ -688,4 +709,8 @@
 
 .wiki-dark .wiki-page-content .toastui-editor-contents a {
     color: #8f8fe8 !important;
+}
+
+.wiki-dark .wiki-page-content a.wiki-missing-link {
+    color: #e86a6a !important;
 }
