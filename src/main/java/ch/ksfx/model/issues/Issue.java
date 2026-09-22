@@ -10,9 +10,14 @@ import java.util.List;
 /**
  * One issue in an {@link IssueTracker} - GitHub-style, but deliberately without any versioning
  * (unlike WikiPage/WikiPageVersion): {@link #description} is edited in place, per the explicit
- * design decision when this was built. Displayed as "#&lt;id&gt;" - ids are global, not
- * per-tracker (no counter to race on; a KSFX instance is small enough that gapless per-tracker
- * numbering isn't worth the transaction gymnastics).
+ * design decision when this was built.
+ *
+ * {@link #number} is the user-visible "#N", counting per TRACKER (GitHub semantics) - the first
+ * cut displayed the global DB id instead, which was filed and fixed as KSFX issue #2 ("IDs in the
+ * KSFX-Trackers are per Instance not per Project"). Assigned once at creation
+ * (IssueService.saveNewIssue: max+1 within the tracker, with the (tracker, number) unique key as
+ * the backstop against concurrent creates) and never changed; all web routes and the agent API
+ * address issues by tracker + number, {@link #id} stays purely internal.
  *
  * Creator and assignee can each be a human OR an agent - same either/or pair-of-nullable-FKs
  * pattern as WikiPageVersion's editedByUser/editedByAgent: at most one of each pair is set, and
@@ -25,6 +30,7 @@ public class Issue
 {
     private Long id;
     private IssueTracker issueTracker;
+    private Long number;
     private String title;
     private String description;
     private IssueStatus status = IssueStatus.OPEN;
@@ -64,6 +70,16 @@ public class Issue
     public void setIssueTracker(IssueTracker issueTracker)
     {
         this.issueTracker = issueTracker;
+    }
+
+    public Long getNumber()
+    {
+        return number;
+    }
+
+    public void setNumber(Long number)
+    {
+        this.number = number;
     }
 
     public String getTitle()

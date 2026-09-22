@@ -35,6 +35,21 @@ public class EbeanIssueDAO implements IssueDAO
     }
 
     @Override
+    public Issue getIssueForTrackerAndNumber(Long issueTrackerId, Long number)
+    {
+        return Ebean.find(Issue.class).where().eq("issueTracker.id", issueTrackerId).eq("number", number).findUnique();
+    }
+
+    @Override
+    public long getMaxNumberForTracker(Long issueTrackerId)
+    {
+        Issue highest = Ebean.find(Issue.class).where().eq("issueTracker.id", issueTrackerId)
+                .order().desc("number").setMaxRows(1).findOneOrEmpty().orElse(null);
+
+        return highest != null && highest.getNumber() != null ? highest.getNumber() : 0L;
+    }
+
+    @Override
     public List<Issue> getIssuesForTracker(Long issueTrackerId, List<IssueStatus> statuses)
     {
         return scoped(issueTrackerId, statuses).order().desc("updatedAt").findList();

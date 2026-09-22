@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="layout :: site-head">
-    <title th:text="'KSFX - Issues - #' + ${issue.id} + ' ' + ${issue.title}">KSFX - Issues</title>
+    <title th:text="'KSFX - Issues - #' + ${issue.number} + ' ' + ${issue.title}">KSFX - Issues</title>
 </head>
 <body>
 <link rel="stylesheet" th:href="@{/styles/issues.css}" />
@@ -9,7 +9,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id})}" th:text="${currentTracker.name}">Tracker</a></li>
-        <li class="breadcrumb-item active" th:text="'#' + ${issue.id}">#1</li>
+        <li class="breadcrumb-item active" th:text="'#' + ${issue.number}">#1</li>
     </ol>
 </nav>
 
@@ -20,22 +20,22 @@
 
     <div class="issues-main">
         <div class="issues-view-header">
-            <h1 class="issues-view-title"><span th:text="${issue.title}"></span> <span class="issues-view-number" th:text="'#' + ${issue.id}"></span></h1>
+            <h1 class="issues-view-title"><span th:text="${issue.title}"></span> <span class="issues-view-number" th:text="'#' + ${issue.number}"></span></h1>
             <span class="issues-view-actions">
-                <a th:href="@{/issues/{trackerId}/issue/{issueId}/edit(trackerId=${currentTracker.id},issueId=${issue.id})}" class="issues-btn"><i class="fa fa-pencil"></i> Edit</a>
-                <form th:if="${issue.status.name() != 'CLOSED'}" th:action="@{/issues/{trackerId}/issue/{issueId}/status(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" class="issues-inline-form">
+                <a th:href="@{/issues/{trackerId}/issue/{issueNumber}/edit(trackerId=${currentTracker.id},issueNumber=${issue.number})}" class="issues-btn"><i class="fa fa-pencil"></i> Edit</a>
+                <form th:if="${issue.status.name() != 'CLOSED'}" th:action="@{/issues/{trackerId}/issue/{issueNumber}/status(trackerId=${currentTracker.id},issueNumber=${issue.number})}" method="post" class="issues-inline-form">
                     <input type="hidden" name="status" value="CLOSED" />
                     <button type="submit" class="issues-btn"><i class="fa fa-check"></i> Close</button>
                 </form>
-                <form th:if="${issue.status.name() == 'OPEN'}" th:action="@{/issues/{trackerId}/issue/{issueId}/status(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" class="issues-inline-form">
+                <form th:if="${issue.status.name() == 'OPEN'}" th:action="@{/issues/{trackerId}/issue/{issueNumber}/status(trackerId=${currentTracker.id},issueNumber=${issue.number})}" method="post" class="issues-inline-form">
                     <input type="hidden" name="status" value="IN_PROGRESS" />
                     <button type="submit" class="issues-btn"><i class="fa fa-play"></i> Start progress</button>
                 </form>
-                <form th:if="${issue.status.name() == 'CLOSED'}" th:action="@{/issues/{trackerId}/issue/{issueId}/status(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" class="issues-inline-form">
+                <form th:if="${issue.status.name() == 'CLOSED'}" th:action="@{/issues/{trackerId}/issue/{issueNumber}/status(trackerId=${currentTracker.id},issueNumber=${issue.number})}" method="post" class="issues-inline-form">
                     <input type="hidden" name="status" value="OPEN" />
                     <button type="submit" class="issues-btn"><i class="fa fa-refresh"></i> Reopen</button>
                 </form>
-                <form th:action="@{/issues/{trackerId}/issue/{issueId}/delete(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" class="issues-inline-form"
+                <form th:action="@{/issues/{trackerId}/issue/{issueNumber}/delete(trackerId=${currentTracker.id},issueNumber=${issue.number})}" method="post" class="issues-inline-form"
                       onsubmit="return confirm('Delete this issue with all comments and attachments?');">
                     <button type="submit" class="issues-btn issues-btn-danger"><i class="fa fa-trash-o"></i> Delete</button>
                 </form>
@@ -64,7 +64,7 @@
         <div class="issues-attachments">
             <div class="issues-attachments-header">
                 <span class="issues-attachments-title"><i class="fa fa-paperclip"></i> Attachments</span>
-                <form th:action="@{/issues/{trackerId}/issue/{issueId}/attachment/upload(trackerId=${currentTracker.id},issueId=${issue.id})}"
+                <form th:action="@{/issues/{trackerId}/issue/{issueNumber}/attachment/upload(trackerId=${currentTracker.id},issueNumber=${issue.number})}"
                       method="post" enctype="multipart/form-data" class="issues-inline-form">
                     <label class="issues-btn issues-attachments-upload-label">
                         <i class="fa fa-upload"></i> Upload
@@ -85,7 +85,7 @@
                         <span th:if="${a.uploadedByUser != null}" th:text="${a.uploadedByUser.username}"></span>
                         <span th:text="${#dates.format(a.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
                     </span>
-                    <form th:action="@{/issues/{trackerId}/issue/{issueId}/attachment/{assetId}/delete(trackerId=${currentTracker.id},issueId=${issue.id},assetId=${a.id})}"
+                    <form th:action="@{/issues/{trackerId}/issue/{issueNumber}/attachment/{assetId}/delete(trackerId=${currentTracker.id},issueNumber=${issue.number},assetId=${a.id})}"
                           method="post" class="issues-inline-form issues-attachment-delete-form" th:data-filename="${a.fileName}">
                         <button type="submit" class="issues-icon-delete" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
                     </form>
@@ -101,7 +101,7 @@
                     <span th:if="${c.createdByUser != null}"><strong th:text="${c.createdByUser.username}"></strong></span>
                     <span th:if="${c.createdByAgent == null and c.createdByUser == null}">Unknown</span>
                     <span class="issues-comment-date" th:text="${#dates.format(c.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
-                    <form th:action="@{/issues/{trackerId}/issue/{issueId}/comment/{commentId}/delete(trackerId=${currentTracker.id},issueId=${issue.id},commentId=${c.id})}"
+                    <form th:action="@{/issues/{trackerId}/issue/{issueNumber}/comment/{commentId}/delete(trackerId=${currentTracker.id},issueNumber=${issue.number},commentId=${c.id})}"
                           method="post" class="issues-inline-form" onsubmit="return confirm('Delete this comment?');">
                         <button type="submit" class="issues-icon-delete" title="Delete comment" aria-label="Delete comment"><i class="fa fa-trash-o"></i></button>
                     </form>
@@ -112,7 +112,7 @@
                      th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"></div>
             </div>
 
-            <form id="issuesCommentForm" th:action="@{/issues/{trackerId}/issue/{issueId}/comment(trackerId=${currentTracker.id},issueId=${issue.id})}" method="post" onsubmit="return false;">
+            <form id="issuesCommentForm" th:action="@{/issues/{trackerId}/issue/{issueNumber}/comment(trackerId=${currentTracker.id},issueNumber=${issue.number})}" method="post" onsubmit="return false;">
                 <div id="issuesCommentEditorMount" class="issues-comment-editor"
                      th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
                      th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"
