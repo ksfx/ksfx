@@ -11,7 +11,10 @@ import ch.ksfx.model.issues.*;
 import ch.ksfx.model.user.User;
 import ch.ksfx.services.issues.IssueService;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -176,6 +179,7 @@ public class AgentIssueApiController
             attachmentDto.assetId = asset.getId();
             attachmentDto.fileName = asset.getFileName();
             attachmentDto.url = "/issues/assets/" + asset.getId();
+            attachmentDto.apiUrl = "/agentic/api/issues/asset/" + asset.getId();
             dto.attachments.add(attachmentDto);
         }
 
@@ -336,8 +340,39 @@ public class AgentIssueApiController
         Map<String, Object> response = new HashMap<>();
         response.put("assetId", asset.getId());
         response.put("url", "/issues/assets/" + asset.getId());
+        response.put("apiUrl", "/agentic/api/issues/asset/" + asset.getId());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Download counterpart to {@link #uploadAsset} - until now agents could attach files but never
+     * read one back: the {@code url} field points at the session-authenticated web route
+     * (/issues/assets/{id}), which a bearer token can't pass. Same bytes/content type/filename as
+     * the web route, just behind agent auth. No per-issue path segment on purpose: assets ids are
+     * global (inline uploads aren't tied to an issue at all), matching how upload addresses them.
+     */
+    @GetMapping("/asset/{assetId}")
+    public ResponseEntity<?> downloadAsset(HttpServletRequest request, @PathVariable Long assetId)
+    {
+        if (authenticate(request) == null) {
+            return unauthorized();
+        }
+
+        IssueAsset asset = issueAssetDAO.getIssueAssetForId(assetId);
+
+        if (asset == null || asset.getContent() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No asset with id " + assetId));
+        }
+
+        MediaType mediaType = asset.getContentType() != null
+                ? MediaType.parseMediaType(asset.getContentType())
+                : MediaType.APPLICATION_OCTET_STREAM;
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + asset.getFileName() + "\"")
+                .body(new ByteArrayResource(asset.getContent()));
     }
 
     /**
@@ -539,5 +574,6 @@ public class AgentIssueApiController
         public Long assetId;
         public String fileName;
         public String url;
+        public String apiUrl;
     }
 }
