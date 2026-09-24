@@ -152,11 +152,19 @@ public class WikiService
     // ------------------------------------------------------------------------------------------
     // Wikilinks: [[Page Title]], [[folder/path/Page Title]], [[target|shown label]] - resolved at
     // RENDER time (the stored markdown keeps the [[...]] form), so links always show the page's
-    // current title and re-resolve after renames. Same syntax as GitHub/Obsidian wikis, which is
-    // what makes migrating existing GitHub wikis in feasible without rewriting their links.
+    // current title and re-resolve after renames. The no-label form and the "|" label separator
+    // are the same syntax as GitHub/Obsidian wikis, which is what makes migrating existing GitHub
+    // wikis in feasible without rewriting their links.
+    //
+    // "#" is also accepted as a label separator ([[target#shown label]]), kept equivalent to "|":
+    // the WYSIWYG editor (Toast UI) treats a bare "|" as possible GFM table syntax and can mangle
+    // the whole line when converting its rich-text model back to markdown on save, even if nothing
+    // was actually edited - "#" isn't special to markdown mid-line, so it survives that round trip.
+    // "|" still resolves (existing pages, and pasted-in GitHub/Obsidian wikilinks, keep working
+    // unchanged) - "#" is just the recommended separator for anything typed directly in this wiki.
     // ------------------------------------------------------------------------------------------
 
-    private static final Pattern WIKILINK_PATTERN = Pattern.compile("\\[\\[([^\\[\\]|]+?)(?:\\|([^\\[\\]]+?))?\\]\\]");
+    private static final Pattern WIKILINK_PATTERN = Pattern.compile("\\[\\[([^\\[\\]|#]+?)(?:[|#]([^\\[\\]]+?))?\\]\\]");
 
     /**
      * Replaces every [[...]] outside of code with a regular markdown link: to the matched page

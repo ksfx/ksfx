@@ -1198,9 +1198,13 @@ public class ClaudeCliSessionService
                 + "deren Inhalt komplett (als neue Version, alte bleiben erhalten). Zum Ergänzen also erst die Seite "
                 + "lesen, dann den erweiterten Gesamtinhalt schreiben.\n"
                 + "Interne Links zwischen Wiki-Seiten schreibst du als Wikilinks: [[Seitentitel]], "
-                + "[[ordner/pfad/Seitentitel]] oder [[Ziel|angezeigter Text]] - sie werden beim Anzeigen automatisch "
+                + "[[ordner/pfad/Seitentitel]] oder [[Ziel#angezeigter Text]] - sie werden beim Anzeigen automatisch "
                 + "aufgeloest (auch nach Umbenennungen) und Links auf noch fehlende Seiten erscheinen rot mit "
-                + "Direktlink zum Anlegen. Nutze Wikilinks statt harter URLs, wann immer du Wiki-Seiten verlinkst.\n";
+                + "Direktlink zum Anlegen. Nutze Wikilinks statt harter URLs, wann immer du Wiki-Seiten verlinkst. "
+                + "Nutze fuer einen abweichenden Anzeigetext \"#\" als Trenner, nicht \"|\" - der WYSIWYG-Editor "
+                + "kann Zeilen mit einem \"|\" beim Speichern als Tabellen-Syntax fehlinterpretieren und verstuemmeln, "
+                + "auch wenn niemand die Seite dort inhaltlich bearbeitet hat. \"|\" wird weiterhin aufgeloest "
+                + "(bestehende Seiten, aus GitHub/Obsidian migrierte Links), ist fuer neue Links aber nicht mehr zu empfehlen.\n";
 
         schedulingPrompt += "\nDu kannst außerdem die KSFX-Issue-Tracker vollständig nutzen (Issues lesen/anlegen/"
                 + "aktualisieren, kommentieren, Dateien anhängen) - ebenfalls per curl mit $KSFX_AGENT_TOKEN. Deine "
