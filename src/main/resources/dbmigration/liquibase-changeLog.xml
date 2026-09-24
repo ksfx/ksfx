@@ -45,4 +45,5 @@
     <include file="20260915110000_agent_message_completion_source.sql" relativeToChangelogFile="true"/>
     <include file="20260918070000_wiki.sql" relativeToChangelogFile="true"/>
     <include file="20260919090000_issues.sql" relativeToChangelogFile="true"/>
+    <include file="20260921120000_issue_numbers.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

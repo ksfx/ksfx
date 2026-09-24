@@ -56,3 +56,9 @@ th[data-grid-property="observationTime"]
 .breadcrumb {
     border-radius: 0;
 }
+/* End-of-life entries parked in the Admin dropdown's "Legacy" section (see layout.html) - muted
+   and italic so they read as deprecated at a glance. */
+.ksfx-legacy-item {
+    font-style: italic;
+    opacity: 0.65;
+}

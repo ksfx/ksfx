@@ -11,7 +11,10 @@ import ch.ksfx.model.issues.*;
 import ch.ksfx.model.user.User;
 import ch.ksfx.services.issues.IssueService;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -144,23 +147,23 @@ public class AgentIssueApiController
         return ResponseEntity.ok(issues);
     }
 
-    @GetMapping("/{trackerId}/issue/{issueId}")
-    public ResponseEntity<?> read(HttpServletRequest request, @PathVariable Long trackerId, @PathVariable Long issueId)
+    @GetMapping("/{trackerId}/issue/{issueNumber}")
+    public ResponseEntity<?> read(HttpServletRequest request, @PathVariable Long trackerId, @PathVariable Long issueNumber)
     {
         if (authenticate(request) == null) {
             return unauthorized();
         }
 
-        Issue issue = findIssue(trackerId, issueId);
+        Issue issue = findIssue(trackerId, issueNumber);
 
         if (issue == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No issue with that id in this tracker."));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No issue with that number in this tracker."));
         }
 
         IssueDto dto = toDto(issue, true);
         dto.comments = new ArrayList<>();
 
-        for (IssueComment comment : issueCommentDAO.getCommentsForIssue(issueId)) {
+        for (IssueComment comment : issueCommentDAO.getCommentsForIssue(issue.getId())) {
             CommentDto commentDto = new CommentDto();
             commentDto.commentId = comment.getId();
             commentDto.author = authorOf(comment.getCreatedByUser(), comment.getCreatedByAgent());
@@ -171,11 +174,12 @@ public class AgentIssueApiController
 
         dto.attachments = new ArrayList<>();
 
-        for (IssueAsset asset : issueAssetDAO.getAssetsForIssue(issueId)) {
+        for (IssueAsset asset : issueAssetDAO.getAssetsForIssue(issue.getId())) {
             AttachmentDto attachmentDto = new AttachmentDto();
             attachmentDto.assetId = asset.getId();
             attachmentDto.fileName = asset.getFileName();
             attachmentDto.url = "/issues/assets/" + asset.getId();
+            attachmentDto.apiUrl = "/agentic/api/issues/asset/" + asset.getId();
             dto.attachments.add(attachmentDto);
         }
 
@@ -213,7 +217,7 @@ public class AgentIssueApiController
             return ResponseEntity.badRequest().body(errorBody(error));
         }
 
-        issueService.touchAndSave(issue);
+        issueService.saveNewIssue(issue);
 
         return ResponseEntity.ok(toDto(issue, false));
     }
@@ -223,8 +227,8 @@ public class AgentIssueApiController
      * agent can flip just the status without re-sending everything. Exception: {@code assignee}
      * uses "" (empty string) for "unassign", since null already means "don't touch".
      */
-    @PostMapping("/{trackerId}/issue/{issueId}")
-    public ResponseEntity<?> update(HttpServletRequest request, @PathVariable Long trackerId, @PathVariable Long issueId,
+    @PostMapping("/{trackerId}/issue/{issueNumber}")
+    public ResponseEntity<?> update(HttpServletRequest request, @PathVariable Long trackerId, @PathVariable Long issueNumber,
                                      @RequestBody IssueDto body)
     {
         Agent agent = authenticate(request);
@@ -233,10 +237,10 @@ public class AgentIssueApiController
             return unauthorized();
         }
 
-        Issue issue = findIssue(trackerId, issueId);
+        Issue issue = findIssue(trackerId, issueNumber);
 
         if (issue == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No issue with that id in this tracker."));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No issue with that number in this tracker."));
         }
 
         String error = applyFields(issue, issue.getIssueTracker(), body, false);
@@ -250,8 +254,8 @@ public class AgentIssueApiController
         return ResponseEntity.ok(toDto(issue, false));
     }
 
-    @PostMapping("/{trackerId}/issue/{issueId}/comment")
-    public ResponseEntity<?> comment(HttpServletRequest request, @PathVariable Long trackerId, @PathVariable Long issueId,
+    @PostMapping("/{trackerId}/issue/{issueNumber}/comment")
+    public ResponseEntity<?> comment(HttpServletRequest request, @PathVariable Long trackerId, @PathVariable Long issueNumber,
                                       @RequestBody CommentDto body)
     {
         Agent agent = authenticate(request);
@@ -260,10 +264,10 @@ public class AgentIssueApiController
             return unauthorized();
         }
 
-        Issue issue = findIssue(trackerId, issueId);
+        Issue issue = findIssue(trackerId, issueNumber);
 
         if (issue == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No issue with that id in this tracker."));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No issue with that number in this tracker."));
         }
 
         if (isBlank(body.content)) {
@@ -288,10 +292,16 @@ public class AgentIssueApiController
         return ResponseEntity.ok(response);
     }
 
-    /** Same standalone-vs-attached split as the wiki asset endpoint: no {@code issueId} = inline/embed URL, with = attachment. */
+    /**
+     * Same standalone-vs-attached split as the wiki asset endpoint: without target fields the
+     * upload is a standalone/inline asset (embed URL); with {@code trackerId} + {@code issueNumber}
+     * (both, since numbers only mean something within a tracker) it becomes that issue's
+     * attachment. Numbers, not internal ids - agents never see internal issue ids anywhere else.
+     */
     @PostMapping("/asset")
     public ResponseEntity<?> uploadAsset(HttpServletRequest request, @RequestParam("file") MultipartFile file,
-                                          @RequestParam(required = false) Long issueId) throws IOException
+                                          @RequestParam(required = false) Long trackerId,
+                                          @RequestParam(required = false) Long issueNumber) throws IOException
     {
         Agent agent = authenticate(request);
 
@@ -303,13 +313,17 @@ public class AgentIssueApiController
             return ResponseEntity.badRequest().body(errorBody("file is required"));
         }
 
+        if ((trackerId == null) != (issueNumber == null)) {
+            return ResponseEntity.badRequest().body(errorBody("To attach to an issue, send BOTH trackerId and issueNumber."));
+        }
+
         Issue issue = null;
 
-        if (issueId != null) {
-            issue = issueDAO.getIssueForId(issueId);
+        if (issueNumber != null) {
+            issue = findIssue(trackerId, issueNumber);
 
             if (issue == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No issue with that id."));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No issue with that number in that tracker."));
             }
         }
 
@@ -326,8 +340,39 @@ public class AgentIssueApiController
         Map<String, Object> response = new HashMap<>();
         response.put("assetId", asset.getId());
         response.put("url", "/issues/assets/" + asset.getId());
+        response.put("apiUrl", "/agentic/api/issues/asset/" + asset.getId());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Download counterpart to {@link #uploadAsset} - until now agents could attach files but never
+     * read one back: the {@code url} field points at the session-authenticated web route
+     * (/issues/assets/{id}), which a bearer token can't pass. Same bytes/content type/filename as
+     * the web route, just behind agent auth. No per-issue path segment on purpose: assets ids are
+     * global (inline uploads aren't tied to an issue at all), matching how upload addresses them.
+     */
+    @GetMapping("/asset/{assetId}")
+    public ResponseEntity<?> downloadAsset(HttpServletRequest request, @PathVariable Long assetId)
+    {
+        if (authenticate(request) == null) {
+            return unauthorized();
+        }
+
+        IssueAsset asset = issueAssetDAO.getIssueAssetForId(assetId);
+
+        if (asset == null || asset.getContent() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No asset with id " + assetId));
+        }
+
+        MediaType mediaType = asset.getContentType() != null
+                ? MediaType.parseMediaType(asset.getContentType())
+                : MediaType.APPLICATION_OCTET_STREAM;
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + asset.getFileName() + "\"")
+                .body(new ByteArrayResource(asset.getContent()));
     }
 
     /**
@@ -399,16 +444,15 @@ public class AgentIssueApiController
         return null;
     }
 
-    private Issue findIssue(Long trackerId, Long issueId)
+    private Issue findIssue(Long trackerId, Long issueNumber)
     {
-        Issue issue = issueDAO.getIssueForId(issueId);
-        return issue != null && issue.getIssueTracker().getId().equals(trackerId) ? issue : null;
+        return issueDAO.getIssueForTrackerAndNumber(trackerId, issueNumber);
     }
 
     private IssueDto toDto(Issue issue, boolean withDescription)
     {
         IssueDto dto = new IssueDto();
-        dto.issueId = issue.getId();
+        dto.number = issue.getNumber();
         dto.title = issue.getTitle();
         dto.status = issue.getStatus().name();
         dto.priority = issue.getPriority().name();
@@ -500,7 +544,7 @@ public class AgentIssueApiController
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class IssueDto
     {
-        public Long issueId;
+        public Long number;
         public String title;
         public String description;
         public String status;
@@ -530,5 +574,6 @@ public class AgentIssueApiController
         public Long assetId;
         public String fileName;
         public String url;
+        public String apiUrl;
     }
 }

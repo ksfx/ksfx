@@ -23,7 +23,7 @@
     // this is the one place on the JS side that needs to stay in sync if that ever changes. Only
     // used to guess whether a "load older" response was a full page (there might be more) or a
     // partial/empty one (definitely the end) - see loadOlderMessages below.
-    var MESSAGE_PAGE_SIZE = 50;
+    var MESSAGE_PAGE_SIZE = 25;
 
     // Fills the rest of the viewport below the sidebar/chat panes instead of the fixed
     // "calc(100vh - 300px)" the CSS used to hardcode - that guessed constant didn't account for

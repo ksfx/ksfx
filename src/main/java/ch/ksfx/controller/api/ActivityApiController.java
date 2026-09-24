@@ -17,6 +17,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import groovy.lang.GroovyClassLoader;
 import org.quartz.CronExpression;
 import org.quartz.SchedulerException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -375,6 +379,67 @@ public class ActivityApiController
     }
 
     /**
+     * "Is this Activity running right now?" without needing an instanceId in hand - the answer the
+     * GUI has always had via {@link ActivityInstanceRunner}'s in-memory RunningActivitiesCache but
+     * the API never exposed. Deliberately in-memory, not derived from the DB's started/finished
+     * columns: after a server crash/restart those can read as started-but-never-finished, which
+     * this endpoint correctly reports as not running.
+     */
+    @GetMapping("/{id}/running")
+    public ResponseEntity<?> running(@PathVariable Long id)
+    {
+        Activity activity = activityDAO.getActivityForId(id);
+
+        if (activity == null) {
+            return notFound();
+        }
+
+        List<Long> instanceIds = activityInstanceRunner.getRunningInstancesForActivityId(id).stream()
+                .map(ActivityInstance::getId)
+                .collect(Collectors.toList());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("running", !instanceIds.isEmpty());
+        body.put("instanceIds", instanceIds);
+
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * All runs of one Activity, newest first, paged - closes the gap where instance ids were only
+     * knowable from one's own {@link #run} responses. Same status logic as {@link #getInstance} but
+     * without {@code console}: a run's log can be arbitrarily large, so it stays on the
+     * single-instance endpoint. {@code size} is capped defensively - unattended crawlers produce
+     * tens of thousands of instances per Activity.
+     */
+    @GetMapping("/{id}/instances")
+    public ResponseEntity<?> listInstances(@PathVariable Long id,
+                                           @RequestParam(defaultValue = "0") Integer page,
+                                           @RequestParam(defaultValue = "50") Integer size)
+    {
+        Activity activity = activityDAO.getActivityForId(id);
+
+        if (activity == null) {
+            return notFound();
+        }
+
+        Page<ActivityInstance> instancePage = activityInstanceDAO.getActivityInstancesForPageableAndActivity(
+                PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 200), Sort.by(Sort.Direction.DESC, "id")),
+                activity, false);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("activityId", id);
+        body.put("page", instancePage.getNumber());
+        body.put("size", instancePage.getSize());
+        body.put("totalElements", instancePage.getTotalElements());
+        body.put("instances", instancePage.getContent().stream()
+                .map(instance -> ActivityInstanceSummaryDto.from(instance, activityInstanceRunner.isActivityInstanceRunning(instance)))
+                .collect(Collectors.toList()));
+
+        return ResponseEntity.ok(body);
+    }
+
+    /**
      * Shared not-found/ownership check for the two endpoints above - null if the instance doesn't
      * exist or belongs to a different Activity than the {id} in the URL, same defensive pattern as
      * every other nested-resource check in this controller/CodeLibApiController (an instance can't
@@ -561,6 +626,33 @@ public class ActivityApiController
             dto.finished = instance.getFinished();
             dto.approved = instance.getApproved();
             dto.console = instance.getConsole();
+
+            return dto;
+        }
+    }
+
+    /**
+     * Per-row shape for {@link #listInstances} - {@link ActivityInstanceApiDto} minus
+     * {@code console} (and minus {@code activityId}, which the list response carries once at the
+     * top level). Separate class rather than a nulled-out console so the list rows never grow the
+     * field back accidentally.
+     */
+    private static class ActivityInstanceSummaryDto
+    {
+        public Long instanceId;
+        public String status;
+        public Date started;
+        public Date finished;
+        public boolean approved;
+
+        static ActivityInstanceSummaryDto from(ActivityInstance instance, boolean running)
+        {
+            ActivityInstanceSummaryDto dto = new ActivityInstanceSummaryDto();
+            dto.instanceId = instance.getId();
+            dto.status = running ? "RUNNING" : (instance.getFinished() != null ? "FINISHED" : "PENDING_APPROVAL");
+            dto.started = instance.getStarted();
+            dto.finished = instance.getFinished();
+            dto.approved = instance.getApproved();
 
             return dto;
         }

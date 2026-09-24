@@ -23,7 +23,7 @@
 
         <form th:action="@{/issues/{trackerId}/labels/create(trackerId=${currentTracker.id})}" method="post" class="issues-label-create-form">
             <input type="text" name="name" placeholder="Label name" required="required" class="issues-label-name-input" />
-            <input type="color" name="color" value="#5b5bd6" class="issues-label-color-input" title="Label color" />
+            <input type="color" name="color" value="#2e77d0" class="issues-label-color-input" title="Label color" />
             <button type="submit" class="issues-btn issues-btn-primary"><i class="fa fa-plus"></i> Add label</button>
         </form>
 

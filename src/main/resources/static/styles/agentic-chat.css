@@ -102,7 +102,7 @@
 }
 
 .agentic-sidebar-new {
-    color: #5b5bd6;
+    color: #2e77d0;
     text-decoration: none;
 }
 
@@ -115,7 +115,7 @@
 .agentic-sidebar-search {
     border: none;
     background: transparent;
-    color: #5b5bd6;
+    color: #2e77d0;
     cursor: pointer;
     padding: 0;
     font-size: 1rem;
@@ -160,7 +160,7 @@
 
 .agentic-sidebar-item--active,
 .agentic-sidebar-item--active:hover {
-    background: #5b5bd6;
+    background: #2e77d0;
     color: #fff;
 }
 
@@ -456,7 +456,7 @@
 }
 
 .agentic-msg--user .agentic-bubble {
-    background: #5b5bd6;
+    background: #2e77d0;
     color: #fff;
     border-radius: 16px 16px 4px 16px;
     padding: 10px 16px;
@@ -585,7 +585,7 @@
     margin-top: 4px;
     border: none;
     background: none;
-    color: #5b5bd6;
+    color: #2e77d0;
     font-size: 0.75rem;
     cursor: pointer;
     padding: 0;
@@ -647,7 +647,7 @@
     height: 36px;
     border-radius: 50%;
     border: none;
-    background: #5b5bd6;
+    background: #2e77d0;
     color: #fff;
     display: flex;
     align-items: center;

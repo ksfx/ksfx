@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="layout :: site-head">
-    <title th:text="${isNew} ? 'KSFX - Issues - New issue' : 'KSFX - Issues - Edit #' + ${issue.id}">KSFX - Issues</title>
+    <title th:text="${isNew} ? 'KSFX - Issues - New issue' : 'KSFX - Issues - Edit #' + ${issue.number}">KSFX - Issues</title>
 </head>
 <body>
 <link rel="stylesheet" th:href="@{/styles/issues.css}" />
@@ -10,7 +10,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id})}" th:text="${currentTracker.name}">Tracker</a></li>
-        <li class="breadcrumb-item active" th:text="${isNew} ? 'New issue' : 'Edit #' + ${issue.id}">Edit</li>
+        <li class="breadcrumb-item active" th:text="${isNew} ? 'New issue' : 'Edit #' + ${issue.number}">Edit</li>
     </ol>
 </nav>
 
@@ -21,7 +21,7 @@
 
     <div class="issues-main">
         <form id="issuesEditForm" th:action="@{/issues/{trackerId}/issue/save(trackerId=${currentTracker.id})}" method="post" onsubmit="return false;">
-            <input type="hidden" name="issueId" th:if="${!isNew}" th:value="${issue.id}" />
+            <input type="hidden" name="issueNumber" th:if="${!isNew}" th:value="${issue.number}" />
 
             <div class="issues-field">
                 <label for="issuesEditTitle">Title</label>
@@ -84,7 +84,7 @@
 
             <div class="issues-edit-actions">
                 <button type="button" id="issuesEditSaveBtn" class="issues-btn issues-btn-primary"><i class="fa fa-check"></i> Save</button>
-                <a th:if="${!isNew}" th:href="@{/issues/{trackerId}/issue/{issueId}(trackerId=${currentTracker.id},issueId=${issue.id})}" class="issues-btn">Cancel</a>
+                <a th:if="${!isNew}" th:href="@{/issues/{trackerId}/issue/{issueNumber}(trackerId=${currentTracker.id},issueNumber=${issue.number})}" class="issues-btn">Cancel</a>
                 <a th:if="${isNew}" th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id})}" class="issues-btn">Cancel</a>
             </div>
         </form>

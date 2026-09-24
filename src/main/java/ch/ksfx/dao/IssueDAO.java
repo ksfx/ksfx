@@ -11,6 +11,12 @@ public interface IssueDAO
     public void deleteIssue(Issue issue);
     public Issue getIssueForId(Long issueId);
 
+    /** Lookup by the user-visible per-tracker "#N" - what all web routes and the agent API address issues by. */
+    public Issue getIssueForTrackerAndNumber(Long issueTrackerId, Long number);
+
+    /** Highest number assigned in a tracker so far, 0 for an empty tracker - see IssueService.saveNewIssue. */
+    public long getMaxNumberForTracker(Long issueTrackerId);
+
     /**
      * Issues of one tracker, most recently updated first. {@code status} null means all statuses;
      * the UI's "Open" tab passes OPEN and IN_PROGRESS together (see the two-arg convenience

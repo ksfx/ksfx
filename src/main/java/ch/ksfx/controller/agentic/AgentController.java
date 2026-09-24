@@ -221,7 +221,7 @@ public class AgentController
      * Also the "load older" page size (see {@link #olderMessages}) - both draw from the same
      * conversation, same page shape, no reason for them to differ.
      */
-    private static final int MESSAGE_PAGE_SIZE = 50;
+    private static final int MESSAGE_PAGE_SIZE = 25;
 
     @GetMapping("/chat/{id}")
     public String chat(@PathVariable(value = "id") Long agentId, Model model)

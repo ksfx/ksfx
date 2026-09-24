@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit User</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/admin/usermanagement/}">User Management</a></li>
+        <li class="breadcrumb-item active" th:text="${isNew} ? 'New User' : 'Edit User'">Edit User</li>
+    </ol>
+</nav>
+
+<div class="container">
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+ <div class="list-group">
+ <div class="list-group-item">
+        <!-- Plain named inputs, no th:object/th:field - see UserManagementController's comment on
+             why this form is deliberately not entity-bound. -->
+        <form id="userForm" th:action="@{/admin/usermanagement/save}" method="post">
+            <input type="hidden" name="id" th:if="${!isNew}" th:value="${user.id}" />
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" class="form-control" id="username" name="username" th:value="${isNew} ? '' : ${user.username}" required="required" />
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="firstName">First Name</label>
+                    <input type="text" class="form-control" id="firstName" name="firstName" th:value="${isNew} ? '' : ${user.firstName}" />
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="lastName">Last Name</label>
+                    <input type="text" class="form-control" id="lastName" name="lastName" th:value="${isNew} ? '' : ${user.lastName}" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" class="form-control" id="email" name="email" th:value="${isNew} ? '' : ${user.email}" />
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="password">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" autocomplete="new-password" />
+                    <small class="form-text text-muted" th:if="${!isNew}">Leave empty to keep the current password.</small>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="reTypePassword">Retype Password</label>
+                    <input type="password" class="form-control" id="reTypePassword" name="reTypePassword" autocomplete="new-password" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Roles</label>
+                <div class="form-check" th:each="role : ${allRoles}">
+                    <input type="checkbox" class="form-check-input" th:id="'role' + ${role.id}" name="roleIds" th:value="${role.id}"
+                           th:checked="${assignedRoleIds.contains(role.id)}" />
+                    <label class="form-check-label" th:for="'role' + ${role.id}" th:text="${role.name}"></label>
+                </div>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="enabled" name="enabled" value="true"
+                       th:checked="${isNew} ? true : ${user.enabled}" />
+                <label class="form-check-label" for="enabled">Enabled</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <a th:href="@{/admin/usermanagement/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+        </form>
+</div>
+</div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - User Management</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">User Management</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div style="float:right">
+    <a th:href="@{/admin/usermanagement/edit}" class="fa fa-plus fa-2x" title="Add New User" alt="Add New User"></a>&nbsp;&nbsp;&nbsp;
+</div>
+<table class="table table-striped table-responsive-md">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Roles</th>
+        <th>Enabled</th>
+        <th>Edit</th>
+        <th>Delete</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="user : ${users}">
+        <td th:text="${user.id}"></td>
+        <td>
+            <span th:text="${user.username}"></span>
+            <span th:if="${user.id == currentUserId}" class="badge badge-secondary">you</span>
+        </td>
+        <td th:text="${user.formattedName}"></td>
+        <td th:text="${user.email}"></td>
+        <td>
+            <span th:each="role, iter : ${user.roles}" th:text="${role.name} + (${iter.last} ? '' : ', ')"></span>
+        </td>
+        <td th:text="${user.enabled} ? 'Yes' : 'No'"></td>
+        <td><a th:href="@{/admin/usermanagement/edit/{id}(id=${user.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
+        <!-- Deleting yourself is blocked server-side too - not rendering the control just avoids
+             offering a click that can only end in an error message. -->
+        <td>
+            <a th:unless="${user.id == currentUserId}" th:attr="data-href=@{/admin/usermanagement/delete/{id}(id=${user.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

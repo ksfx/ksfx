@@ -39,6 +39,32 @@ public class IssueService
         issueDAO.saveOrUpdateIssue(issue);
     }
 
+    /**
+     * First save of a new issue: assigns the next per-tracker number (max+1) and saves. Two
+     * concurrent creates can race to the same number - the DB unique key on (tracker, number)
+     * rejects the loser, and the retry re-reads max and tries again; three failures in a row can't
+     * happen without dozens of simultaneous creates in one tracker, at which point throwing is the
+     * right answer anyway.
+     */
+    public void saveNewIssue(Issue issue)
+    {
+        RuntimeException lastFailure = null;
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            issue.setNumber(issueDAO.getMaxNumberForTracker(issue.getIssueTracker().getId()) + 1);
+            issue.setUpdatedAt(new Date());
+
+            try {
+                issueDAO.saveOrUpdateIssue(issue);
+                return;
+            } catch (RuntimeException e) {
+                lastFailure = e;
+            }
+        }
+
+        throw lastFailure;
+    }
+
     public List<IssueLabel> resolveLabelsByIds(Long issueTrackerId, List<Long> labelIds)
     {
         List<IssueLabel> labels = new ArrayList<>();

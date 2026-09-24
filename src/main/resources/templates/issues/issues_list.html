@@ -27,14 +27,14 @@
         <ul class="issues-list" th:unless="${#lists.isEmpty(issues)}">
             <li th:each="i : ${issues}" class="issues-list-item">
                 <div class="issues-list-item-main">
-                    <a th:href="@{/issues/{trackerId}/issue/{issueId}(trackerId=${currentTracker.id},issueId=${i.id})}" class="issues-list-item-title">
+                    <a th:href="@{/issues/{trackerId}/issue/{issueNumber}(trackerId=${currentTracker.id},issueNumber=${i.number})}" class="issues-list-item-title">
                         <span th:replace="issues/issues_sidebar :: statusBadge(status=${i.status})"></span>
                         <span th:text="${i.title}"></span>
                     </a>
                     <span th:replace="issues/issues_sidebar :: labelChips(issueLabels=${i.labels})"></span>
                 </div>
                 <div class="issues-list-item-meta">
-                    <span class="issues-list-item-number" th:text="'#' + ${i.id}"></span>
+                    <span class="issues-list-item-number" th:text="'#' + ${i.number}"></span>
                     <span th:replace="issues/issues_sidebar :: priorityBadge(priority=${i.priority})"></span>
                     <span th:if="${i.assigneeAgent != null}" class="issues-assignee"><i class="fa fa-android"></i> <span th:text="${i.assigneeAgent.name}"></span></span>
                     <span th:if="${i.assigneeUser != null}" class="issues-assignee"><i class="fa fa-user-o"></i> <span th:text="${i.assigneeUser.username}"></span></span>

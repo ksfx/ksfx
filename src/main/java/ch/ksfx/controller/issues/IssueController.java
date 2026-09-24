@@ -123,16 +123,16 @@ public class IssueController
         return "issues/issues_list";
     }
 
-    @GetMapping("/{trackerId}/issue/{issueId}")
-    public String view(@PathVariable Long trackerId, @PathVariable Long issueId, Model model)
+    @GetMapping("/{trackerId}/issue/{issueNumber}")
+    public String view(@PathVariable Long trackerId, @PathVariable Long issueNumber, Model model)
     {
         IssueTracker tracker = requireTracker(trackerId);
-        Issue issue = requireIssue(trackerId, issueId);
+        Issue issue = requireIssue(trackerId, issueNumber);
 
         baseModel(model, tracker);
         model.addAttribute("issue", issue);
-        model.addAttribute("comments", issueCommentDAO.getCommentsForIssue(issueId));
-        model.addAttribute("attachments", issueAssetDAO.getAssetsForIssue(issueId));
+        model.addAttribute("comments", issueCommentDAO.getCommentsForIssue(issue.getId()));
+        model.addAttribute("attachments", issueAssetDAO.getAssetsForIssue(issue.getId()));
 
         return "issues/issues_view";
     }
@@ -148,11 +148,11 @@ public class IssueController
         return "issues/issues_edit";
     }
 
-    @GetMapping("/{trackerId}/issue/{issueId}/edit")
-    public String editIssue(@PathVariable Long trackerId, @PathVariable Long issueId, Model model)
+    @GetMapping("/{trackerId}/issue/{issueNumber}/edit")
+    public String editIssue(@PathVariable Long trackerId, @PathVariable Long issueNumber, Model model)
     {
         IssueTracker tracker = requireTracker(trackerId);
-        Issue issue = requireIssue(trackerId, issueId);
+        Issue issue = requireIssue(trackerId, issueNumber);
 
         baseModel(model, tracker);
         formModel(model, tracker, issue);
@@ -162,7 +162,7 @@ public class IssueController
 
     @PostMapping("/{trackerId}/issue/save")
     public String saveIssue(@PathVariable Long trackerId,
-                             @RequestParam(required = false) Long issueId,
+                             @RequestParam(required = false) Long issueNumber,
                              @RequestParam String title,
                              @RequestParam(defaultValue = "") String description,
                              @RequestParam(defaultValue = "MEDIUM") IssuePriority priority,
@@ -176,20 +176,21 @@ public class IssueController
         if (title == null || title.trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("resultError", true);
             redirectAttributes.addFlashAttribute("resultMessage", "An issue needs a title.");
-            return issueId != null
-                    ? "redirect:/issues/" + trackerId + "/issue/" + issueId + "/edit"
+            return issueNumber != null
+                    ? "redirect:/issues/" + trackerId + "/issue/" + issueNumber + "/edit"
                     : "redirect:/issues/" + trackerId + "/issue/new";
         }
 
+        boolean isNew = issueNumber == null;
         Issue issue;
 
-        if (issueId != null) {
-            issue = requireIssue(trackerId, issueId);
-        } else {
+        if (isNew) {
             issue = new Issue();
             issue.setIssueTracker(tracker);
             issue.setCreatedAt(new Date());
             issue.setCreatedByUser(currentUser());
+        } else {
+            issue = requireIssue(trackerId, issueNumber);
         }
 
         issue.setTitle(title.trim());
@@ -198,36 +199,41 @@ public class IssueController
         issue.setStatus(status);
         issue.setLabels(issueService.resolveLabelsByIds(trackerId, labelIds));
         applyAssignee(issue, assignee);
-        issueService.touchAndSave(issue);
 
-        return "redirect:/issues/" + trackerId + "/issue/" + issue.getId();
+        if (isNew) {
+            issueService.saveNewIssue(issue);
+        } else {
+            issueService.touchAndSave(issue);
+        }
+
+        return "redirect:/issues/" + trackerId + "/issue/" + issue.getNumber();
     }
 
     /** Quick status transitions from the detail view (Close / Reopen / Start progress) without the full edit form. */
-    @PostMapping("/{trackerId}/issue/{issueId}/status")
-    public String changeStatus(@PathVariable Long trackerId, @PathVariable Long issueId, @RequestParam IssueStatus status)
+    @PostMapping("/{trackerId}/issue/{issueNumber}/status")
+    public String changeStatus(@PathVariable Long trackerId, @PathVariable Long issueNumber, @RequestParam IssueStatus status)
     {
-        Issue issue = requireIssue(trackerId, issueId);
+        Issue issue = requireIssue(trackerId, issueNumber);
         issue.setStatus(status);
         issueService.touchAndSave(issue);
 
-        return "redirect:/issues/" + trackerId + "/issue/" + issueId;
+        return "redirect:/issues/" + trackerId + "/issue/" + issueNumber;
     }
 
-    @PostMapping("/{trackerId}/issue/{issueId}/delete")
-    public String deleteIssue(@PathVariable Long trackerId, @PathVariable Long issueId, RedirectAttributes redirectAttributes)
+    @PostMapping("/{trackerId}/issue/{issueNumber}/delete")
+    public String deleteIssue(@PathVariable Long trackerId, @PathVariable Long issueNumber, RedirectAttributes redirectAttributes)
     {
-        issueDAO.deleteIssue(requireIssue(trackerId, issueId));
+        issueDAO.deleteIssue(requireIssue(trackerId, issueNumber));
 
         redirectAttributes.addFlashAttribute("resultMessage", "Issue deleted.");
         return "redirect:/issues/" + trackerId + "/";
     }
 
-    @PostMapping("/{trackerId}/issue/{issueId}/comment")
-    public String addComment(@PathVariable Long trackerId, @PathVariable Long issueId,
+    @PostMapping("/{trackerId}/issue/{issueNumber}/comment")
+    public String addComment(@PathVariable Long trackerId, @PathVariable Long issueNumber,
                               @RequestParam(defaultValue = "") String content, RedirectAttributes redirectAttributes)
     {
-        Issue issue = requireIssue(trackerId, issueId);
+        Issue issue = requireIssue(trackerId, issueNumber);
 
         if (!content.trim().isEmpty()) {
             IssueComment comment = new IssueComment();
@@ -240,20 +246,20 @@ public class IssueController
             issueService.touchAndSave(issue);
         }
 
-        return "redirect:/issues/" + trackerId + "/issue/" + issueId;
+        return "redirect:/issues/" + trackerId + "/issue/" + issueNumber;
     }
 
-    @PostMapping("/{trackerId}/issue/{issueId}/comment/{commentId}/delete")
-    public String deleteComment(@PathVariable Long trackerId, @PathVariable Long issueId, @PathVariable Long commentId)
+    @PostMapping("/{trackerId}/issue/{issueNumber}/comment/{commentId}/delete")
+    public String deleteComment(@PathVariable Long trackerId, @PathVariable Long issueNumber, @PathVariable Long commentId)
     {
-        requireIssue(trackerId, issueId);
+        Issue issue = requireIssue(trackerId, issueNumber);
         IssueComment comment = issueCommentDAO.getIssueCommentForId(commentId);
 
-        if (comment != null && comment.getIssue().getId().equals(issueId)) {
+        if (comment != null && comment.getIssue().getId().equals(issue.getId())) {
             issueCommentDAO.deleteIssueComment(comment);
         }
 
-        return "redirect:/issues/" + trackerId + "/issue/" + issueId;
+        return "redirect:/issues/" + trackerId + "/issue/" + issueNumber;
     }
 
     @GetMapping("/{trackerId}/labels")
@@ -327,11 +333,11 @@ public class IssueController
         return response;
     }
 
-    @PostMapping("/{trackerId}/issue/{issueId}/attachment/upload")
-    public String uploadAttachment(@PathVariable Long trackerId, @PathVariable Long issueId,
+    @PostMapping("/{trackerId}/issue/{issueNumber}/attachment/upload")
+    public String uploadAttachment(@PathVariable Long trackerId, @PathVariable Long issueNumber,
                                     @RequestParam("files") MultipartFile[] files) throws IOException
     {
-        Issue issue = requireIssue(trackerId, issueId);
+        Issue issue = requireIssue(trackerId, issueNumber);
 
         for (MultipartFile file : files) {
             if (file.isEmpty()) {
@@ -341,20 +347,20 @@ public class IssueController
             issueAssetDAO.saveIssueAsset(buildAsset(file, issue));
         }
 
-        return "redirect:/issues/" + trackerId + "/issue/" + issueId;
+        return "redirect:/issues/" + trackerId + "/issue/" + issueNumber;
     }
 
-    @PostMapping("/{trackerId}/issue/{issueId}/attachment/{assetId}/delete")
-    public String deleteAttachment(@PathVariable Long trackerId, @PathVariable Long issueId, @PathVariable Long assetId)
+    @PostMapping("/{trackerId}/issue/{issueNumber}/attachment/{assetId}/delete")
+    public String deleteAttachment(@PathVariable Long trackerId, @PathVariable Long issueNumber, @PathVariable Long assetId)
     {
-        requireIssue(trackerId, issueId);
+        Issue issue = requireIssue(trackerId, issueNumber);
         IssueAsset asset = issueAssetDAO.getIssueAssetForId(assetId);
 
-        if (asset != null && asset.getIssue() != null && asset.getIssue().getId().equals(issueId)) {
+        if (asset != null && asset.getIssue() != null && asset.getIssue().getId().equals(issue.getId())) {
             issueAssetDAO.deleteIssueAsset(asset);
         }
 
-        return "redirect:/issues/" + trackerId + "/issue/" + issueId;
+        return "redirect:/issues/" + trackerId + "/issue/" + issueNumber;
     }
 
     @GetMapping("/assets/{id}")
@@ -444,11 +450,11 @@ public class IssueController
         return tracker;
     }
 
-    private Issue requireIssue(Long trackerId, Long issueId)
+    private Issue requireIssue(Long trackerId, Long issueNumber)
     {
-        Issue issue = issueDAO.getIssueForId(issueId);
+        Issue issue = issueDAO.getIssueForTrackerAndNumber(trackerId, issueNumber);
 
-        if (issue == null || !issue.getIssueTracker().getId().equals(trackerId)) {
+        if (issue == null) {
             throw new IllegalArgumentException("Issue not found");
         }
 
