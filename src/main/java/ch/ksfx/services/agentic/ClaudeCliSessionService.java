@@ -1219,6 +1219,8 @@ public class ClaudeCliSessionService
                 + "- POST /agentic/api/issues/{trackerId}/issue/{issueNumber}/comment -> Kommentar, JSON-Body: {\"content\":\"Markdown...\"}\n"
                 + "- POST /agentic/api/issues/asset                        -> Datei-Upload (multipart, Feld \"file\"; "
                 + "optional Felder \"trackerId\" + \"issueNumber\" um die Datei als Anhang an ein Issue zu hängen)\n"
+                + "- GET  /agentic/api/issues/asset/{assetId}              -> Datei-Download (Anhänge aus Issue-Details "
+                + "haben dafür ein \"apiUrl\"-Feld; das \"url\"-Feld ist nur für eingeloggte Menschen im Browser)\n"
                 + "issueNumber ist die pro Tracker zählende Issue-Nummer (\"#N\", Feld \"number\" in den Antworten), "
                 + "keine globale Id.\n"
                 + "Status-Werte: OPEN, IN_PROGRESS, CLOSED. Beispiel-Aufruf:\n"
