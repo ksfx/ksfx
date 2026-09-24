@@ -6,7 +6,7 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <meta name="author" content="Kejo Starosta" />
-        <link rel="icon" type="image/png" th:href="@{/images/ksfx-header.png}" />
+        <link rel="icon" type="image/svg+xml" th:href="@{/images/ksfx-logo.svg}" />
         <meta name="description" content="KSFX Data Analysis: Information Retrieval, Sentiment Analysis, Data-Science" />
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" />
         <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" /> -->
@@ -169,21 +169,11 @@
 
         <navigation th:fragment="bumble2" th:remove="tag">
             <nav class="navbar navbar-expand-sm navbar-light bg-light">
-                <a href="" class="pull-left">
-                    <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
-                        <th:block th:if="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                            <a th:href="@{/}"><img th:src="@{/images/ksfx-header-dark.png}" /></a>
-                        </th:block>
-                    </th:block>
-                    <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
-                        <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                            <a th:href="@{/}"><img th:src="@{/images/ksfx-header.png}" /></a>
-                        </th:block>
-                    </th:block>
-                    <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode')}" >
-                        <a th:href="@{/}"><img th:src="@{/images/ksfx-header.png}" /></a>
-                    </th:block>
-
+                <!-- One logo for both display modes - the badge mark carries its own navy
+                     background (see the SVG), so the old light/dark PNG switching (and its
+                     invalid nested <a> markup) is gone. -->
+                <a th:href="@{/}" class="pull-left" style="margin-right:10px">
+                    <img th:src="@{/images/ksfx-logo.svg}" alt="KSFX" style="height:42px;width:42px" />
                 </a>
                 <a class="navbar-brand" th:href="@{/}">KSFX</a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample03" aria-controls="navbarsExample03" aria-expanded="false" aria-label="Toggle navigation">
