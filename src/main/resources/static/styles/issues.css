@@ -96,7 +96,7 @@
     border-radius: 6px;
     padding: 5px 8px;
     cursor: pointer;
-    color: #5b5bd6;
+    color: #2e77d0;
 }
 
 .issues-switcher-btn:hover {
@@ -115,7 +115,7 @@
     display: block;
     margin: 12px 14px;
     padding: 7px 12px;
-    background: #5b5bd6;
+    background: #2e77d0;
     border-radius: 6px;
     color: #fff;
     text-align: center;
@@ -124,7 +124,7 @@
 }
 
 .issues-new-issue-btn:hover {
-    background: #4a4ac2;
+    background: #2360ad;
     color: #fff;
     text-decoration: none;
 }
@@ -150,7 +150,7 @@
 }
 
 .issues-labels-manage:hover {
-    color: #5b5bd6;
+    color: #2e77d0;
 }
 
 .issues-filter-link {
@@ -170,7 +170,7 @@
 }
 
 .issues-filter-link--active {
-    background: #5b5bd6;
+    background: #2e77d0;
     color: #fff;
 }
 
@@ -224,13 +224,13 @@
 }
 
 .issues-btn-primary {
-    background: #5b5bd6;
-    border-color: #5b5bd6;
+    background: #2e77d0;
+    border-color: #2e77d0;
     color: #fff;
 }
 
 .issues-btn-primary:hover {
-    background: #4a4ac2;
+    background: #2360ad;
     color: #fff;
 }
 
@@ -285,7 +285,7 @@
 }
 
 .issues-list-item-title:hover {
-    color: #5b5bd6;
+    color: #2e77d0;
     text-decoration: none;
 }
 
@@ -322,7 +322,7 @@
 
 .issues-status-badge--open { background: #2da44e; }
 .issues-status-badge--in_progress { background: #bf8700; }
-.issues-status-badge--closed { background: #8250df; }
+.issues-status-badge--closed { background: #64748b; }
 
 .issues-priority-badge--low { background: #8a8a93; }
 .issues-priority-badge--medium { background: #4a7dcf; }
@@ -451,7 +451,7 @@
 }
 
 .issues-attachment-link:hover {
-    color: #5b5bd6;
+    color: #2e77d0;
     text-decoration: none;
 }
 
@@ -685,8 +685,8 @@
 }
 
 .issues-dark .issues-btn-primary {
-    background: #5b5bd6;
-    border-color: #5b5bd6;
+    background: #2e77d0;
+    border-color: #2e77d0;
     color: #fff;
 }
 
@@ -703,7 +703,7 @@
 }
 
 .issues-dark .issues-filter-link--active {
-    background: #5b5bd6;
+    background: #2e77d0;
     color: #fff;
 }
 
@@ -784,5 +784,5 @@
 }
 
 .issues-dark .issues-md-viewer .toastui-editor-contents a {
-    color: #8f8fe8 !important;
+    color: #5ea1ee !important;
 }

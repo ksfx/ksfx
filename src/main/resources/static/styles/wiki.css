@@ -100,14 +100,14 @@
 .wiki-sidebar-header-actions button {
     border: none;
     background: transparent;
-    color: #5b5bd6;
+    color: #2e77d0;
     cursor: pointer;
     padding: 2px 4px;
     font-size: 0.9rem;
 }
 
 .wiki-sidebar-header-actions button:hover {
-    color: #4a4ac2;
+    color: #2360ad;
 }
 
 .wiki-switcher {
@@ -134,7 +134,7 @@
     border-radius: 6px;
     padding: 5px 8px;
     cursor: pointer;
-    color: #5b5bd6;
+    color: #2e77d0;
 }
 
 .wiki-switcher-new-btn:hover {
@@ -228,7 +228,7 @@
 }
 
 .wiki-tree-page-link--active {
-    background: #5b5bd6;
+    background: #2e77d0;
     color: #fff;
 }
 
@@ -263,13 +263,13 @@
 }
 
 .wiki-btn-primary {
-    background: #5b5bd6;
-    border-color: #5b5bd6;
+    background: #2e77d0;
+    border-color: #2e77d0;
     color: #fff;
 }
 
 .wiki-btn-primary:hover {
-    background: #4a4ac2;
+    background: #2360ad;
     color: #fff;
 }
 
@@ -305,7 +305,7 @@
 }
 
 .wiki-copylink-btn:hover {
-    color: #5b5bd6;
+    color: #2e77d0;
 }
 
 /* A [[wikilink]] whose target page doesn't exist - MediaWiki-style red, styled via JS after the
@@ -395,7 +395,7 @@
 }
 
 .wiki-move a:hover {
-    color: #5b5bd6;
+    color: #2e77d0;
     text-decoration: underline;
 }
 
@@ -430,7 +430,7 @@
 }
 
 .wiki-history-current-badge {
-    background: #5b5bd6;
+    background: #2e77d0;
     color: #fff;
     border-radius: 10px;
     padding: 1px 9px;
@@ -506,7 +506,7 @@
 }
 
 .wiki-attachment-link:hover {
-    color: #5b5bd6;
+    color: #2e77d0;
     text-decoration: none;
 }
 
@@ -582,8 +582,8 @@
 }
 
 .wiki-dark .wiki-btn-primary {
-    background: #5b5bd6;
-    border-color: #5b5bd6;
+    background: #2e77d0;
+    border-color: #2e77d0;
     color: #fff;
 }
 
@@ -604,7 +604,7 @@
 }
 
 .wiki-dark .wiki-sidebar-header-actions button {
-    color: #8f8fe8;
+    color: #5ea1ee;
 }
 
 .wiki-dark .wiki-tree-page-link {
@@ -652,7 +652,7 @@
 }
 
 .wiki-dark .wiki-move a:hover {
-    color: #8f8fe8;
+    color: #5ea1ee;
 }
 
 .wiki-dark .wiki-move select {
@@ -678,7 +678,7 @@
 }
 
 .wiki-dark .wiki-attachment-link:hover {
-    color: #8f8fe8;
+    color: #5ea1ee;
 }
 
 .wiki-dark .wiki-page-title {
@@ -708,7 +708,7 @@
 }
 
 .wiki-dark .wiki-page-content .toastui-editor-contents a {
-    color: #8f8fe8 !important;
+    color: #5ea1ee !important;
 }
 
 .wiki-dark .wiki-page-content a.wiki-missing-link {
