@@ -250,6 +250,36 @@
         var sidebarCsrfHeader = sidebar.dataset.csrfHeader;
         var sidebarCsrfToken = sidebar.dataset.csrfToken;
 
+        // --- Expand/collapse persistence (localStorage, scoped per wiki) - see wiki_tree.html's
+        // comment on why this needs persisting at all: every navigation here is a full page load,
+        // not an SPA, so without this every click to a page would silently re-expand the whole tree. ---
+        var collapsedStorageKey = 'wiki-tree-collapsed-' + wikiId;
+
+        function readCollapsedSet() {
+            try {
+                var raw = window.localStorage.getItem(collapsedStorageKey);
+                return raw ? new Set(JSON.parse(raw)) : new Set();
+            } catch (e) {
+                return new Set();
+            }
+        }
+
+        function writeCollapsedSet(set) {
+            try {
+                window.localStorage.setItem(collapsedStorageKey, JSON.stringify(Array.from(set)));
+            } catch (e) {
+                // Private browsing / storage disabled / quota - collapse state just won't survive
+                // a reload this session, not worth surfacing to the user.
+            }
+        }
+
+        var collapsed = readCollapsedSet();
+        sidebar.querySelectorAll('[data-tree-node]').forEach(function (node) {
+            if (collapsed.has(node.dataset.treeNode)) {
+                node.classList.add('wiki-tree-item--collapsed');
+            }
+        });
+
         function postFolderAction(url, params) {
             var body = new URLSearchParams();
 
@@ -277,6 +307,27 @@
         }
 
         sidebar.addEventListener('click', function (event) {
+            var toggleBtn = event.target.closest('[data-tree-toggle]');
+
+            if (toggleBtn) {
+                var treeNode = toggleBtn.closest('[data-tree-node]');
+
+                if (treeNode) {
+                    var key = treeNode.dataset.treeNode;
+                    var nowCollapsed = treeNode.classList.toggle('wiki-tree-item--collapsed');
+
+                    if (nowCollapsed) {
+                        collapsed.add(key);
+                    } else {
+                        collapsed.delete(key);
+                    }
+
+                    writeCollapsedSet(collapsed);
+                }
+
+                return;
+            }
+
             var newPageBtn = event.target.closest('[data-folder-newpage]');
 
             if (newPageBtn) {

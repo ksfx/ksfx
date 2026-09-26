@@ -14,11 +14,26 @@
 
      Folder action icons (new page/new subfolder/rename/delete) are hover-revealed buttons with
      data-* attributes, handled by one delegated click listener in wiki.js rather than per-row
-     listeners - same reasoning as the file browser/schedule overlays' click delegation. -->
+     listeners - same reasoning as the file browser/schedule overlays' click delegation.
+
+     Expand/collapse: a folder or a page with children gets a chevron toggle (data-tree-toggle) that
+     hides/shows the nested <ul> by adding/removing wiki-tree-item--collapsed on the host <li>
+     (identified by data-tree-node="folder-{id}"/"page-{id}" - shared id-space is fine, the two
+     kinds never collide). Something with no children gets an inert spacer instead, so labels stay
+     aligned whether or not a row happens to be expandable. wiki.js persists the collapsed set to
+     localStorage per wiki (this is a plain server-rendered page, not an SPA - every navigation is a
+     fresh page load, so without persistence every click to a page would silently re-expand
+     everything). -->
 <ul th:fragment="treeChildren(node)" class="wiki-tree-list">
-    <li th:each="folder : ${node.folders}" class="wiki-tree-item wiki-tree-item--folder">
+    <li th:each="folder : ${node.folders}" class="wiki-tree-item wiki-tree-item--folder"
+        th:data-tree-node="'folder-' + ${folder.folderId}">
         <div class="wiki-tree-folder-row">
-            <span class="wiki-tree-folder-label"><i class="fa fa-folder-o"></i> <span th:text="${folder.name}"></span></span>
+            <span class="wiki-tree-folder-main">
+                <button type="button" class="wiki-tree-toggle" data-tree-toggle="" title="Expand/collapse" aria-label="Expand/collapse"
+                        th:if="${not (#lists.isEmpty(folder.folders) and #lists.isEmpty(folder.pages))}"><i class="fa fa-chevron-down"></i></button>
+                <span class="wiki-tree-toggle-spacer" th:if="${#lists.isEmpty(folder.folders) and #lists.isEmpty(folder.pages)}"></span>
+                <span class="wiki-tree-folder-label"><i class="fa fa-folder-o"></i> <span th:text="${folder.name}"></span></span>
+            </span>
             <span class="wiki-tree-folder-actions">
                 <button type="button" th:data-folder-newpage="${folder.folderId}" title="New page here" aria-label="New page here"><i class="fa fa-file-o"></i></button>
                 <button type="button" th:data-folder-newfolder="${folder.folderId}" title="New subfolder" aria-label="New subfolder"><i class="fa fa-folder-o"></i></button>
@@ -43,13 +58,18 @@
      subfolder" (data-page-newsubpage, handled in wiki.js); the nested <ul class="wiki-tree-list">
      reuses the exact same indentation rule folders already get from that class, no separate CSS
      needed for depth. -->
-<li th:fragment="pageNode(pn)" class="wiki-tree-item wiki-tree-item--page">
+<li th:fragment="pageNode(pn)" class="wiki-tree-item wiki-tree-item--page" th:data-tree-node="'page-' + ${pn.page.id}">
     <div class="wiki-tree-page-row">
-        <a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${pn.page.id})}" class="wiki-tree-page-link"
-           th:classappend="${currentPageId != null and pn.page.id == currentPageId} ? ' wiki-tree-page-link--active' : ''">
-            <i class="fa fa-file-text-o"></i>
-            <span th:text="${pn.page.title}"></span>
-        </a>
+        <span class="wiki-tree-page-main">
+            <button type="button" class="wiki-tree-toggle" data-tree-toggle="" title="Expand/collapse" aria-label="Expand/collapse"
+                    th:if="${not #lists.isEmpty(pn.children)}"><i class="fa fa-chevron-down"></i></button>
+            <span class="wiki-tree-toggle-spacer" th:if="${#lists.isEmpty(pn.children)}"></span>
+            <a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${pn.page.id})}" class="wiki-tree-page-link"
+               th:classappend="${currentPageId != null and pn.page.id == currentPageId} ? ' wiki-tree-page-link--active' : ''">
+                <i class="fa fa-file-text-o"></i>
+                <span th:text="${pn.page.title}"></span>
+            </a>
+        </span>
         <span class="wiki-tree-page-actions">
             <button type="button" th:data-page-newsubpage="${pn.page.id}" title="New subpage" aria-label="New subpage"><i class="fa fa-file-o"></i></button>
         </span>

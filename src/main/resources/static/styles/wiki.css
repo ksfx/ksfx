@@ -167,6 +167,44 @@
     margin: 2px 0;
 }
 
+/* Collapsed state (wiki.js toggles this on the <li>, keyed by data-tree-node, persisted to
+   localStorage) - the nested list is always the host <li>'s direct child (both the folder
+   recursion's replaced <div> and the page recursion's own <ul> land there), so one rule covers
+   both folders and subpages. */
+.wiki-tree-item--collapsed > .wiki-tree-list {
+    display: none;
+}
+
+.wiki-tree-toggle {
+    flex: 0 0 auto;
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    padding: 2px 3px;
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+.wiki-tree-toggle:hover {
+    color: #333;
+}
+
+.wiki-tree-toggle i {
+    display: inline-block;
+    transition: transform 0.1s;
+}
+
+.wiki-tree-item--collapsed .wiki-tree-toggle i {
+    transform: rotate(-90deg);
+}
+
+.wiki-tree-toggle-spacer {
+    flex: 0 0 auto;
+    display: inline-block;
+    width: 18px;
+}
+
 .wiki-tree-folder-row {
     display: flex;
     align-items: center;
@@ -177,6 +215,14 @@
 
 .wiki-tree-folder-row:hover {
     background: #f0f0f6;
+}
+
+.wiki-tree-folder-main,
+.wiki-tree-page-main {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .wiki-tree-folder-label {
@@ -677,6 +723,14 @@
 }
 
 .wiki-dark .wiki-tree-folder-actions button:hover {
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-tree-toggle {
+    color: #75757f;
+}
+
+.wiki-dark .wiki-tree-toggle:hover {
     color: #d8d8e0;
 }
 
