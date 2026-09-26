@@ -6,9 +6,16 @@
 <body>
 <link rel="stylesheet" th:href="@{/styles/wiki.css}" />
 <header th:replace="layout :: site-header"/>
+<!-- Ancestor chain (root-first) between the wiki name and the current page - always the same
+     folder as the page itself (see WikiService#validateParentPage), so unlike a folder path this
+     never needs reconciling against anything else. Absent (empty ${ancestors}) for a top-level
+     page, same as before this feature. -->
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a th:href="@{/wiki/{wikiId}/(wikiId=${currentWiki.id})}" th:text="${currentWiki.name}">Wiki</a></li>
+        <li class="breadcrumb-item" th:each="ancestor : ${ancestors}">
+            <a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${ancestor.id})}" th:text="${ancestor.title}">Ancestor</a>
+        </li>
         <li class="breadcrumb-item active" th:text="${page.title}">Page</li>
     </ol>
 </nav>
@@ -31,8 +38,12 @@
             <span class="wiki-page-actions">
                 <a th:href="@{/wiki/{wikiId}/page/{pageId}/edit(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-pencil"></i> Edit</a>
                 <a th:href="@{/wiki/{wikiId}/page/{pageId}/history(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-history"></i> History</a>
+                <!-- parent_page_id is ON DELETE CASCADE (same as folder deletes already cascade to
+                     everything underneath) - deleting a page takes its WHOLE subtree (children,
+                     grandchildren, ...) with it, so the confirm() says so with the real recursive
+                     count whenever there's actually something to lose. -->
                 <form th:action="@{/wiki/{wikiId}/page/{pageId}/delete(wikiId=${currentWiki.id},pageId=${page.id})}" method="post" class="wiki-inline-form"
-                      onsubmit="return confirm('Delete this page and its whole history?');">
+                      th:attr="onsubmit=${descendantCount == 0} ? 'return confirm(\'Delete this page and its whole history?\');' : 'return confirm(\'Delete this page, its whole history, AND all ' + ${descendantCount} + ' of its subpages (and theirs)? This cannot be undone.\');'">
                     <button type="submit" class="wiki-btn wiki-btn-danger"><i class="fa fa-trash-o"></i> Delete</button>
                 </form>
             </span>
@@ -47,6 +58,22 @@
         <div id="wikiPageViewer" class="wiki-page-content"
              th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
              th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"></div>
+
+        <!-- Direct children only, same one-level scope as the tree's per-page nesting - a "table of
+             contents" for this page, not the full recursive subtree (that's what the tree sidebar
+             is for). "New subpage" pre-fills both the folder and the parent (see
+             WikiController#newPage), so creating one is a single click from here. -->
+        <div class="wiki-subpages" th:if="${not #lists.isEmpty(childPages)}">
+            <div class="wiki-subpages-header">
+                <span class="wiki-subpages-title"><i class="fa fa-sitemap"></i> Subpages</span>
+                <a th:href="@{/wiki/{wikiId}/page/new(wikiId=${currentWiki.id},parentPageId=${page.id})}" class="wiki-btn"><i class="fa fa-plus"></i> New subpage</a>
+            </div>
+            <ul class="wiki-subpages-list">
+                <li th:each="child : ${childPages}">
+                    <a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${child.id})}"><i class="fa fa-file-text-o"></i> <span th:text="${child.title}"></span></a>
+                </li>
+            </ul>
+        </div>
 
         <div class="wiki-attachments">
             <div class="wiki-attachments-header">

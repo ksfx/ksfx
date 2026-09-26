@@ -53,6 +53,12 @@ public class EbeanWikiPageDAO implements WikiPageDAO
         return scopeToFolder(query, folderId).findUnique();
     }
 
+    @Override
+    public List<WikiPage> getChildPages(Long parentPageId)
+    {
+        return Ebean.find(WikiPage.class).where().eq("parentPage.id", parentPageId).order().asc("title").findList();
+    }
+
     private ExpressionList<WikiPage> scopeToFolder(ExpressionList<WikiPage> query, Long folderId)
     {
         return folderId != null ? query.eq("folder.id", folderId) : query.isNull("folder");

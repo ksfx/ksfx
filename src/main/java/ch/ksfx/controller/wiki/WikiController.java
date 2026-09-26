@@ -37,6 +37,13 @@ import java.util.*;
  * overwriting content in place, so the edit history is just "every version for this page" - see that
  * class's own comment.
  *
+ * Pages can additionally nest under one another ({@link WikiPage#getParentPage()}, "subpages") -
+ * deliberately NOT a second hierarchy alongside folders: a page's parent must always live in the
+ * same folder as the page (see {@link ch.ksfx.services.wiki.WikiService#validateParentPage}), so
+ * folders stay the one real containment structure and the parent-page chain is just a
+ * finer-grained ordering within a single folder's pages (see {@link #buildTree}/{@link
+ * #pagesInFolder}).
+ *
  * A KSFX instance can host several independent {@link Wiki}s (e.g. one per project) - every route
  * except asset up/download is scoped under {@code /wiki/{wikiId}/...}, and every page's model gets
  * {@code allWikis}/{@code currentWiki} (see {@link #baseModel}) so the sidebar can render the
@@ -154,30 +161,45 @@ public class WikiController
         // is why the edit view keeps using the raw version content.
         model.addAttribute("renderedContent", version != null ? wikiService.renderWikilinks(wiki, version.getContent()) : "");
         model.addAttribute("attachments", wikiAssetDAO.getAssetsForPage(pageId));
+        // Root-first ancestor chain for the breadcrumb - always same-folder by construction (see
+        // WikiService#validateParentPage), so unlike the folder path this never needs to be
+        // reconciled against anything else.
+        model.addAttribute("ancestors", ancestorChain(page));
+        model.addAttribute("childPages", wikiPageDAO.getChildPages(pageId));
+
+        Set<Long> descendantIds = new HashSet<>();
+        collectDescendantIds(pageId, descendantIds);
+        model.addAttribute("descendantCount", descendantIds.size());
 
         return "wiki/wiki_page";
     }
 
     /**
      * Title-only creation form, optionally pre-scoped to a folder (see the sidebar's "New page
-     * here"). {@code title} pre-fills the title field - currently only used by the empty-wiki
-     * "Create the first page" button to suggest "Home", nudging toward the home-page convention
-     * (see {@link #index}).
+     * here") or to a parent page (see the tree's per-page "New subpage" action) - the latter
+     * derives its folder from the parent instead of taking one independently, since a subpage must
+     * live in the same folder as its parent anyway (see WikiService#validateParentPage). {@code
+     * title} pre-fills the title field - currently only used by the empty-wiki "Create the first
+     * page" button to suggest "Home", nudging toward the home-page convention (see {@link #index}).
      */
     @GetMapping("/{wikiId}/page/new")
     public String newPage(@PathVariable Long wikiId, @RequestParam(required = false) Long folderId,
+                           @RequestParam(required = false) Long parentPageId,
                            @RequestParam(defaultValue = "") String title, Model model)
     {
         Wiki wiki = requireWiki(wikiId);
-        WikiFolder folder = folderId != null ? requireFolder(wikiId, folderId) : null;
+        WikiPage parentPage = parentPageId != null ? requirePage(wikiId, parentPageId) : null;
+        WikiFolder folder = parentPage != null ? parentPage.getFolder() : (folderId != null ? requireFolder(wikiId, folderId) : null);
 
         baseModel(model, wiki);
         model.addAttribute("isNew", true);
         model.addAttribute("pageId", null);
         model.addAttribute("title", title);
         model.addAttribute("content", "");
-        model.addAttribute("folderId", folderId);
+        model.addAttribute("folderId", folder != null ? folder.getId() : null);
         model.addAttribute("folderOptions", folderOptions(wikiId));
+        model.addAttribute("parentPageId", parentPage != null ? parentPage.getId() : null);
+        model.addAttribute("parentPageOptions", pagesInFolder(wikiId, folder, null));
 
         return "wiki/wiki_edit";
     }
@@ -197,17 +219,25 @@ public class WikiController
         model.addAttribute("content", latest != null ? latest.getContent() : "");
         model.addAttribute("folderId", page.getFolder() != null ? page.getFolder().getId() : null);
         model.addAttribute("folderOptions", folderOptions(wikiId));
+        model.addAttribute("parentPageId", page.getParentPage() != null ? page.getParentPage().getId() : null);
+        // Options are for the page's CURRENT folder - if "Move to another folder" is then actually
+        // used, any previously-selected parent gets caught by validateParentPage's same-folder
+        // check on save (a plain error redirect, same as every other validation failure here)
+        // rather than needing a second, JS-repopulated select for the rare move+reparent case.
+        model.addAttribute("parentPageOptions", pagesInFolder(wikiId, page.getFolder(), page));
 
         return "wiki/wiki_edit";
     }
 
     @PostMapping("/{wikiId}/page/save")
     public String savePage(@PathVariable Long wikiId, @RequestParam(required = false) Long pageId,
-                            @RequestParam(required = false) String folderId, @RequestParam String title,
-                            @RequestParam(defaultValue = "") String content, RedirectAttributes redirectAttributes)
+                            @RequestParam(required = false) String folderId, @RequestParam(required = false) String parentPageId,
+                            @RequestParam String title, @RequestParam(defaultValue = "") String content,
+                            RedirectAttributes redirectAttributes)
     {
         Wiki wiki = requireWiki(wikiId);
         WikiFolder folder = parseFolder(wikiId, folderId);
+        WikiPage existing = pageId != null ? requirePage(wikiId, pageId) : null;
 
         if (title == null || title.trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("resultError", true);
@@ -215,13 +245,18 @@ public class WikiController
             return pageId != null ? "redirect:/wiki/" + wikiId + "/page/" + pageId + "/edit" : "redirect:/wiki/" + wikiId + "/page/new";
         }
 
-        WikiPage page;
+        WikiPage parentPage = (parentPageId == null || parentPageId.trim().isEmpty()) ? null : requirePage(wikiId, Long.valueOf(parentPageId.trim()));
+        String parentError = wikiService.validateParentPage(folder, existing, parentPage);
 
-        if (pageId != null) {
-            page = wikiService.updatePage(requirePage(wikiId, pageId), folder, title.trim(), content, currentUser(), null);
-        } else {
-            page = wikiService.createPage(wiki, folder, title.trim(), content, currentUser(), null);
+        if (parentError != null) {
+            redirectAttributes.addFlashAttribute("resultError", true);
+            redirectAttributes.addFlashAttribute("resultMessage", parentError);
+            return pageId != null ? "redirect:/wiki/" + wikiId + "/page/" + pageId + "/edit" : "redirect:/wiki/" + wikiId + "/page/new";
         }
+
+        WikiPage page = existing != null
+                ? wikiService.updatePage(existing, folder, parentPage, title.trim(), content, currentUser(), null)
+                : wikiService.createPage(wiki, folder, parentPage, title.trim(), content, currentUser(), null);
 
         return "redirect:/wiki/" + wikiId + "/page/" + page.getId();
     }
@@ -486,6 +521,59 @@ public class WikiController
         return page;
     }
 
+    /** Root-first: wiki root's direct children first, {@code page} itself last - what the breadcrumb renders in order. */
+    private List<WikiPage> ancestorChain(WikiPage page)
+    {
+        LinkedList<WikiPage> chain = new LinkedList<>();
+        WikiPage cursor = page.getParentPage();
+
+        while (cursor != null) {
+            chain.addFirst(cursor);
+            cursor = cursor.getParentPage();
+        }
+
+        return chain;
+    }
+
+    /**
+     * Candidate parent-page options for the editor's "Parent page" select, scoped to one folder
+     * (the only folder a valid parent could ever be in - see WikiService#validateParentPage).
+     * {@code excludePage} is null when creating a brand new page (nothing to exclude yet) and the
+     * page being edited otherwise - excludes it and every one of its own descendants, so the select
+     * never even offers a choice {@code validateParentPage} would reject as a cycle.
+     */
+    private List<WikiPage> pagesInFolder(Long wikiId, WikiFolder folder, WikiPage excludePage)
+    {
+        Set<Long> excludedIds = new HashSet<>();
+
+        if (excludePage != null) {
+            excludedIds.add(excludePage.getId());
+            collectDescendantIds(excludePage.getId(), excludedIds);
+        }
+
+        Long folderId = folder != null ? folder.getId() : null;
+        List<WikiPage> result = new ArrayList<>();
+
+        for (WikiPage page : wikiPageDAO.getAllWikiPages(wikiId)) {
+            Long pageFolderId = page.getFolder() != null ? page.getFolder().getId() : null;
+
+            if (Objects.equals(pageFolderId, folderId) && !excludedIds.contains(page.getId())) {
+                result.add(page);
+            }
+        }
+
+        return result;
+    }
+
+    private void collectDescendantIds(Long pageId, Set<Long> out)
+    {
+        for (WikiPage child : wikiPageDAO.getChildPages(pageId)) {
+            if (out.add(child.getId())) {
+                collectDescendantIds(child.getId(), out);
+            }
+        }
+    }
+
     private User currentUser()
     {
         Object principal = SecurityContextHolder.getContext().getAuthentication() != null
@@ -500,6 +588,16 @@ public class WikiController
      * folders are real rows (see WikiFolder), not derived from path strings, so an empty folder
      * still renders. Children are kept in TreeMaps so folders/pages at each level render
      * alphabetically without any sorting in the template.
+     *
+     * Pages nest under {@link WikiPage#getParentPage()} within a folder rather than being a flat
+     * list - a page with no parent attaches directly to its folder's node (as before this feature);
+     * a page WITH a parent attaches under that parent's own {@link WikiPageNode} instead, which is
+     * only reachable because a parent is always in the same folder as its children (see
+     * WikiService#validateParentPage) - the folder's page map therefore only ever needs to hold the
+     * folder's OWN top-level pages, every deeper level lives inside a WikiPageNode's own children.
+     * A parent pointing outside this page's own folder set (shouldn't happen, guarded against at
+     * write time) falls back to top-level rather than being dropped, so a stray page never just
+     * disappears from the tree.
      */
     private WikiTreeNode buildTree(List<WikiFolder> folders, List<WikiPage> pages)
     {
@@ -516,9 +614,22 @@ public class WikiController
             parentNode.addFolder(node);
         }
 
+        Map<Long, WikiPageNode> nodesByPageId = new HashMap<>();
+
         for (WikiPage page : pages) {
-            WikiTreeNode parentNode = page.getFolder() != null ? nodesByFolderId.get(page.getFolder().getId()) : root;
-            parentNode.addPage(page);
+            nodesByPageId.put(page.getId(), new WikiPageNode(page));
+        }
+
+        for (WikiPage page : pages) {
+            WikiPageNode node = nodesByPageId.get(page.getId());
+            WikiPageNode parentPageNode = page.getParentPage() != null ? nodesByPageId.get(page.getParentPage().getId()) : null;
+
+            if (parentPageNode != null) {
+                parentPageNode.addChild(node);
+            } else {
+                WikiTreeNode folderNode = page.getFolder() != null ? nodesByFolderId.get(page.getFolder().getId()) : root;
+                folderNode.addPage(node);
+            }
         }
 
         return root;
@@ -529,7 +640,7 @@ public class WikiController
         private final Long folderId;
         private final String name;
         private final Map<String, WikiTreeNode> folders = new TreeMap<>();
-        private final Map<String, WikiPage> pages = new TreeMap<>();
+        private final Map<String, WikiPageNode> pages = new TreeMap<>();
 
         public WikiTreeNode(Long folderId, String name)
         {
@@ -542,9 +653,9 @@ public class WikiController
             folders.put(child.name + "#" + child.folderId, child);
         }
 
-        private void addPage(WikiPage page)
+        private void addPage(WikiPageNode page)
         {
-            pages.put(page.getTitle() + "#" + page.getId(), page);
+            pages.put(page.getPage().getTitle() + "#" + page.getPage().getId(), page);
         }
 
         public Long getFolderId()
@@ -562,9 +673,36 @@ public class WikiController
             return new ArrayList<>(folders.values());
         }
 
-        public List<WikiPage> getPages()
+        public List<WikiPageNode> getPages()
         {
             return new ArrayList<>(pages.values());
+        }
+    }
+
+    /** One page plus its own subpages (recursive) - see {@link #buildTree}'s comment on how nesting is decided. */
+    public static class WikiPageNode
+    {
+        private final WikiPage page;
+        private final Map<String, WikiPageNode> children = new TreeMap<>();
+
+        public WikiPageNode(WikiPage page)
+        {
+            this.page = page;
+        }
+
+        private void addChild(WikiPageNode child)
+        {
+            children.put(child.page.getTitle() + "#" + child.page.getId(), child);
+        }
+
+        public WikiPage getPage()
+        {
+            return page;
+        }
+
+        public List<WikiPageNode> getChildren()
+        {
+            return new ArrayList<>(children.values());
         }
     }
 

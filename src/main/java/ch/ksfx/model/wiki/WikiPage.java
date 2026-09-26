@@ -12,6 +12,12 @@ import java.util.Date;
  * their own "home.md". The page's actual markdown lives in {@link WikiPageVersion}, never here -
  * this row is just the stable identity plus denormalized fields cheap to show in a listing without
  * joining to the latest version.
+ *
+ * {@link #parentPage} makes a page a "subpage" of another page - see WikiService#validateParentPage
+ * for the one invariant that keeps this from becoming a second, independent hierarchy alongside
+ * folders: a page's parent must always live in the exact same folder as the page itself. Folders
+ * therefore stay the only real containment structure; the parent-page chain is just a finer-grained
+ * ordering *within* one folder's pages, not an alternative to it.
  */
 @Entity
 @Table(name = "wiki_page")
@@ -20,6 +26,7 @@ public class WikiPage
     private Long id;
     private Wiki wiki;
     private WikiFolder folder;
+    private WikiPage parentPage;
     private String slug;
     private String title;
     private Date createdAt;
@@ -59,6 +66,18 @@ public class WikiPage
     public void setFolder(WikiFolder folder)
     {
         this.folder = folder;
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "parent_page_id")
+    public WikiPage getParentPage()
+    {
+        return parentPage;
+    }
+
+    public void setParentPage(WikiPage parentPage)
+    {
+        this.parentPage = parentPage;
     }
 
     public String getSlug()

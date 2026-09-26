@@ -213,13 +213,25 @@
     color: #333;
 }
 
+.wiki-tree-page-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 5px;
+}
+
 .wiki-tree-page-link {
     display: block;
+    flex: 1 1 auto;
+    min-width: 0;
     padding: 4px 6px;
     border-radius: 5px;
     font-size: 0.88rem;
     color: #333;
     text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .wiki-tree-page-link:hover {
@@ -230,6 +242,30 @@
 .wiki-tree-page-link--active {
     background: #2e77d0;
     color: #fff;
+}
+
+.wiki-tree-page-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.1s;
+}
+
+.wiki-tree-page-row:hover .wiki-tree-page-actions {
+    opacity: 1;
+}
+
+.wiki-tree-page-actions button {
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 0.75rem;
+}
+
+.wiki-tree-page-actions button:hover {
+    color: #333;
 }
 
 .wiki-main {
@@ -450,6 +486,47 @@
     margin: 8px 0;
 }
 
+.wiki-subpages {
+    max-width: 900px;
+    margin-top: 28px;
+    border-top: 1px solid #e4e4e9;
+    padding-top: 12px;
+}
+
+.wiki-subpages-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.wiki-subpages-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+}
+
+.wiki-subpages-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.wiki-subpages-list li {
+    padding: 6px 4px;
+    border-bottom: 1px solid #f0f0f4;
+}
+
+.wiki-subpages-list a {
+    color: #333;
+    text-decoration: none;
+}
+
+.wiki-subpages-list a:hover {
+    color: #2e77d0;
+    text-decoration: none;
+}
+
 .wiki-attachments {
     max-width: 900px;
     margin-top: 28px;
@@ -615,6 +692,14 @@
     background: #2a2a32;
 }
 
+.wiki-dark .wiki-tree-page-actions button {
+    color: #75757f;
+}
+
+.wiki-dark .wiki-tree-page-actions button:hover {
+    color: #d8d8e0;
+}
+
 .wiki-dark .wiki-page-meta,
 .wiki-dark .wiki-empty,
 .wiki-dark .wiki-history-item-meta {
@@ -658,6 +743,22 @@
 .wiki-dark .wiki-move select {
     background: #2b2b33;
     border-color: #3a3a44;
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-subpages {
+    border-top-color: #33333c;
+}
+
+.wiki-dark .wiki-subpages-title {
+    color: #9a9aa5;
+}
+
+.wiki-dark .wiki-subpages-list li {
+    border-bottom-color: #2e2e37;
+}
+
+.wiki-dark .wiki-subpages-list a {
     color: #d8d8e0;
 }
 

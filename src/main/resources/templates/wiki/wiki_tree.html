@@ -28,14 +28,38 @@
         </div>
         <div th:replace="~{wiki/wiki_tree :: treeChildren(node=${folder})}"></div>
     </li>
-    <li th:each="p : ${node.pages}" class="wiki-tree-item wiki-tree-item--page">
-        <a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${p.id})}" class="wiki-tree-page-link"
-           th:classappend="${currentPageId != null and p.id == currentPageId} ? ' wiki-tree-page-link--active' : ''">
-            <i class="fa fa-file-text-o"></i>
-            <span th:text="${p.title}"></span>
-        </a>
-    </li>
+    <!-- th:each and th:replace deliberately NOT on the same tag (unlike the folder recursion above,
+         where th:replace sits on a child div inside the th:each host li) - combining them on one
+         element made the fragment parameter evaluate against the wrong (pre-iteration) scope,
+         resolving to null inside the called fragment. th:block sidesteps that by giving th:each its
+         own element, separate from the one th:replace acts on. -->
+    <th:block th:each="p : ${node.pages}">
+        <li th:replace="~{wiki/wiki_tree :: pageNode(pn=${p})}"></li>
+    </th:block>
 </ul>
+
+<!-- One page row plus its own subpages (recursive) - WikiController.WikiPageNode. A page with
+     children gets the same hover-revealed "New subpage" action as folders get "New page"/"New
+     subfolder" (data-page-newsubpage, handled in wiki.js); the nested <ul class="wiki-tree-list">
+     reuses the exact same indentation rule folders already get from that class, no separate CSS
+     needed for depth. -->
+<li th:fragment="pageNode(pn)" class="wiki-tree-item wiki-tree-item--page">
+    <div class="wiki-tree-page-row">
+        <a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${pn.page.id})}" class="wiki-tree-page-link"
+           th:classappend="${currentPageId != null and pn.page.id == currentPageId} ? ' wiki-tree-page-link--active' : ''">
+            <i class="fa fa-file-text-o"></i>
+            <span th:text="${pn.page.title}"></span>
+        </a>
+        <span class="wiki-tree-page-actions">
+            <button type="button" th:data-page-newsubpage="${pn.page.id}" title="New subpage" aria-label="New subpage"><i class="fa fa-file-o"></i></button>
+        </span>
+    </div>
+    <ul class="wiki-tree-list" th:if="${not #lists.isEmpty(pn.children)}">
+        <th:block th:each="child : ${pn.children}">
+            <li th:replace="~{wiki/wiki_tree :: pageNode(pn=${child})}"></li>
+        </th:block>
+    </ul>
+</li>
 
 <!-- Wiki switcher dropdown, shown above the tree on every wiki-scoped page (see WikiController's
      class comment on multi-wiki support). Parameterless like every other fragment here - reads

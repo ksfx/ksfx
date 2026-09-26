@@ -18,6 +18,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,11 +43,12 @@ public class WikiService
     }
 
     /** New page - generates a fresh, folder-unique slug from the title (see {@link #generateUniqueSlug}). */
-    public WikiPage createPage(Wiki wiki, WikiFolder folder, String title, String content, User editedByUser, Agent editedByAgent)
+    public WikiPage createPage(Wiki wiki, WikiFolder folder, WikiPage parentPage, String title, String content, User editedByUser, Agent editedByAgent)
     {
         WikiPage page = new WikiPage();
         page.setWiki(wiki);
         page.setFolder(folder);
+        page.setParentPage(parentPage);
         page.setSlug(generateUniqueSlug(wiki, folder, title));
         page.setTitle(title);
 
@@ -61,17 +63,67 @@ public class WikiService
 
     /**
      * Existing page - title and folder (a "move") can both change, but {@link WikiPage#getSlug()}
-     * never does, see that field's own comment.
+     * never does, see that field's own comment. Callers MUST run {@link #validateParentPage}
+     * against the (possibly new) folder first - this method trusts {@code parentPage} is already
+     * valid for it, same division of labor as the blank-title check callers already do before
+     * calling this.
      */
-    public WikiPage updatePage(WikiPage page, WikiFolder folder, String title, String content, User editedByUser, Agent editedByAgent)
+    public WikiPage updatePage(WikiPage page, WikiFolder folder, WikiPage parentPage, String title, String content, User editedByUser, Agent editedByAgent)
     {
         page.setFolder(folder);
+        page.setParentPage(parentPage);
         page.setTitle(title);
         page.setUpdatedAt(new Date());
         wikiPageDAO.saveOrUpdateWikiPage(page);
 
         appendVersion(page, content, editedByUser, editedByAgent);
         return page;
+    }
+
+    /**
+     * The one invariant that lets "subpages" coexist with the folder tree without becoming a second,
+     * independent hierarchy: a page's parent must always live in the exact same folder as the page
+     * itself (both null - both top-level - counts as "the same"). Returns a plain error message, or
+     * null if {@code parentPage} is null (no parent - always valid) or passes both checks below.
+     *
+     * {@code existingPage} is null when creating a brand new page (nothing to form a cycle with
+     * yet, so only the folder check applies) and the page-being-edited when updating one (both
+     * checks apply). Cycle check walks UP from the candidate parent via its own
+     * {@link WikiPage#getParentPage()} chain - if that walk ever reaches {@code existingPage}
+     * itself, the candidate is a descendant of it, and accepting it as the new parent would close a
+     * loop. Capped defensively so a pre-existing data problem can't turn this into an infinite loop.
+     */
+    public String validateParentPage(WikiFolder folder, WikiPage existingPage, WikiPage parentPage)
+    {
+        if (parentPage == null) {
+            return null;
+        }
+
+        if (existingPage != null && parentPage.getId().equals(existingPage.getId())) {
+            return "A page cannot be its own parent.";
+        }
+
+        Long folderId = folder != null ? folder.getId() : null;
+        Long parentFolderId = parentPage.getFolder() != null ? parentPage.getFolder().getId() : null;
+
+        if (!Objects.equals(folderId, parentFolderId)) {
+            return "The parent page must be in the same folder as this page.";
+        }
+
+        if (existingPage != null) {
+            WikiPage cursor = parentPage;
+            int guard = 0;
+
+            while (cursor != null && guard++ < 1000) {
+                if (cursor.getId().equals(existingPage.getId())) {
+                    return "That page is a subpage of this one already - choosing it as parent would create a loop.";
+                }
+
+                cursor = cursor.getParentPage();
+            }
+        }
+
+        return null;
     }
 
     private void appendVersion(WikiPage page, String content, User editedByUser, Agent editedByAgent)

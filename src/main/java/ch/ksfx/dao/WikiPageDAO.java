@@ -18,4 +18,7 @@ public interface WikiPageDAO
 
     /** Same folder scoping, matched by title instead of slug - backs the agent API's upsert-by-location. */
     public WikiPage getPageForFolderAndTitle(Long wikiId, Long folderId, String title);
+
+    /** Direct children only (one level), ordered by title - backs the "Subpages" list on the page view. */
+    public List<WikiPage> getChildPages(Long parentPageId);
 }

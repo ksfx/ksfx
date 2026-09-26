@@ -153,6 +153,15 @@ public class AgentWikiApiController
      * Upsert: {@code pageId} set -> update that exact page (title/folder/content). Otherwise matched
      * by (folderPath, title) - updates if a page is already there, creates a new one (with a fresh
      * slug) if not. {@code folderPath} segments that don't exist yet are created automatically.
+     *
+     * {@code parentTitle} addresses a "subpage" parent by title, WITHIN THE SAME (resolved) folder -
+     * a parent can never be in a different folder (see WikiService#validateParentPage), so unlike
+     * folderPath this never needs its own folder qualifier. Same null-vs-blank convention as
+     * assignee elsewhere in this codebase (e.g. AgentIssueApiController): omitted (null) on an
+     * update leaves the current parent untouched; {@code ""} explicitly clears it (makes the page
+     * top-level within its folder again); a non-blank value looks the title up in the resolved
+     * folder and 400s if nothing matches there. On create, omitted/blank both simply mean "no
+     * parent" - there's no existing value to preserve.
      */
     @PostMapping("/{wikiId}/page")
     public ResponseEntity<?> write(HttpServletRequest request, @PathVariable Long wikiId, @RequestBody WikiPageDto body)
@@ -174,22 +183,43 @@ public class AgentWikiApiController
         }
 
         WikiFolder folder = wikiService.resolveOrCreateFolderPath(wiki, body.folderPath);
-        WikiPage page;
+        WikiPage existing = null;
 
         if (body.pageId != null) {
-            WikiPage existing = wikiPageDAO.getWikiPageForId(body.pageId);
+            existing = wikiPageDAO.getWikiPageForId(body.pageId);
 
             if (existing == null || !existing.getWiki().getId().equals(wikiId)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No page with that id in this wiki."));
             }
-
-            page = wikiService.updatePage(existing, folder, body.title, body.content, null, agent);
         } else {
-            WikiPage existing = wikiPageDAO.getPageForFolderAndTitle(wikiId, folder != null ? folder.getId() : null, body.title);
-            page = existing != null
-                    ? wikiService.updatePage(existing, folder, body.title, body.content, null, agent)
-                    : wikiService.createPage(wiki, folder, body.title, body.content, null, agent);
+            existing = wikiPageDAO.getPageForFolderAndTitle(wikiId, folder != null ? folder.getId() : null, body.title);
         }
+
+        WikiPage parentPage;
+
+        if (body.parentTitle == null) {
+            // Not mentioned - leave whatever parent an existing page already has untouched; a new
+            // page simply gets none.
+            parentPage = existing != null ? existing.getParentPage() : null;
+        } else if (isBlank(body.parentTitle)) {
+            parentPage = null;
+        } else {
+            parentPage = wikiPageDAO.getPageForFolderAndTitle(wikiId, folder != null ? folder.getId() : null, body.parentTitle.trim());
+
+            if (parentPage == null) {
+                return ResponseEntity.badRequest().body(errorBody("No page titled '" + body.parentTitle + "' in that folder to use as parent."));
+            }
+        }
+
+        String parentError = wikiService.validateParentPage(folder, existing, parentPage);
+
+        if (parentError != null) {
+            return ResponseEntity.badRequest().body(errorBody(parentError));
+        }
+
+        WikiPage page = existing != null
+                ? wikiService.updatePage(existing, folder, parentPage, body.title, body.content, null, agent)
+                : wikiService.createPage(wiki, folder, parentPage, body.title, body.content, null, agent);
 
         return ResponseEntity.ok(toDto(page));
     }
@@ -289,6 +319,7 @@ public class AgentWikiApiController
         dto.pageId = page.getId();
         dto.folderPath = folderPathOf(page.getFolder());
         dto.title = page.getTitle();
+        dto.parentTitle = page.getParentPage() != null ? page.getParentPage().getTitle() : null;
         return dto;
     }
 
@@ -347,6 +378,7 @@ public class AgentWikiApiController
         public Long pageId;
         public String folderPath;
         public String title;
+        public String parentTitle;
         public String content;
     }
 }

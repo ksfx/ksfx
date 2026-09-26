@@ -286,6 +286,15 @@
                 return;
             }
 
+            // Folder is implied by the parent page itself (WikiController#newPage derives it),
+            // so this never needs a folderId - same one-click-away convenience as "New page here".
+            var newSubpageBtn = event.target.closest('[data-page-newsubpage]');
+
+            if (newSubpageBtn) {
+                window.location.href = '/wiki/' + wikiId + '/page/new?parentPageId=' + encodeURIComponent(newSubpageBtn.dataset.pageNewsubpage);
+                return;
+            }
+
             var newFolderBtn = event.target.closest('[data-folder-newfolder]');
 
             if (newFolderBtn) {

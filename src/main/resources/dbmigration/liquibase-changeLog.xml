@@ -46,4 +46,5 @@
     <include file="20260918070000_wiki.sql" relativeToChangelogFile="true"/>
     <include file="20260919090000_issues.sql" relativeToChangelogFile="true"/>
     <include file="20260921120000_issue_numbers.sql" relativeToChangelogFile="true"/>
+    <include file="20260925214616_wiki_page_parent.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

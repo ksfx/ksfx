@@ -35,6 +35,20 @@
                     <label for="wikiEditTitle">Title</label>
                     <input type="text" id="wikiEditTitle" name="title" th:value="${title}" required="required" autofocus="autofocus" />
                 </div>
+                <!-- Options are always scoped to the page's current folder (see
+                     WikiController#pagesInFolder) - a subpage's parent can never be in a different
+                     folder (WikiService#validateParentPage), so this never needs to react to the
+                     "Move to another folder" select below; if that's used, a stale parent choice
+                     just gets caught by that same check on save, same as any other validation
+                     error here. -->
+                <div class="wiki-field" th:if="${not #lists.isEmpty(parentPageOptions)}">
+                    <label for="wikiEditParentPage">Parent page</label>
+                    <select id="wikiEditParentPage" name="parentPageId">
+                        <option value="">(none - top level of this folder)</option>
+                        <option th:each="p : ${parentPageOptions}" th:value="${p.id}" th:text="${p.title}"
+                                th:selected="${parentPageId != null and p.id == parentPageId}"></option>
+                    </select>
+                </div>
             </div>
             <p class="wiki-edit-hint" th:if="${isNew}">The page's filename is generated automatically from the title.</p>
 
