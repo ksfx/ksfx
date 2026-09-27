@@ -36,6 +36,10 @@
                         th:data-markdown-link="'[' + ${page.title} + '](/wiki/' + ${currentWiki.id} + '/page/' + ${page.id} + ')'"><i class="fa fa-link"></i></button>
             </h1>
             <span class="wiki-page-actions">
+                <!-- Opens the standalone print view (WikiController#printPage) in a new tab -
+                     target="_blank" is all that's needed, no JS. That view auto-triggers the print
+                     dialog itself once its content has rendered. -->
+                <a th:href="@{/wiki/{wikiId}/page/{pageId}/print(wikiId=${currentWiki.id},pageId=${page.id})}" target="_blank" class="wiki-btn"><i class="fa fa-print"></i> Print</a>
                 <a th:href="@{/wiki/{wikiId}/page/{pageId}/edit(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-pencil"></i> Edit</a>
                 <a th:href="@{/wiki/{wikiId}/page/{pageId}/history(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-history"></i> History</a>
                 <!-- parent_page_id is ON DELETE CASCADE (same as folder deletes already cascade to

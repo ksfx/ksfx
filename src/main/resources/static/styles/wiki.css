@@ -869,3 +869,33 @@
 .wiki-dark .wiki-page-content a.wiki-missing-link {
     color: #e86a6a !important;
 }
+
+/* --- Standalone print view (wiki_page_print.html) ---
+   Always light - this page never applies .wiki-dark or loads bootstrap-dark.css in the first
+   place (see WikiController#printPage's javadoc), so unlike a hypothetical @media print block on
+   the normal page view, nothing here needs to fight a competing dark theme; the toolbar is the
+   only thing genuinely new. */
+.wiki-print-page {
+    max-width: 900px;
+    margin: 24px auto;
+    padding: 0 20px;
+}
+
+.wiki-print-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.wiki-print-breadcrumb {
+    color: #888;
+    font-size: 0.85rem;
+    margin: 0 0 4px;
+}
+
+@media print {
+    .wiki-print-toolbar {
+        display: none;
+    }
+}
+

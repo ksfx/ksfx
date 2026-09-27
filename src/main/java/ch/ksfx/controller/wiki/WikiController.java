@@ -175,6 +175,40 @@ public class WikiController
     }
 
     /**
+     * Standalone print view, opened in a new tab/window from the page view's "Print" button
+     * ({@code target="_blank"}, no JS needed to open it). Deliberately its OWN template rather than
+     * reusing wiki_page.html behind an {@code @media print} stylesheet (the first cut of this
+     * feature) - that approach had to fight the dark-theme cascade line by line (page background,
+     * body background from the separately-swapped-in bootstrap-dark.css, several {@code !important}
+     * text-color rules on the page title/subpage/attachment links, each needing a matching
+     * higher-or-equal-specificity override) and would silently regress again the next time a new
+     * {@code .wiki-dark} rule is added to the page view without a matching print override. This
+     * route never renders {@code layout.html}'s header/nav/sidebar/footer at all and never applies
+     * {@code .wiki-dark} in the first place, so there is nothing dark-themed to fight - the template
+     * itself just reuses the plain (light) {@code .wiki-page-content}/{@code .wiki-subpages*}/
+     * {@code .wiki-attachments*} CSS classes from wiki.css directly, no override block needed.
+     * Same data as {@link #viewPage}, minus the sidebar tree (baseModel) which this page never
+     * renders and would be a wasted query here.
+     */
+    @GetMapping("/{wikiId}/page/{pageId}/print")
+    public String printPage(@PathVariable Long wikiId, @PathVariable Long pageId, Model model)
+    {
+        Wiki wiki = requireWiki(wikiId);
+        WikiPage page = requirePage(wikiId, pageId);
+        WikiPageVersion version = wikiPageVersionDAO.getLatestVersionForPage(page.getId());
+
+        model.addAttribute("currentWiki", wiki);
+        model.addAttribute("page", page);
+        model.addAttribute("version", version);
+        model.addAttribute("renderedContent", version != null ? wikiService.renderWikilinks(wiki, version.getContent()) : "");
+        model.addAttribute("attachments", wikiAssetDAO.getAssetsForPage(pageId));
+        model.addAttribute("ancestors", ancestorChain(page));
+        model.addAttribute("childPages", wikiPageDAO.getChildPages(pageId));
+
+        return "wiki/wiki_page_print";
+    }
+
+    /**
      * Title-only creation form, optionally pre-scoped to a folder (see the sidebar's "New page
      * here") or to a parent page (see the tree's per-page "New subpage" action) - the latter
      * derives its folder from the parent instead of taking one independently, since a subpage must

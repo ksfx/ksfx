@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<!-- Standalone print view - see WikiController#printPage's javadoc for why this is its own
+     template instead of an @media print stylesheet on wiki_page.html: no layout.html header/nav/
+     sidebar/footer, and deliberately its own <head> rather than layout :: site-head, since THAT
+     fragment is what conditionally swaps in bootstrap-dark.css for a dark-mode session - reusing it
+     here would drag the exact dark-theme entanglement this template exists to avoid right back in.
+     Opened via target="_blank" from the page view's "Print" button, no JS needed to open the
+     window; the small inline script at the bottom is only for auto-triggering the print dialog
+     once the content has actually rendered. -->
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" type="image/svg+xml" th:href="@{/images/ksfx-logo.svg}" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" th:href="@{/styles/wiki.css}" />
+    <title th:text="${page.title} + ' - KSFX Wiki'">KSFX Wiki</title>
+</head>
+<body>
+<div class="wiki-print-page">
+    <div class="wiki-print-toolbar">
+        <button type="button" class="wiki-btn" onclick="window.print()"><i class="fa fa-print"></i> Print</button>
+        <button type="button" class="wiki-btn" onclick="window.close()"><i class="fa fa-times"></i> Close</button>
+    </div>
+
+    <p class="wiki-print-breadcrumb" th:if="${not #lists.isEmpty(ancestors)}">
+        <span th:text="${currentWiki.name}">Wiki</span>
+        <th:block th:each="ancestor : ${ancestors}"> / <span th:text="${ancestor.title}">Ancestor</span></th:block>
+        / <span th:text="${page.title}">Page</span>
+    </p>
+    <p class="wiki-print-breadcrumb" th:unless="${not #lists.isEmpty(ancestors)}">
+        <span th:text="${currentWiki.name}">Wiki</span> / <span th:text="${page.title}">Page</span>
+    </p>
+
+    <h1 class="wiki-page-title" th:text="${page.title}">Title</h1>
+    <div class="wiki-page-meta">
+        <span th:if="${version != null and version.editedByAgent != null}">Last edited by agent <strong th:text="${version.editedByAgent.name}"></strong></span>
+        <span th:if="${version != null and version.editedByUser != null}">Last edited by <strong th:text="${version.editedByUser.username}"></strong></span>
+        <span th:if="${version != null}" th:text="' on ' + ${#dates.format(version.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+    </div>
+
+    <textarea id="wikiPageMarkdown" hidden="hidden" th:text="${renderedContent}"></textarea>
+    <div id="wikiPageViewer" class="wiki-page-content"
+         th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
+         th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"></div>
+
+    <!-- Direct children only, same scope as the page view's own Subpages section - no "New
+         subpage" action here, nothing on paper (or in a read-only print tab) can be clicked. -->
+    <div class="wiki-subpages" th:if="${not #lists.isEmpty(childPages)}">
+        <div class="wiki-subpages-header">
+            <span class="wiki-subpages-title"><i class="fa fa-sitemap"></i> Subpages</span>
+        </div>
+        <ul class="wiki-subpages-list">
+            <li th:each="child : ${childPages}">
+                <i class="fa fa-file-text-o"></i> <span th:text="${child.title}"></span>
+            </li>
+        </ul>
+    </div>
+
+    <div class="wiki-attachments" th:if="${not #lists.isEmpty(attachments)}">
+        <div class="wiki-attachments-header">
+            <span class="wiki-attachments-title"><i class="fa fa-paperclip"></i> Attachments</span>
+        </div>
+        <ul class="wiki-attachments-list">
+            <li th:each="a : ${attachments}" class="wiki-attachment-item">
+                <i class="fa fa-file-o"></i> <span th:text="${a.fileName}"></span>
+                <span class="wiki-attachment-meta">
+                    <span th:if="${a.fileSize != null}"
+                          th:text="${a.fileSize < 1024 ? a.fileSize + ' B' : (a.fileSize < 1048576 ? #numbers.formatDecimal(a.fileSize / 1024.0, 1, 1) + ' KB' : #numbers.formatDecimal(a.fileSize / 1048576.0, 1, 1) + ' MB')}"></span>
+                </span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script th:src="@{/script/wiki.js}"></script>
+<script th:inline="javascript">
+    // Auto-opens the print dialog once the markdown viewer has actually rendered (wiki.js's own
+    // viewer init - see its "Read-only page view" section - is itself async: it lazily loads the
+    // Toast UI JS/CSS bundle the first time, so the mount div is still empty for a moment after
+    // this script runs). childNodes (not childElementCount) on purpose - wiki.js's own catch
+    // fallback sets viewerMount.textContent on a load failure, which is a text node, not an
+    // element, and print should still fire in that degraded case. Gives up silently after 5s (the
+    // toolbar's own manual Print button still works) rather than looping forever if the vendored
+    // bundle fails to load entirely.
+    (function () {
+        var viewerMount = document.getElementById('wikiPageViewer');
+        var attempts = 0;
+
+        var poll = setInterval(function () {
+            attempts++;
+
+            if (viewerMount.childNodes.length > 0) {
+                clearInterval(poll);
+                window.print();
+            } else if (attempts > 50) {
+                clearInterval(poll);
+            }
+        }, 100);
+    })();
+</script>
+</body>
+</html>
