@@ -252,30 +252,48 @@
 
         // --- Expand/collapse persistence (localStorage, scoped per wiki) - see wiki_tree.html's
         // comment on why this needs persisting at all: every navigation here is a full page load,
-        // not an SPA, so without this every click to a page would silently re-expand the whole tree. ---
-        var collapsedStorageKey = 'wiki-tree-collapsed-' + wikiId;
+        // not an SPA, so without this every click to a page would silently re-expand the whole tree.
+        //
+        // Stores the actual resolved state per node ({"folder-14": true, "page-92": false}, true =
+        // collapsed), not just a set of deviations from one shared default - folders and pages have
+        // DIFFERENT defaults (folders start collapsed, subpages start expanded, see
+        // defaultCollapsed below), so "not present in storage" can't mean one single thing the way
+        // it could when everything defaulted to expanded. ---
+        var treeStateStorageKey = 'wiki-tree-collapsed-' + wikiId;
 
-        function readCollapsedSet() {
+        function readTreeState() {
             try {
-                var raw = window.localStorage.getItem(collapsedStorageKey);
-                return raw ? new Set(JSON.parse(raw)) : new Set();
+                var raw = window.localStorage.getItem(treeStateStorageKey);
+                var parsed = raw ? JSON.parse(raw) : null;
+                return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
             } catch (e) {
-                return new Set();
+                return {};
             }
         }
 
-        function writeCollapsedSet(set) {
+        function writeTreeState(state) {
             try {
-                window.localStorage.setItem(collapsedStorageKey, JSON.stringify(Array.from(set)));
+                window.localStorage.setItem(treeStateStorageKey, JSON.stringify(state));
             } catch (e) {
                 // Private browsing / storage disabled / quota - collapse state just won't survive
                 // a reload this session, not worth surfacing to the user.
             }
         }
 
-        var collapsed = readCollapsedSet();
+        function defaultCollapsed(treeNodeKey) {
+            // Uniform default: folders AND pages-with-subpages both start collapsed - consistent
+            // decluttering regardless of node type. (Kept as its own function, not a bare `true`,
+            // so a future type-specific default stays a one-line change here rather than a hunt
+            // through the two call sites below.)
+            return true;
+        }
+
+        var treeState = readTreeState();
         sidebar.querySelectorAll('[data-tree-node]').forEach(function (node) {
-            if (collapsed.has(node.dataset.treeNode)) {
+            var key = node.dataset.treeNode;
+            var isCollapsed = Object.prototype.hasOwnProperty.call(treeState, key) ? treeState[key] : defaultCollapsed(key);
+
+            if (isCollapsed) {
                 node.classList.add('wiki-tree-item--collapsed');
             }
         });
@@ -316,13 +334,8 @@
                     var key = treeNode.dataset.treeNode;
                     var nowCollapsed = treeNode.classList.toggle('wiki-tree-item--collapsed');
 
-                    if (nowCollapsed) {
-                        collapsed.add(key);
-                    } else {
-                        collapsed.delete(key);
-                    }
-
-                    writeCollapsedSet(collapsed);
+                    treeState[key] = nowCollapsed;
+                    writeTreeState(treeState);
                 }
 
                 return;
