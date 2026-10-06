@@ -24,6 +24,8 @@ import ch.ksfx.model.activity.ActivityInstancePersistentData;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 
@@ -36,6 +38,15 @@ public interface ActivityInstanceDAO
     public List<ActivityInstance> getActivityInstancesWithApprovalRequired();
     public List<ActivityInstance> getActivityInstancesForActivity(Activity activity);
     public Page<ActivityInstance> getActivityInstancesForPageableAndActivity(Pageable pageable, Activity activity, boolean filterUnApproved);
+    /**
+     * Cross-activity instance query for the API's "what ran recently?" inventory. Every filter is
+     * optional (null = no constraint): {@code activityId}; {@code startedAfter}/{@code startedBefore}
+     * (inclusive, on {@code started}); {@code finished} (TRUE = only finished rows, FALSE = only
+     * rows without a finished timestamp); {@code idIn}/{@code idNotIn} (used by the caller to apply
+     * the in-memory "running" state, which the DB can't know). Newest first (id desc).
+     */
+    public Page<ActivityInstance> getActivityInstancesForFilter(Pageable pageable, Long activityId, Date startedAfter, Date startedBefore,
+                                                                 Boolean finished, Collection<Long> idIn, Collection<Long> idNotIn);
     public ActivityInstance getActivityInstanceForId(Long activityInstanceId);
     public ActivityInstanceParameter getActivityInstanceParameterForId(Long activityInstanceParameterId);
     public void deleteActivityInstance(ActivityInstance activityInstance);

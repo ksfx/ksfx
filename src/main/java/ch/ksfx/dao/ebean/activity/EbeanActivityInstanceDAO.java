@@ -32,6 +32,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -124,6 +126,50 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
         Page<ActivityInstance> page = new PageImpl<ActivityInstance>(expressionList.findList(), pageable, expressionList.findCount());
 
         return page;
+    }
+
+    @Override
+    public Page<ActivityInstance> getActivityInstancesForFilter(Pageable pageable, Long activityId, Date startedAfter, Date startedBefore,
+                                                                 Boolean finished, Collection<Long> idIn, Collection<Long> idNotIn)
+    {
+        // "console" is a LONGTEXT on the same row - never load it for a listing (same blob-in-listing
+        // trap as EbeanWikiAssetDAO), a crawler Activity alone has tens of thousands of rows.
+        ExpressionList<ActivityInstance> expressionList = Ebean.find(ActivityInstance.class)
+                .select("id, started, finished, approved, activity")
+                .fetch("activity", "id, name")
+                .where();
+
+        if (activityId != null) {
+            expressionList.eq("activity.id", activityId);
+        }
+
+        if (startedAfter != null) {
+            expressionList.ge("started", startedAfter);
+        }
+
+        if (startedBefore != null) {
+            expressionList.le("started", startedBefore);
+        }
+
+        if (Boolean.TRUE.equals(finished)) {
+            expressionList.isNotNull("finished");
+        } else if (Boolean.FALSE.equals(finished)) {
+            expressionList.isNull("finished");
+        }
+
+        if (idIn != null) {
+            expressionList.idIn(idIn);
+        }
+
+        if (idNotIn != null && !idNotIn.isEmpty()) {
+            expressionList.notIn("id", idNotIn);
+        }
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+        expressionList.order().desc("id");
+
+        return new PageImpl<ActivityInstance>(expressionList.findList(), pageable, expressionList.findCount());
     }
 
     public List<ActivityInstance> getActivityInstancesWithApprovalRequired()

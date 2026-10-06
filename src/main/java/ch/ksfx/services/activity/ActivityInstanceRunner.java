@@ -25,6 +25,8 @@ import ch.ksfx.services.systemlogger.SystemLogger;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -72,6 +74,12 @@ public class ActivityInstanceRunner
         }
 
         return false;
+    }
+
+    /** Ids of every instance currently executing, across all Activities - a snapshot copy of the cache's key set. */
+    public Set<Long> getRunningInstanceIds()
+    {
+        return new HashSet<Long>(RunningActivitiesCache.runningActivities.keySet());
     }
 
     public List<ActivityInstance> getRunningInstancesForActivityId(Long activityId)
