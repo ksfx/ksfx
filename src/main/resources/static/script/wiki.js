@@ -91,10 +91,28 @@
         var csrfToken = editorMount.dataset.csrfToken;
         var editor = null;
 
+        // The editor should fill what the viewport has left below the title fields: everything
+        // from the mount's top edge down to the bottom of the window, minus the Save/Cancel row
+        // and the layout's bottom padding. Recomputed on resize; never below the CSS min-height so
+        // a tiny window still gets a usable editor (the page then scrolls, as before).
+        var MIN_EDITOR_HEIGHT = 420;
+
+        function fitEditorHeight() {
+            if (!editor) {
+                return;
+            }
+
+            var actions = document.querySelector('.wiki-edit-actions');
+            var reserved = (actions ? actions.offsetHeight + 14 : 0) + 24;
+            var available = window.innerHeight - editorMount.getBoundingClientRect().top - reserved;
+
+            editor.setHeight(Math.max(MIN_EDITOR_HEIGHT, Math.floor(available)) + 'px');
+        }
+
         loadToastUiAssets(editorMount.dataset.toastuiJs, editorMount.dataset.toastuiCss).then(function () {
             editor = new toastui.Editor({
                 el: editorMount,
-                height: '520px',
+                height: MIN_EDITOR_HEIGHT + 'px',
                 initialEditType: 'wysiwyg',
                 previewStyle: 'tab',
                 initialValue: contentField.value,
@@ -119,6 +137,9 @@
                     }
                 }
             });
+
+            fitEditorHeight();
+            window.addEventListener('resize', fitEditorHeight);
         }).catch(function (error) {
             editorMount.textContent = 'Could not load the editor: ' + error.message;
         });

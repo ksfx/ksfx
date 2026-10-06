@@ -455,8 +455,12 @@
     margin: -8px 0 14px;
 }
 
+/* Full width of .wiki-main - the editor is the whole point of the edit page, there's nothing to
+   the right of it worth leaving room for. Height is set by wiki.js (fitEditorHeight) to whatever
+   the viewport has left below the title fields, so the editor fills the page on any screen. */
 .wiki-editor-mount {
-    max-width: 900px;
+    width: 100%;
+    min-height: 420px;
 }
 
 .wiki-edit-actions {
