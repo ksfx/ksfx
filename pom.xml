@@ -237,6 +237,14 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		<!-- SFTP/SSH client for Activities (Groovy scripts have no @Grab here - no Ivy on the
+		     classpath), maintained fork of JCraft JSch: modern key exchange / host-key algorithms
+		     that current OpenSSH servers require, still Java 8 compatible. -->
+		<dependency>
+			<groupId>com.github.mwiede</groupId>
+			<artifactId>jsch</artifactId>
+			<version>0.2.17</version>
+		</dependency>
 		<dependency>
 			<groupId>commons-net</groupId>
 			<artifactId>commons-net</artifactId>
