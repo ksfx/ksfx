@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Edit Generic Data Store Entry</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/admin}">Admin</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/admin/genericdatastore}">Generic Data Store</a></li>
+        <li class="breadcrumb-item active" th:text="${genericDataStore.id != null} ? 'Edit Entry' : 'New Entry'">Edit Entry</li>
+    </ol>
+</nav>
+
+<div class="container">
+    <div class="list-group">
+        <div class="list-group-item">
+            <form id="genericDataStoreForm" action="#" th:action="@{/admin/genericdatastoreedit/}" th:object="${genericDataStore}" method="post">
+                <input type="hidden" th:field="*{id}" />
+                <div class="form-group">
+                    <label for="dataKey">Data Key</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('dataKey')}" th:errors="*{dataKey}">Key not valid</div>
+                    <input type="text" class="form-control" id="dataKey" th:field="*{dataKey}" maxlength="512" autofocus="autofocus" />
+                    <small class="form-text text-muted">Activities read entries by exact key, e.g. <code>HQ_SFTP_HOST</code>. Keys must be unique.</small>
+                </div>
+                <div class="form-group">
+                    <label for="dataValue">Data Value</label>
+                    <div class="text-danger" th:if="${#fields.hasErrors('dataValue')}" th:errors="*{dataValue}">Value not valid</div>
+                    <textarea class="form-control" id="dataValue" th:field="*{dataValue}" rows="6" style="font-family: monospace"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <a th:href="@{/admin/genericdatastore}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

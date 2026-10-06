@@ -12,16 +12,23 @@
     </ol>
 </nav>
 <h3>Persistent Store</h3>
+<a th:href="@{/admin/genericdatastoreedit}" style="margin-top:10px" class="fa fa-plus" alt="Add Entry" title="Add Entry"></a>
 <div th:replace="components/pagination :: pagination(path='/admin/genericdatastore/', page=${genericDataStoresPage})"></div>
 <table class="table table-striped table-responsive-md">
     <thead>
-    <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','dataKey','dataValue','delete'} },sortables=${ {'id','dataKey'} },names=${ {'ID','Data Key','Data Value','Delete'} },page=${genericDataStoresPage},path='/admin/genericdatastore/')" />
+    <header th:replace="components/sortable_table_header :: tableheader(headers=${ {'id','dataKey','dataValue','edit','delete'} },sortables=${ {'id','dataKey'} },names=${ {'ID','Data Key','Data Value','Edit','Delete'} },page=${genericDataStoresPage},path='/admin/genericdatastore/')" />
     </thead>
     <tbody>
     <tr th:each="genericDataStore : ${genericDataStoresPage.content}">
         <td th:text="${genericDataStore.id}"></td>
         <td th:text="${genericDataStore.dataKey}"></td>
-        <td th:text="${genericDataStore.dataValue}"></td>
+        <!-- Values are LONGTEXT and may be secrets: keys that look like credentials (pass, secret,
+             token, api_key, credential) are masked in the listing - the full value is still visible
+             on the edit form - everything else is abbreviated so one huge value can't blow up the
+             table. -->
+        <td th:with="k=${genericDataStore.dataKey != null ? #strings.toLowerCase(genericDataStore.dataKey) : ''}"
+            th:text="${#strings.contains(k,'pass') or #strings.contains(k,'secret') or #strings.contains(k,'token') or #strings.contains(k,'api_key') or #strings.contains(k,'apikey') or #strings.contains(k,'credential')} ? '••••••••' : ${#strings.abbreviate(genericDataStore.dataValue, 120)}"></td>
+        <td><a th:href="@{/admin/genericdatastoreedit/{id}(id=${genericDataStore.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
         <td><a th:attr="data-href=@{/admin/genericdatastoredelete/{id}(id=${genericDataStore.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
     </tr>
     </tbody>
@@ -33,7 +40,7 @@
         <th>Value</th>
         <th>Delete</th>
     </thead>
-    <tr th:each="entry : ${nonPersistenStore}">
+    <tr th:each="entry : ${nonPersistentStore}">
         <td th:text="${entry.key}"></td>
         <td th:text="${entry.value}"></td>
         <td><a th:attr="data-href=@{/admin/nonpersistentstoredelete/{key}(key=${entry.key})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
