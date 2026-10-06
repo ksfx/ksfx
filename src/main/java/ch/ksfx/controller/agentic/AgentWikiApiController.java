@@ -14,7 +14,10 @@ import ch.ksfx.model.wiki.WikiPage;
 import ch.ksfx.model.wiki.WikiPageVersion;
 import ch.ksfx.services.wiki.WikiService;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -266,8 +269,40 @@ public class AgentWikiApiController
         Map<String, Object> response = new HashMap<>();
         response.put("assetId", asset.getId());
         response.put("url", "/wiki/assets/" + asset.getId());
+        response.put("apiUrl", "/agentic/api/wiki/asset/" + asset.getId());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Download counterpart to {@link #uploadAsset}, mirroring AgentIssueApiController#downloadAsset:
+     * the {@code url} field is the session-authenticated web route (/wiki/assets/{id}) a bearer
+     * token can't pass, so until this existed an agent could attach files but never read one back -
+     * not even its own. Same bytes/content type/filename as the web route, behind agent auth. No
+     * wiki/page path segment on purpose: asset ids are global (inline uploads aren't tied to a page
+     * at all), matching how upload addresses them.
+     */
+    @GetMapping("/asset/{assetId}")
+    public ResponseEntity<?> downloadAsset(HttpServletRequest request, @PathVariable Long assetId)
+    {
+        if (authenticate(request) == null) {
+            return unauthorized();
+        }
+
+        WikiAsset asset = wikiAssetDAO.getWikiAssetForId(assetId);
+
+        if (asset == null || asset.getContent() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No asset with id " + assetId));
+        }
+
+        MediaType mediaType = asset.getContentType() != null
+                ? MediaType.parseMediaType(asset.getContentType())
+                : MediaType.APPLICATION_OCTET_STREAM;
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + asset.getFileName() + "\"")
+                .body(new ByteArrayResource(asset.getContent()));
     }
 
     /** Read-only counterpart of WikiService#resolveOrCreateFolderPath - a lookup miss just means "no page there", not an auto-create. */
@@ -328,6 +363,24 @@ public class AgentWikiApiController
         WikiPageDto dto = toDto(page);
         WikiPageVersion latest = wikiPageVersionDAO.getLatestVersionForPage(page.getId());
         dto.content = latest != null ? latest.getContent() : "";
+        dto.attachments = new ArrayList<>();
+
+        // Only on the single-page reads, not on list - same split as the issue API (comments/
+        // attachments only in details), keeps the all-pages listing cheap.
+        for (WikiAsset asset : wikiAssetDAO.getAssetsForPage(page.getId())) {
+            AttachmentDto attachmentDto = new AttachmentDto();
+            attachmentDto.assetId = asset.getId();
+            attachmentDto.fileName = asset.getFileName();
+            attachmentDto.contentType = asset.getContentType();
+            attachmentDto.fileSize = asset.getFileSize();
+            attachmentDto.uploadedBy = asset.getUploadedByAgent() != null ? "agent:" + asset.getUploadedByAgent().getName()
+                    : asset.getUploadedByUser() != null ? "user:" + asset.getUploadedByUser().getUsername() : null;
+            attachmentDto.createdAt = asset.getCreatedAt();
+            attachmentDto.url = "/wiki/assets/" + asset.getId();
+            attachmentDto.apiUrl = "/agentic/api/wiki/asset/" + asset.getId();
+            dto.attachments.add(attachmentDto);
+        }
+
         return dto;
     }
 
@@ -380,5 +433,23 @@ public class AgentWikiApiController
         public String title;
         public String parentTitle;
         public String content;
+        /** Only populated on single-page reads (not on {@link #list}) - see toDtoWithContent. */
+        public List<AttachmentDto> attachments;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class AttachmentDto
+    {
+        public Long assetId;
+        public String fileName;
+        public String contentType;
+        public Long fileSize;
+        /** "agent:<name>" or "user:<username>", whichever uploaded it. */
+        public String uploadedBy;
+        public Date createdAt;
+        /** Browser route, session-authenticated - for humans. */
+        public String url;
+        /** Bearer-authenticated download ({@link #downloadAsset}) - for agents. */
+        public String apiUrl;
     }
 }
