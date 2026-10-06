@@ -138,10 +138,46 @@ public class ActivityGitRepositoryService
         }
     }
 
+    /**
+     * "Does this entity already have a file in the repo?" - the check every create-vs-rename
+     * decision must use. Null AND blank: the MVC edit forms carry gitPath as a hidden field, and
+     * Spring binds an empty hidden input as "" rather than null, so an entity created while Git
+     * sync was off comes back from its own edit form with gitPath "" - which a null-only check
+     * mistook for "has a path", sent it down the rename branch, and {@link #moveFile} then
+     * resolved "" to the repo root and tried to move the whole working copy (AccessDenied on
+     * Windows, 2026-10-06).
+     */
+    public static boolean hasGitPath(String gitPath)
+    {
+        return gitPath != null && !gitPath.trim().isEmpty();
+    }
+
+    /**
+     * Resolves a repo-relative path to a file inside the working copy, refusing anything that is
+     * not strictly a file path below the clone root: blank (would be the root itself), absolute,
+     * or escaping via "..". Every file operation below goes through this, so no caller can ever
+     * read, write, move or delete the clone root or anything outside it by accident.
+     */
+    private Path resolveFile(String gitPath) throws IOException
+    {
+        if (!hasGitPath(gitPath)) {
+            throw new IOException("Git path must not be empty");
+        }
+
+        GitSyncConfig config = requireConfig();
+        Path root = Paths.get(config.getLocalClonePath()).toAbsolutePath().normalize();
+        Path file = root.resolve(gitPath.trim()).normalize();
+
+        if (file.equals(root) || !file.startsWith(root)) {
+            throw new IOException("Git path must point to a file inside the repository: " + gitPath);
+        }
+
+        return file;
+    }
+
     public String readActivitySource(String gitPath) throws IOException
     {
-        GitSyncConfig config = requireConfig();
-        Path filePath = Paths.get(config.getLocalClonePath(), gitPath);
+        Path filePath = resolveFile(gitPath);
 
         return new String(Files.readAllBytes(filePath), StandardCharsets.UTF_8);
     }
@@ -211,8 +247,7 @@ public class ActivityGitRepositoryService
      */
     public void writeFile(String gitPath, String content) throws IOException
     {
-        GitSyncConfig config = requireConfig();
-        Path filePath = Paths.get(config.getLocalClonePath(), gitPath);
+        Path filePath = resolveFile(gitPath);
         String normalizedContent = content.replace("\r\n", "\n").replace("\n", "\r\n");
 
         Files.createDirectories(filePath.getParent());
@@ -275,9 +310,11 @@ public class ActivityGitRepositoryService
 
     public boolean fileExists(String gitPath)
     {
-        GitSyncConfig config = requireConfig();
-
-        return Files.exists(Paths.get(config.getLocalClonePath(), gitPath));
+        try {
+            return Files.isRegularFile(resolveFile(gitPath));
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     /** Lists the git-relative paths of every file currently under the given directory in the working copy. */
@@ -303,9 +340,7 @@ public class ActivityGitRepositoryService
     /** Deletes a file from the local working copy without staging/committing/pushing it. */
     public void deleteFile(String gitPath) throws IOException
     {
-        GitSyncConfig config = requireConfig();
-
-        Files.deleteIfExists(Paths.get(config.getLocalClonePath(), gitPath));
+        Files.deleteIfExists(resolveFile(gitPath));
     }
 
     /**
@@ -324,11 +359,10 @@ public class ActivityGitRepositoryService
     /** Moves a file within the local working copy without staging/committing/pushing it. Does nothing if the source doesn't exist. */
     public void moveFile(String oldGitPath, String newGitPath) throws IOException
     {
-        GitSyncConfig config = requireConfig();
-        Path oldFile = Paths.get(config.getLocalClonePath(), oldGitPath);
-        Path newFile = Paths.get(config.getLocalClonePath(), newGitPath);
+        Path oldFile = resolveFile(oldGitPath);
+        Path newFile = resolveFile(newGitPath);
 
-        if (!Files.exists(oldFile)) {
+        if (!Files.isRegularFile(oldFile)) {
             return;
         }
 

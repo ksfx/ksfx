@@ -111,7 +111,7 @@ public class CodeLibMigrationService
         codeLibDAO.saveOrUpdateCodeLib(codeLib);
 
         return "CodeLib '" + className + "' aus NoteFile migriert"
-                + (codeLib.getGitPath() != null ? " und nach Git geschrieben (" + codeLib.getGitPath() + ")." : " (Git nicht aktiv, nur in der DB gespeichert).");
+                + (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) ? " und nach Git geschrieben (" + codeLib.getGitPath() + ")." : " (Git nicht aktiv, nur in der DB gespeichert).");
     }
 
     private String extractClassName(String groovySource, String fallbackName)

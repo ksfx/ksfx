@@ -93,7 +93,7 @@ public class PublishingController
         if (publishingConfigurationId != null) {
             publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
 
-            if (publishingConfiguration.getGitPath() != null && activityGitRepositoryService.isActive()) {
+            if (ActivityGitRepositoryService.hasGitPath(publishingConfiguration.getGitPath()) && activityGitRepositoryService.isActive()) {
                 try {
                     activityGitRepositoryService.sync();
                     publishingConfiguration.setPublishingStrategy(activityGitRepositoryService.readActivitySource(publishingConfiguration.getGitPath()));
@@ -156,7 +156,7 @@ public class PublishingController
 
         if (activityGitRepositoryService.isActive()) {
             try {
-                if (publishingConfiguration.getGitPath() == null) {
+                if (!ActivityGitRepositoryService.hasGitPath(publishingConfiguration.getGitPath())) {
                     String slug = activityGitRepositoryService.uniqueSlug(
                             activityGitRepositoryService.slugify(publishingConfiguration.getName()),
                             ActivityGitRepositoryService.REPORTS_DIRECTORY);
@@ -165,7 +165,7 @@ public class PublishingController
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (PublishingConfiguration other : publishingConfigurationDAO.getAllPublishingConfigurations()) {
-                        if (!other.getId().equals(publishingConfiguration.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(publishingConfiguration.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -242,13 +242,13 @@ public class PublishingController
 
                 boolean deletedAny = false;
 
-                if (publishingConfiguration.getGitPath() != null) {
+                if (ActivityGitRepositoryService.hasGitPath(publishingConfiguration.getGitPath())) {
                     activityGitRepositoryService.deleteFile(publishingConfiguration.getGitPath());
                     deletedAny = true;
                 }
 
                 for (PublishingResource publishingResource : publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(publishingConfiguration)) {
-                    if (publishingResource.getGitPath() != null) {
+                    if (ActivityGitRepositoryService.hasGitPath(publishingResource.getGitPath())) {
                         activityGitRepositoryService.deleteFile(publishingResource.getGitPath());
                         deletedAny = true;
                     }
@@ -275,7 +275,7 @@ public class PublishingController
         if (publishingResourceId != null) {
             publishingResource = publishingResourceDAO.getPublishingResourceForId(publishingResourceId);
 
-            if (publishingResource.getGitPath() != null && activityGitRepositoryService.isActive()) {
+            if (ActivityGitRepositoryService.hasGitPath(publishingResource.getGitPath()) && activityGitRepositoryService.isActive()) {
                 try {
                     activityGitRepositoryService.sync();
                     publishingResource.setPublishingStrategy(activityGitRepositoryService.readActivitySource(publishingResource.getGitPath()));
@@ -333,7 +333,7 @@ public class PublishingController
 
         if (activityGitRepositoryService.isActive()) {
             try {
-                if (publishingResource.getGitPath() == null) {
+                if (!ActivityGitRepositoryService.hasGitPath(publishingResource.getGitPath())) {
                     String slug = activityGitRepositoryService.uniqueSlug(
                             activityGitRepositoryService.slugify(publishingResource.getTitle()),
                             ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY);
@@ -342,7 +342,7 @@ public class PublishingController
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (PublishingResource other : publishingResourceDAO.getAllPublishingResources()) {
-                        if (!other.getId().equals(publishingResource.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(publishingResource.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -395,7 +395,7 @@ public class PublishingController
     {
         PublishingResource publishingResource = publishingResourceDAO.getPublishingResourceForId(publishingResourceId);
 
-        if (publishingResource.getGitPath() != null && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(publishingResource.getGitPath()) && activityGitRepositoryService.isActive()) {
             try {
                 activityGitRepositoryService.deleteAndPush(publishingResource.getGitPath(), "Delete report resource: " + publishingResource.getTitle());
             } catch (Exception e) {

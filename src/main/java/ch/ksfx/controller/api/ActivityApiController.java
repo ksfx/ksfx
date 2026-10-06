@@ -239,7 +239,7 @@ public class ActivityApiController
 
         if (activityGitRepositoryService.isActive() && activity.getGroovyCode() != null) {
             try {
-                if (activity.getGitPath() == null) {
+                if (!ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
                     String slug = activityGitRepositoryService.uniqueSlug(
                             activityGitRepositoryService.slugify(activity.getName()),
                             ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
@@ -248,7 +248,7 @@ public class ActivityApiController
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (Activity other : activityDAO.getAllActivities()) {
-                        if (!other.getId().equals(activity.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(activity.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -289,7 +289,7 @@ public class ActivityApiController
         // Mirrors ActivityController.delete: a Git failure is logged but never blocks deleting the
         // DB row - an orphaned file in Git is recoverable, an Activity the API refuses to delete
         // because Git is unreachable is a worse failure mode for the caller.
-        if (activity.getGitPath() != null && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive()) {
             try {
                 activityGitRepositoryService.deleteAndPush(activity.getGitPath(), "Delete activity: " + activity.getName());
             } catch (Exception e) {

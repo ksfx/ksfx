@@ -68,7 +68,7 @@ public class GitSyncMigrationService
         int migratedActivities = 0;
 
         for (Activity activity : activityDAO.getAllActivities()) {
-            if (activity.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
                 continue;
             }
 
@@ -92,7 +92,7 @@ public class GitSyncMigrationService
         int migratedCodeLibs = 0;
 
         for (CodeLib codeLib : codeLibDAO.getAllCodeLibs()) {
-            if (codeLib.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
                 continue;
             }
 
@@ -116,7 +116,7 @@ public class GitSyncMigrationService
         int migratedReports = 0;
 
         for (PublishingConfiguration publishingConfiguration : publishingConfigurationDAO.getAllPublishingConfigurations()) {
-            if (publishingConfiguration.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(publishingConfiguration.getGitPath())) {
                 continue;
             }
 
@@ -140,7 +140,7 @@ public class GitSyncMigrationService
         int migratedReportResources = 0;
 
         for (PublishingResource publishingResource : publishingResourceDAO.getAllPublishingResources()) {
-            if (publishingResource.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(publishingResource.getGitPath())) {
                 continue;
             }
 
@@ -184,7 +184,7 @@ public class GitSyncMigrationService
         int unlinkedActivities = 0;
 
         for (Activity activity : activityDAO.getAllActivities()) {
-            if (activity.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
                 activity.setGitPath(null);
                 activityDAO.saveOrUpdateActivity(activity);
 
@@ -195,7 +195,7 @@ public class GitSyncMigrationService
         int unlinkedCodeLibs = 0;
 
         for (CodeLib codeLib : codeLibDAO.getAllCodeLibs()) {
-            if (codeLib.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
                 codeLib.setGitPath(null);
                 codeLibDAO.saveOrUpdateCodeLib(codeLib);
 
@@ -206,7 +206,7 @@ public class GitSyncMigrationService
         int unlinkedReports = 0;
 
         for (PublishingConfiguration publishingConfiguration : publishingConfigurationDAO.getAllPublishingConfigurations()) {
-            if (publishingConfiguration.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(publishingConfiguration.getGitPath())) {
                 publishingConfiguration.setGitPath(null);
                 publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
 
@@ -217,7 +217,7 @@ public class GitSyncMigrationService
         int unlinkedReportResources = 0;
 
         for (PublishingResource publishingResource : publishingResourceDAO.getAllPublishingResources()) {
-            if (publishingResource.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(publishingResource.getGitPath())) {
                 publishingResource.setGitPath(null);
                 publishingResourceDAO.saveOrUpdatePublishingResource(publishingResource);
 

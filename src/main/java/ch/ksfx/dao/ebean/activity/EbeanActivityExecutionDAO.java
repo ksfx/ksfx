@@ -46,7 +46,7 @@ public class EbeanActivityExecutionDAO implements ActivityExecutionDAO
         try {
             String groovyCode = activity.getGroovyCode();
 
-            if (activity.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
                 ActivityGitRepositoryService activityGitRepositoryService = (ActivityGitRepositoryService) serviceProvider.getService(ActivityGitRepositoryService.class);
 
                 if (activityGitRepositoryService.isActive()) {

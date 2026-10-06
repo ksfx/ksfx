@@ -140,7 +140,7 @@ public class CodeLibApiController
 
         if (activityGitRepositoryService.isActive() && codeLib.getGroovyCode() != null) {
             try {
-                if (codeLib.getGitPath() == null) {
+                if (!ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
                     String slug = activityGitRepositoryService.uniqueSlug(
                             activityGitRepositoryService.slugify(codeLib.getName()),
                             ActivityGitRepositoryService.LIBS_DIRECTORY);
@@ -149,7 +149,7 @@ public class CodeLibApiController
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (CodeLib other : codeLibDAO.getAllCodeLibs()) {
-                        if (!other.getId().equals(codeLib.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(codeLib.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -185,7 +185,7 @@ public class CodeLibApiController
         // Mirrors CodeLibController.delete: a Git failure is logged but never blocks deleting the
         // DB row - an orphaned file in Git is recoverable, a CodeLib the API refuses to delete
         // because Git is unreachable is a worse failure mode for the caller.
-        if (codeLib.getGitPath() != null && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive()) {
             try {
                 activityGitRepositoryService.deleteAndPush(codeLib.getGitPath(), "Delete code lib: " + codeLib.getName());
             } catch (Exception e) {

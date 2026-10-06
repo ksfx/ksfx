@@ -119,7 +119,7 @@ public class ActivityController
         if (activityId != null) {
             activity = activityDAO.getActivityForId(activityId);
 
-            if (activity.getGitPath() != null && activityGitRepositoryService.isActive()) {
+            if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive()) {
                 try {
                     activityGitRepositoryService.sync();
                     activity.setGroovyCode(activityGitRepositoryService.readActivitySource(activity.getGitPath()));
@@ -173,7 +173,7 @@ public class ActivityController
 
         if (activityGitRepositoryService.isActive()) {
             try {
-                if (activity.getGitPath() == null) {
+                if (!ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
                     String slug = activityGitRepositoryService.uniqueSlug(
                             activityGitRepositoryService.slugify(activity.getName()),
                             ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
@@ -182,7 +182,7 @@ public class ActivityController
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (Activity other : activityDAO.getAllActivities()) {
-                        if (!other.getId().equals(activity.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(activity.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -276,7 +276,7 @@ public class ActivityController
     {
         Activity activity = activityDAO.getActivityForId(activityId);
 
-        if (activity.getGitPath() != null && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive()) {
             try {
                 activityGitRepositoryService.deleteAndPush(activity.getGitPath(), "Delete activity: " + activity.getName());
             } catch (Exception e) {

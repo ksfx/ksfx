@@ -68,7 +68,7 @@ public class CodeLibLoaderService
 
         String groovyCode = codeLib.getGroovyCode();
 
-        if (codeLib.getGitPath() != null && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive()) {
             try {
                 activityGitRepositoryService.sync();
                 groovyCode = activityGitRepositoryService.readActivitySource(codeLib.getGitPath());

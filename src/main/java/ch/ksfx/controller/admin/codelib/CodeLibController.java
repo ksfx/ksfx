@@ -59,7 +59,7 @@ public class CodeLibController
         if (codeLibId != null) {
             codeLib = codeLibDAO.getCodeLibForId(codeLibId);
 
-            if (codeLib.getGitPath() != null && activityGitRepositoryService.isActive()) {
+            if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive()) {
                 try {
                     activityGitRepositoryService.sync();
                     codeLib.setGroovyCode(activityGitRepositoryService.readActivitySource(codeLib.getGitPath()));
@@ -85,7 +85,7 @@ public class CodeLibController
 
         if (activityGitRepositoryService.isActive()) {
             try {
-                if (codeLib.getGitPath() == null) {
+                if (!ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
                     String slug = activityGitRepositoryService.uniqueSlug(
                             activityGitRepositoryService.slugify(codeLib.getName()),
                             ActivityGitRepositoryService.LIBS_DIRECTORY);
@@ -94,7 +94,7 @@ public class CodeLibController
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (CodeLib other : codeLibDAO.getAllCodeLibs()) {
-                        if (!other.getId().equals(codeLib.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(codeLib.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -134,7 +134,7 @@ public class CodeLibController
     {
         CodeLib codeLib = codeLibDAO.getCodeLibForId(codeLibId);
 
-        if (codeLib.getGitPath() != null && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive()) {
             try {
                 activityGitRepositoryService.deleteAndPush(codeLib.getGitPath(), "Delete code lib: " + codeLib.getName());
             } catch (Exception e) {

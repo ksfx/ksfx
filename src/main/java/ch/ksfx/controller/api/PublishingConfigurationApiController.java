@@ -225,7 +225,7 @@ public class PublishingConfigurationApiController
 
         if (activityGitRepositoryService.isActive() && configuration.getPublishingStrategy() != null) {
             try {
-                if (configuration.getGitPath() == null) {
+                if (!ActivityGitRepositoryService.hasGitPath(configuration.getGitPath())) {
                     String slug = activityGitRepositoryService.uniqueSlug(
                             activityGitRepositoryService.slugify(configuration.getName()),
                             ActivityGitRepositoryService.REPORTS_DIRECTORY);
@@ -234,7 +234,7 @@ public class PublishingConfigurationApiController
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (PublishingConfiguration other : publishingConfigurationDAO.getAllPublishingConfigurations()) {
-                        if (!other.getId().equals(configuration.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(configuration.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -283,13 +283,13 @@ public class PublishingConfigurationApiController
 
                 boolean deletedAny = false;
 
-                if (configuration.getGitPath() != null) {
+                if (ActivityGitRepositoryService.hasGitPath(configuration.getGitPath())) {
                     activityGitRepositoryService.deleteFile(configuration.getGitPath());
                     deletedAny = true;
                 }
 
                 for (PublishingResource resource : publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(configuration)) {
-                    if (resource.getGitPath() != null) {
+                    if (ActivityGitRepositoryService.hasGitPath(resource.getGitPath())) {
                         activityGitRepositoryService.deleteFile(resource.getGitPath());
                         deletedAny = true;
                     }

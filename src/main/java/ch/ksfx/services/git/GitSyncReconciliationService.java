@@ -126,7 +126,7 @@ public class GitSyncReconciliationService
 
         Set<String> expectedPaths = new HashSet<>();
         for (Activity activity : activities) {
-            if (activity.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
                 expectedPaths.add(activity.getGitPath());
             }
         }
@@ -136,7 +136,7 @@ public class GitSyncReconciliationService
         Set<String> siblingPaths = new HashSet<>(expectedPaths);
 
         for (Activity activity : activities) {
-            if (activity.getGitPath() == null) {
+            if (!ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
                 continue;
             }
 
@@ -164,7 +164,7 @@ public class GitSyncReconciliationService
 
         Set<String> expectedPaths = new HashSet<>();
         for (CodeLib codeLib : codeLibs) {
-            if (codeLib.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
                 expectedPaths.add(codeLib.getGitPath());
             }
         }
@@ -174,7 +174,7 @@ public class GitSyncReconciliationService
         Set<String> siblingPaths = new HashSet<>(expectedPaths);
 
         for (CodeLib codeLib : codeLibs) {
-            if (codeLib.getGitPath() == null) {
+            if (!ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
                 continue;
             }
 
@@ -202,7 +202,7 @@ public class GitSyncReconciliationService
 
         Set<String> expectedPaths = new HashSet<>();
         for (PublishingConfiguration report : reports) {
-            if (report.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(report.getGitPath())) {
                 expectedPaths.add(report.getGitPath());
             }
         }
@@ -212,7 +212,7 @@ public class GitSyncReconciliationService
         Set<String> siblingPaths = new HashSet<>(expectedPaths);
 
         for (PublishingConfiguration report : reports) {
-            if (report.getGitPath() == null) {
+            if (!ActivityGitRepositoryService.hasGitPath(report.getGitPath())) {
                 continue;
             }
 
@@ -240,7 +240,7 @@ public class GitSyncReconciliationService
 
         Set<String> expectedPaths = new HashSet<>();
         for (PublishingResource resource : resources) {
-            if (resource.getGitPath() != null) {
+            if (ActivityGitRepositoryService.hasGitPath(resource.getGitPath())) {
                 expectedPaths.add(resource.getGitPath());
             }
         }
@@ -250,7 +250,7 @@ public class GitSyncReconciliationService
         Set<String> siblingPaths = new HashSet<>(expectedPaths);
 
         for (PublishingResource resource : resources) {
-            if (resource.getGitPath() == null) {
+            if (!ActivityGitRepositoryService.hasGitPath(resource.getGitPath())) {
                 continue;
             }
 
