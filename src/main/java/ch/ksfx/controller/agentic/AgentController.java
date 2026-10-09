@@ -40,7 +40,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -100,10 +99,20 @@ public class AgentController
         return "redirect:/agentic/chat/" + firstPage.getContent().get(0).getId();
     }
 
+    /**
+     * {@code projectId} (optional, new agents only) pre-selects the project in the form - the
+     * sidebar's "New Agent" button passes the project currently shown, so an agent created from
+     * within a project lands in that project instead of "Ungrouped".
+     */
     @GetMapping({"/edit", "/edit/{id}"})
-    public String edit(@PathVariable(value = "id", required = false) Long agentId, Model model)
+    public String edit(@PathVariable(value = "id", required = false) Long agentId,
+                       @RequestParam(required = false) Long projectId, Model model)
     {
         Agent agent = agentId != null ? agentDAO.getAgentForId(agentId) : new Agent();
+
+        if (agentId == null && projectId != null) {
+            agent.setAgenticProject(agenticProjectDAO.getAgenticProjectForId(projectId));
+        }
 
         model.addAttribute("agent", agent);
         model.addAttribute("allAgenticProjects", agenticProjectDAO.getAllAgenticProjects());
@@ -229,12 +238,14 @@ public class AgentController
         Agent agent = agentDAO.getAgentForId(agentId);
         List<AgentMessage> messages = agentMessageDAO.getRecentMessagesForAgent(agentId, MESSAGE_PAGE_SIZE);
 
+        // The sidebar shows ONE project at a time - the one the open agent belongs to - with a
+        // switcher on top, same pattern as the wiki and issue-tracker sidebars (one wiki/tracker at
+        // a time instead of everything stacked). "Ungrouped" (agents without a project) is a
+        // pseudo-project in that switcher, only offered while such agents exist.
         List<AgenticProject> allAgenticProjects = agenticProjectDAO.getAllAgenticProjects();
-        Map<Long, List<Agent>> agentsByAgenticProject = new LinkedHashMap<>();
-
-        for (AgenticProject p : allAgenticProjects) {
-            agentsByAgenticProject.put(p.getId(), agentDAO.getAgentsForAgenticProject(p.getId()));
-        }
+        List<Agent> unassignedAgents = agentDAO.getAgentsWithoutAgenticProject();
+        AgenticProject currentProject = agent.getAgenticProject();
+        List<Agent> sidebarAgents = currentProject != null ? agentDAO.getAgentsForAgenticProject(currentProject.getId()) : unassignedAgents;
 
         boolean agentRunning = claudeCliSessionService.isRunning(agentId);
         ClaudeCliSessionService.PartialTurn partialTurn = agentRunning ? claudeCliSessionService.getPartialTurn(agentId) : null;
@@ -255,10 +266,43 @@ public class AgentController
         model.addAttribute("partialText", partialTurn != null ? partialTurn.getText() : null);
         model.addAttribute("partialToolActivity", partialTurn != null ? partialTurn.getToolActivityJson() : null);
         model.addAttribute("allAgenticProjects", allAgenticProjects);
-        model.addAttribute("agentsByAgenticProject", agentsByAgenticProject);
-        model.addAttribute("unassignedAgents", agentDAO.getAgentsWithoutAgenticProject());
+        model.addAttribute("currentProject", currentProject);
+        model.addAttribute("hasUnassignedAgents", !unassignedAgents.isEmpty());
+        model.addAttribute("sidebarAgents", sidebarAgents);
 
         return "agentic/agent/agent_chat";
+    }
+
+    /**
+     * Target of the sidebar's project switcher: opens the project's first agent, or - for a
+     * project without agents yet - the new-agent form with that project pre-selected, so switching
+     * to an empty project leads straight to populating it. {@code ungrouped} is the pseudo-project
+     * of agents without a project (see {@link #chat}).
+     */
+    @GetMapping("/project/{id}")
+    public String openProject(@PathVariable(value = "id") String id)
+    {
+        if ("ungrouped".equals(id)) {
+            List<Agent> unassigned = agentDAO.getAgentsWithoutAgenticProject();
+
+            return unassigned.isEmpty() ? "redirect:/agentic/edit" : "redirect:/agentic/chat/" + unassigned.get(0).getId();
+        }
+
+        Long projectId;
+
+        try {
+            projectId = Long.valueOf(id);
+        } catch (NumberFormatException e) {
+            return "redirect:/agentic/";
+        }
+
+        if (agenticProjectDAO.getAgenticProjectForId(projectId) == null) {
+            return "redirect:/agentic/";
+        }
+
+        List<Agent> agents = agentDAO.getAgentsForAgenticProject(projectId);
+
+        return agents.isEmpty() ? "redirect:/agentic/edit?projectId=" + projectId : "redirect:/agentic/chat/" + agents.get(0).getId();
     }
 
     /**

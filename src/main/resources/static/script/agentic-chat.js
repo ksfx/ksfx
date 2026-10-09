@@ -916,6 +916,41 @@
     // open/closed state persisted across page loads: every agent switch is a full navigation
     // (not a SPA), so "start closed on the new page" is already the right default, same as most
     // mobile chat apps landing on the conversation rather than the list.
+    // --- Project switcher (see the agentic-switcher comment in agent_chat.html) -----------------
+    var projectSelect = document.getElementById('agenticProjectSelect');
+
+    if (projectSelect) {
+        projectSelect.addEventListener('change', function () {
+            window.location.href = '/agentic/project/' + projectSelect.value;
+        });
+    }
+
+    var projectDeleteBtn = document.getElementById('agenticProjectDeleteBtn');
+
+    if (projectDeleteBtn) {
+        projectDeleteBtn.addEventListener('click', function () {
+            var projectName = projectDeleteBtn.dataset.projectName;
+
+            if (!window.confirm('Delete the project "' + projectName + '"? Its agents are kept and become ungrouped; a Docker container of the project is removed. This cannot be undone.')) {
+                return;
+            }
+
+            // Same double guard as deleting a wiki/tracker: a plain confirm is too easy to click through.
+            var typed = window.prompt('Type the project name to confirm deletion:');
+
+            if (typed === null) {
+                return;
+            }
+
+            if (typed.trim() !== projectName) {
+                window.alert('Name did not match - nothing was deleted.');
+                return;
+            }
+
+            window.location.href = projectDeleteBtn.dataset.deleteHref;
+        });
+    }
+
     var sidebarToggle = document.getElementById('agenticSidebarToggle');
     var backdrop = document.getElementById('agenticBackdrop');
 
