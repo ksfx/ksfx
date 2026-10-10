@@ -917,7 +917,7 @@
     // (not a SPA), so "start closed on the new page" is already the right default, same as most
     // mobile chat apps landing on the conversation rather than the list.
     // --- Project switcher (see the agentic-switcher comment in agent_chat.html) -----------------
-    var projectSelect = document.getElementById('agenticProjectSelect');
+    var projectSelect = document.getElementById('projectSelect');
 
     if (projectSelect) {
         projectSelect.addEventListener('change', function () {
@@ -925,7 +925,7 @@
         });
     }
 
-    var projectDeleteBtn = document.getElementById('agenticProjectDeleteBtn');
+    var projectDeleteBtn = document.getElementById('projectDeleteBtn');
 
     if (projectDeleteBtn) {
         projectDeleteBtn.addEventListener('click', function () {

@@ -4,12 +4,12 @@ import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.AgentMessageDAO;
 import ch.ksfx.dao.AgentScheduleDAO;
 import ch.ksfx.dao.AgenticConfigDAO;
-import ch.ksfx.dao.AgenticProjectDAO;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.model.Agent;
 import ch.ksfx.model.AgentMessage;
 import ch.ksfx.model.AgentSchedule;
 import ch.ksfx.model.AgenticConfig;
-import ch.ksfx.model.AgenticProject;
+import ch.ksfx.model.Project;
 import ch.ksfx.services.agentic.AgentWorkspaceService;
 import ch.ksfx.services.agentic.ClaudeCliSessionService;
 import ch.ksfx.services.scheduler.SchedulerService;
@@ -50,7 +50,7 @@ public class AgentController
     private final AgentDAO agentDAO;
     private final AgentMessageDAO agentMessageDAO;
     private final AgenticConfigDAO agenticConfigDAO;
-    private final AgenticProjectDAO agenticProjectDAO;
+    private final ProjectDAO projectDAO;
     private final AgentWorkspaceService agentWorkspaceService;
     private final ClaudeCliSessionService claudeCliSessionService;
     private final AgentScheduleDAO agentScheduleDAO;
@@ -59,7 +59,7 @@ public class AgentController
     public AgentController(AgentDAO agentDAO,
                             AgentMessageDAO agentMessageDAO,
                             AgenticConfigDAO agenticConfigDAO,
-                            AgenticProjectDAO agenticProjectDAO,
+                            ProjectDAO projectDAO,
                             AgentWorkspaceService agentWorkspaceService,
                             ClaudeCliSessionService claudeCliSessionService,
                             AgentScheduleDAO agentScheduleDAO,
@@ -68,7 +68,7 @@ public class AgentController
         this.agentDAO = agentDAO;
         this.agentMessageDAO = agentMessageDAO;
         this.agenticConfigDAO = agenticConfigDAO;
-        this.agenticProjectDAO = agenticProjectDAO;
+        this.projectDAO = projectDAO;
         this.agentWorkspaceService = agentWorkspaceService;
         this.claudeCliSessionService = claudeCliSessionService;
         this.agentScheduleDAO = agentScheduleDAO;
@@ -111,11 +111,11 @@ public class AgentController
         Agent agent = agentId != null ? agentDAO.getAgentForId(agentId) : new Agent();
 
         if (agentId == null && projectId != null) {
-            agent.setAgenticProject(agenticProjectDAO.getAgenticProjectForId(projectId));
+            agent.setProject(projectDAO.getProjectForId(projectId));
         }
 
         model.addAttribute("agent", agent);
-        model.addAttribute("allAgenticProjects", agenticProjectDAO.getAllAgenticProjects());
+        model.addAttribute("allProjects", projectDAO.getAllProjects());
         model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
 
         return "agentic/agent/agent_edit";
@@ -125,7 +125,7 @@ public class AgentController
     public String submit(@PathVariable(value = "id", required = false) Long agentId, @Valid @ModelAttribute Agent agent, BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes)
     {
         if (bindingResult.hasErrors()) {
-            model.addAttribute("allAgenticProjects", agenticProjectDAO.getAllAgenticProjects());
+            model.addAttribute("allProjects", projectDAO.getAllProjects());
             model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
             return "agentic/agent/agent_edit";
         }
@@ -144,10 +144,11 @@ public class AgentController
             agent.setCreatedAt(previousAgent.getCreatedAt());
         }
 
-        // An unselected "-- No Agentic Project --" option binds to a stub with a null id (see
-        // NoteController's identical NoteCategory handling) rather than a null agenticProject.
-        if (agent.getAgenticProject() != null && agent.getAgenticProject().getId() == null) {
-            agent.setAgenticProject(null);
+        // Every agent belongs to a project since the project migration (2026-10-10): an unselected
+        // option binds to a stub with a null id (see NoteController's identical NoteCategory
+        // handling), which now means "the default project" rather than "no project".
+        if (agent.getProject() == null || agent.getProject().getId() == null) {
+            agent.setProject(projectDAO.getDefaultProject());
         }
 
         if (isNew) {
@@ -242,10 +243,10 @@ public class AgentController
         // switcher on top, same pattern as the wiki and issue-tracker sidebars (one wiki/tracker at
         // a time instead of everything stacked). "Ungrouped" (agents without a project) is a
         // pseudo-project in that switcher, only offered while such agents exist.
-        List<AgenticProject> allAgenticProjects = agenticProjectDAO.getAllAgenticProjects();
-        List<Agent> unassignedAgents = agentDAO.getAgentsWithoutAgenticProject();
-        AgenticProject currentProject = agent.getAgenticProject();
-        List<Agent> sidebarAgents = currentProject != null ? agentDAO.getAgentsForAgenticProject(currentProject.getId()) : unassignedAgents;
+        List<Project> allProjects = projectDAO.getAllProjects();
+        List<Agent> unassignedAgents = agentDAO.getAgentsWithoutProject();
+        Project currentProject = agent.getProject();
+        List<Agent> sidebarAgents = currentProject != null ? agentDAO.getAgentsForProject(currentProject.getId()) : unassignedAgents;
 
         boolean agentRunning = claudeCliSessionService.isRunning(agentId);
         ClaudeCliSessionService.PartialTurn partialTurn = agentRunning ? claudeCliSessionService.getPartialTurn(agentId) : null;
@@ -265,7 +266,7 @@ public class AgentController
         // treat that the same as "no output yet, but still show the busy indicator".
         model.addAttribute("partialText", partialTurn != null ? partialTurn.getText() : null);
         model.addAttribute("partialToolActivity", partialTurn != null ? partialTurn.getToolActivityJson() : null);
-        model.addAttribute("allAgenticProjects", allAgenticProjects);
+        model.addAttribute("allProjects", allProjects);
         model.addAttribute("currentProject", currentProject);
         model.addAttribute("hasUnassignedAgents", !unassignedAgents.isEmpty());
         model.addAttribute("sidebarAgents", sidebarAgents);
@@ -283,7 +284,7 @@ public class AgentController
     public String openProject(@PathVariable(value = "id") String id)
     {
         if ("ungrouped".equals(id)) {
-            List<Agent> unassigned = agentDAO.getAgentsWithoutAgenticProject();
+            List<Agent> unassigned = agentDAO.getAgentsWithoutProject();
 
             return unassigned.isEmpty() ? "redirect:/agentic/edit" : "redirect:/agentic/chat/" + unassigned.get(0).getId();
         }
@@ -296,11 +297,11 @@ public class AgentController
             return "redirect:/agentic/";
         }
 
-        if (agenticProjectDAO.getAgenticProjectForId(projectId) == null) {
+        if (projectDAO.getProjectForId(projectId) == null) {
             return "redirect:/agentic/";
         }
 
-        List<Agent> agents = agentDAO.getAgentsForAgenticProject(projectId);
+        List<Agent> agents = agentDAO.getAgentsForProject(projectId);
 
         return agents.isEmpty() ? "redirect:/agentic/edit?projectId=" + projectId : "redirect:/agentic/chat/" + agents.get(0).getId();
     }

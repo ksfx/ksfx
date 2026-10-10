@@ -14,6 +14,6 @@ public interface AgentDAO
     public Page<Agent> getAgentsForPageable(Pageable pageable);
     public Agent getAgentForId(Long agentId);
     public Agent getAgentForApiToken(String apiToken);
-    public List<Agent> getAgentsForAgenticProject(Long agenticProjectId);
-    public List<Agent> getAgentsWithoutAgenticProject();
+    public List<Agent> getAgentsForProject(Long projectId);
+    public List<Agent> getAgentsWithoutProject();
 }

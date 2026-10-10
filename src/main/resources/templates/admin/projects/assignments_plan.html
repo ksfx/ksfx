@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Project Assignments - Preview</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/admin/}">Admin</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/}">Projects</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/admin/projects/assignments(type=${type})}">Assignments</a></li>
+        <li class="breadcrumb-item active">Preview</li>
+    </ol>
+</nav>
+
+<h4>Move to <span th:text="${target.name}">project</span></h4>
+<p class="text-muted"><span th:text="${okCount}">0</span> will be moved, <span th:text="${blockedCount}">0</span> blocked. Nothing has happened yet.</p>
+
+<table class="table table-striped table-sm">
+    <thead><tr><th>ID</th><th>Name</th><th>From</th><th>Result</th><th>What happens</th></tr></thead>
+    <tbody>
+        <tr th:each="i : ${items}">
+            <td th:text="${i.id}"></td>
+            <td th:text="${i.name}"></td>
+            <td th:text="${i.fromProject}"></td>
+            <td><span th:if="${i.blocked}" class="badge badge-danger">BLOCKED</span><span th:unless="${i.blocked}" class="badge badge-success">OK</span></td>
+            <td><ul style="margin:0;padding-left:18px"><li th:each="n : ${i.notes}" th:text="${n}"></li></ul><span th:if="${#lists.isEmpty(i.notes)}" class="text-muted">project reference only</span></td>
+        </tr>
+    </tbody>
+</table>
+
+<form method="post" th:action="@{/admin/projects/assignments/execute}">
+    <input type="hidden" name="type" th:value="${type}" />
+    <input type="hidden" name="targetProjectId" th:value="${target.id}" />
+    <th:block th:each="i : ${items}"><input th:unless="${i.blocked}" type="hidden" name="ids" th:value="${i.id}" /></th:block>
+    <button type="submit" class="btn btn-primary" th:disabled="${okCount == 0}">Move <span th:text="${okCount}">0</span> to <span th:text="${target.name}">project</span></button>
+    <a th:href="@{/admin/projects/assignments(type=${type})}" class="btn btn-danger">Cancel</a>
+</form>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

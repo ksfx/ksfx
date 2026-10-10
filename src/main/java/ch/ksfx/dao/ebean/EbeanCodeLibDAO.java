@@ -98,8 +98,14 @@ public class EbeanCodeLibDAO implements CodeLibDAO
     }
 
     @Override
-    public CodeLib getCodeLibForName(String name)
+    public List<CodeLib> getCodeLibsForName(String name)
     {
-        return Ebean.find(CodeLib.class).where().eq("name", name).findUnique();
+        return Ebean.find(CodeLib.class).where().eq("name", name).findList();
+    }
+
+    @Override
+    public CodeLib getCodeLibForProjectAndName(Long projectId, String name)
+    {
+        return Ebean.find(CodeLib.class).where().eq("project.id", projectId).eq("name", name).setMaxRows(1).findOne();
     }
 }

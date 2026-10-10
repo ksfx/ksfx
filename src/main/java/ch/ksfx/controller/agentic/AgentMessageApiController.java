@@ -15,7 +15,7 @@ import java.util.Map;
 
 /**
  * Agent-to-agent messaging API - lets an agent (the caller) synchronously trigger a turn on
- * another agent (the target - any agent, no same-AgenticProject restriction) via curl from its own
+ * another agent (the target - any agent, no same-Project restriction) via curl from its own
  * Bash tool, getting the target's reply back as the HTTP response body. Mirrors
  * AgentScheduleApiController closely: no Spring Security session/CSRF involved (path is
  * permitAll(), see WebSecurityConfig) - auth is a plain per-agent bearer token checked inline in

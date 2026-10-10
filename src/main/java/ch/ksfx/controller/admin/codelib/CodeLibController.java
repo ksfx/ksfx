@@ -1,5 +1,7 @@
 package ch.ksfx.controller.admin.codelib;
 
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.CodeLibDAO;
 import ch.ksfx.model.CodeLib;
 import ch.ksfx.services.codelib.CodeLibMigrationService;
@@ -23,14 +25,16 @@ import java.util.Set;
 public class CodeLibController
 {
     private final CodeLibDAO codeLibDAO;
+    private final ProjectDAO projectDAO;
     private final ActivityGitRepositoryService activityGitRepositoryService;
     private final CodeLibMigrationService codeLibMigrationService;
 
     public CodeLibController(CodeLibDAO codeLibDAO,
                               ActivityGitRepositoryService activityGitRepositoryService,
-                              CodeLibMigrationService codeLibMigrationService)
+                              CodeLibMigrationService codeLibMigrationService, ProjectDAO projectDAO)
     {
         this.codeLibDAO = codeLibDAO;
+        this.projectDAO = projectDAO;
         this.activityGitRepositoryService = activityGitRepositoryService;
         this.codeLibMigrationService = codeLibMigrationService;
     }
@@ -38,7 +42,7 @@ public class CodeLibController
     @ModelAttribute("gitSyncActive")
     public boolean gitSyncActive()
     {
-        return activityGitRepositoryService.isActive();
+        return activityGitRepositoryService.isAnyActive();
     }
 
     @GetMapping("/")
@@ -59,10 +63,10 @@ public class CodeLibController
         if (codeLibId != null) {
             codeLib = codeLibDAO.getCodeLibForId(codeLibId);
 
-            if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive()) {
+            if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive(codeLib.getProject())) {
                 try {
-                    activityGitRepositoryService.sync();
-                    codeLib.setGroovyCode(activityGitRepositoryService.readActivitySource(codeLib.getGitPath()));
+                    activityGitRepositoryService.sync(codeLib.getProject());
+                    codeLib.setGroovyCode(activityGitRepositoryService.readActivitySource(codeLib.getProject(), codeLib.getGitPath()));
                 } catch (Exception e) {
                     model.addAttribute("gitSyncWarning", "Konnte nicht mit Git synchronisieren, zeige zwischengespeicherten Stand: " + e.getMessage());
                 }
@@ -83,14 +87,26 @@ public class CodeLibController
             return "admin/codelib/codelib_edit";
         }
 
-        if (activityGitRepositoryService.isActive()) {
+        // No project on the form (see ActivityController.activitySubmit) - keep the stored one on edit, default on create.
+        CodeLib previousCodeLib = codeLib.getId() != null ? codeLibDAO.getCodeLibForId(codeLib.getId()) : null;
+        codeLib.setProject(previousCodeLib != null && previousCodeLib.getProject() != null ? previousCodeLib.getProject() : projectDAO.getDefaultProject());
+
+        // Names are unique per project (the loader resolves libs by project + name).
+        CodeLib sameName = codeLibDAO.getCodeLibForProjectAndName(codeLib.getProject().getId(), codeLib.getName());
+
+        if (sameName != null && !sameName.getId().equals(codeLib.getId())) {
+            bindingResult.rejectValue("name", "codeLib.name", "A code lib with this name already exists in project " + codeLib.getProject().getName());
+            return "admin/codelib/codelib_edit";
+        }
+
+        if (activityGitRepositoryService.isActive(codeLib.getProject())) {
             try {
                 if (!ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
-                    String slug = activityGitRepositoryService.uniqueSlug(
+                    String slug = activityGitRepositoryService.uniqueSlug(codeLib.getProject(), 
                             activityGitRepositoryService.slugify(codeLib.getName()),
                             ActivityGitRepositoryService.LIBS_DIRECTORY);
                     codeLib.setGitPath(ActivityGitRepositoryService.LIBS_DIRECTORY + "/" + slug + ".groovy");
-                    activityGitRepositoryService.writeActivitySource(codeLib.getGitPath(), codeLib.getGroovyCode(), "Create code lib: " + codeLib.getName());
+                    activityGitRepositoryService.writeActivitySource(codeLib.getProject(), codeLib.getGitPath(), codeLib.getGroovyCode(), "Create code lib: " + codeLib.getName());
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (CodeLib other : codeLibDAO.getAllCodeLibs()) {
@@ -102,10 +118,10 @@ public class CodeLibController
                     String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.LIBS_DIRECTORY, codeLib.getName(), codeLib.getGitPath(), siblingPaths);
 
                     if (!desiredPath.equals(codeLib.getGitPath())) {
-                        activityGitRepositoryService.renameAndWriteActivitySource(codeLib.getGitPath(), desiredPath, codeLib.getGroovyCode(), "Rename code lib: " + codeLib.getName());
+                        activityGitRepositoryService.renameAndWriteActivitySource(codeLib.getProject(), codeLib.getGitPath(), desiredPath, codeLib.getGroovyCode(), "Rename code lib: " + codeLib.getName());
                         codeLib.setGitPath(desiredPath);
                     } else {
-                        activityGitRepositoryService.writeActivitySource(codeLib.getGitPath(), codeLib.getGroovyCode(), "Update code lib: " + codeLib.getName());
+                        activityGitRepositoryService.writeActivitySource(codeLib.getProject(), codeLib.getGitPath(), codeLib.getGroovyCode(), "Update code lib: " + codeLib.getName());
                     }
                 }
             } catch (Exception e) {
@@ -134,9 +150,9 @@ public class CodeLibController
     {
         CodeLib codeLib = codeLibDAO.getCodeLibForId(codeLibId);
 
-        if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive(codeLib.getProject())) {
             try {
-                activityGitRepositoryService.deleteAndPush(codeLib.getGitPath(), "Delete code lib: " + codeLib.getName());
+                activityGitRepositoryService.deleteAndPush(codeLib.getProject(), codeLib.getGitPath(), "Delete code lib: " + codeLib.getName());
             } catch (Exception e) {
                 redirectAttributes.addFlashAttribute("resultError", true);
                 redirectAttributes.addFlashAttribute("resultMessage", "Konnte Datei nicht aus Git löschen: " + e.getMessage());

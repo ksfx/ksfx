@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Delete Project</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/}">Projects</a></li>
+        <li class="breadcrumb-item active">Delete <span th:text="${project.name}"></span></li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div class="container">
+    <div class="alert alert-danger">
+        <strong>Deleting the project "<span th:text="${project.name}"></span>" deletes everything in it.</strong> This cannot be undone.
+    </div>
+
+    <table class="table table-sm">
+        <tbody>
+            <tr th:each="e : ${summary}"><th style="width:40%" th:text="${e.key}"></th><td th:text="${e.value}"></td></tr>
+        </tbody>
+    </table>
+
+    <form method="post" th:action="@{/agentic/projects/delete/{id}(id=${project.id})}">
+        <div class="form-group">
+            <label for="confirmName">Type the project name to confirm</label>
+            <input type="text" class="form-control" id="confirmName" name="confirmName" autocomplete="off" th:placeholder="${project.name}" />
+        </div>
+        <button type="submit" class="btn btn-danger">Delete project and all its content</button>
+        <a th:href="@{/agentic/projects/}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

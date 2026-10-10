@@ -250,7 +250,7 @@ public class AgenticFileBrowserController
         model.addAttribute("browserPath", relativePath);
         model.addAttribute("browserParentPath", relativePath.isEmpty() ? null : parentOf(relativePath));
         model.addAttribute("browserEntries", entries);
-        model.addAttribute("hasSharedRoot", agent.getAgenticProject() != null);
+        model.addAttribute("hasSharedRoot", agent.getProject() != null);
 
         return "agentic/agent/agentic_file_browser :: fileList";
     }
@@ -327,12 +327,12 @@ public class AgenticFileBrowserController
         boolean storedPathUsable = agent.getWorkspacePath() != null && !agent.getWorkspacePath().trim().isEmpty();
 
         if (ROOT_SHARED.equals(root)) {
-            if (agent.getAgenticProject() == null) {
+            if (agent.getProject() == null) {
                 throw new IllegalArgumentException("Agent has no project shared directory");
             }
 
             if (configUsable) {
-                return agentWorkspaceService.resolveAgenticProjectWorkspace(agent.getAgenticProject(), config).resolve("shared").normalize();
+                return agentWorkspaceService.resolveProjectWorkspace(agent.getProject(), config).resolve("shared").normalize();
             }
 
             if (storedPathUsable) {

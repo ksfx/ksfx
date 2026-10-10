@@ -19,8 +19,12 @@ package ch.ksfx.dao;
 
 import ch.ksfx.model.GitSyncConfig;
 
+import java.util.List;
+
 public interface GitSyncConfigDAO
 {
-    public GitSyncConfig getGitSyncConfig();
+    /** The project's Git configuration row, or null if the project has none (= not Git-backed). */
+    public GitSyncConfig getGitSyncConfigForProject(Long projectId);
+    public List<GitSyncConfig> getAllGitSyncConfigs();
     public void saveOrUpdateGitSyncConfig(GitSyncConfig gitSyncConfig);
 }

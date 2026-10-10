@@ -6,6 +6,9 @@ import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
 import ch.ksfx.model.GitSyncConfig;
+import java.util.List;
+import java.util.Collections;
+import ch.ksfx.model.Project;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import org.eclipse.jgit.api.Git;
@@ -35,6 +38,7 @@ public class GitSyncReconciliationServiceTest
     private Path bareRepoDir;
     private Path localCloneDir;
     private ActivityGitRepositoryService gitService;
+    private Project project;
     private ActivityDAO activityDAO;
     private CodeLibDAO codeLibDAO;
     private PublishingConfigurationDAO publishingConfigurationDAO;
@@ -66,7 +70,12 @@ public class GitSyncReconciliationServiceTest
             seed.push().call();
         }
 
+        project = new Project();
+        project.setId(1L);
+        project.setName("Test");
+
         GitSyncConfig config = new GitSyncConfig();
+        config.setProject(project);
         config.setRepoUrl(bareRepoDir.toUri().toString());
         config.setBranch("master");
         config.setLocalClonePath(localCloneDir.toString());
@@ -90,25 +99,28 @@ public class GitSyncReconciliationServiceTest
     {
         Activity renamedActivity = new Activity();
         renamedActivity.setId(1L);
+        renamedActivity.setProject(project);
         renamedActivity.setName("New Name");
         renamedActivity.setGitPath("activities/old-name.groovy");
         renamedActivity.setGroovyCode("class Foo {}");
 
         Activity missingFileActivity = new Activity();
         missingFileActivity.setId(2L);
+        missingFileActivity.setProject(project);
         missingFileActivity.setName("Missing");
         missingFileActivity.setGitPath("activities/missing.groovy");
         missingFileActivity.setGroovyCode("class Recreated {}");
 
         Activity syncedActivity = new Activity();
         syncedActivity.setId(3L);
+        syncedActivity.setProject(project);
         syncedActivity.setName("Synced");
         syncedActivity.setGitPath("activities/synced.groovy");
         syncedActivity.setGroovyCode("class OldDbVersion {}"); // stale - Git has "class GitVersion {}"
 
         when(activityDAO.getAllActivities()).thenReturn(Arrays.asList(renamedActivity, missingFileActivity, syncedActivity));
 
-        String result = reconciliationService.reconcile();
+        String result = reconciliationService.reconcile(project);
 
         assertEquals("1 Datei(en) gelöscht, 1 umbenannt, 1 wiederhergestellt, 1 Code-Cache(s) aus Git aktualisiert."
                 + " Gelöscht: activities/orphan-activity.groovy."
@@ -147,9 +159,15 @@ public class GitSyncReconciliationServiceTest
         }
 
         @Override
-        public GitSyncConfig getGitSyncConfig()
+        public GitSyncConfig getGitSyncConfigForProject(Long projectId)
         {
             return config;
+        }
+
+        @Override
+        public List<GitSyncConfig> getAllGitSyncConfigs()
+        {
+            return Collections.singletonList(config);
         }
 
         @Override

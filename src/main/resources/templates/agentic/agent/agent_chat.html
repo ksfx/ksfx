@@ -32,15 +32,15 @@
              Projects link, rare enough not to need a third button crowding the select). Deleting
              is guarded in agentic-chat.js
              with a confirm plus typing the project name, like deleting a wiki; it leaves the
-             project's agents ungrouped (see AgenticProjectController#delete). -->
+             project's agents ungrouped (see ProjectController#delete). -->
         <div class="agentic-switcher">
-            <select id="agenticProjectSelect" class="agentic-switcher-select" title="Switch project">
-                <option th:each="p : ${allAgenticProjects}" th:value="${p.id}" th:text="${p.name}"
+            <select id="projectSelect" class="agentic-switcher-select" title="Switch project">
+                <option th:each="p : ${allProjects}" th:value="${p.id}" th:text="${p.name}"
                         th:selected="${currentProject != null and p.id == currentProject.id}"></option>
                 <option th:if="${hasUnassignedAgents}" value="ungrouped" th:selected="${currentProject == null}">Ungrouped</option>
             </select>
             <a th:href="@{/agentic/projects/edit}" class="agentic-switcher-btn" title="New project" aria-label="New project"><i class="fa fa-plus"></i></a>
-            <button th:if="${currentProject != null}" type="button" id="agenticProjectDeleteBtn" class="agentic-switcher-btn agentic-switcher-delete-btn" title="Delete this project" aria-label="Delete this project"
+            <button th:if="${currentProject != null}" type="button" id="projectDeleteBtn" class="agentic-switcher-btn agentic-switcher-delete-btn" title="Delete this project" aria-label="Delete this project"
                     th:data-project-name="${currentProject.name}" th:data-delete-href="@{/agentic/projects/delete/{id}(id=${currentProject.id})}"><i class="fa fa-trash-o"></i></button>
         </div>
         <div class="agentic-sidebar-header">
@@ -71,7 +71,7 @@
             </div>
         </div>
         <div class="agentic-sidebar-footer">
-            <a th:href="@{/agentic/projects/}" title="Agentic Projects"><i class="fa fa-folder"></i> Projects</a>
+            <a th:href="@{/agentic/projects/}" title="Projects"><i class="fa fa-folder"></i> Projects</a>
             <a th:href="@{/agentic/config/}" title="Agentic Settings"><i class="fa fa-cog"></i> Settings</a>
         </div>
     </aside>

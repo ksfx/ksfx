@@ -1,5 +1,7 @@
 package ch.ksfx.controller.wiki;
 
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.WikiAssetDAO;
 import ch.ksfx.dao.WikiDAO;
 import ch.ksfx.dao.WikiFolderDAO;
@@ -56,6 +58,7 @@ import java.util.*;
 public class WikiController
 {
     private final WikiDAO wikiDAO;
+    private final ProjectDAO projectDAO;
     private final WikiFolderDAO wikiFolderDAO;
     private final WikiPageDAO wikiPageDAO;
     private final WikiPageVersionDAO wikiPageVersionDAO;
@@ -63,9 +66,10 @@ public class WikiController
     private final WikiService wikiService;
 
     public WikiController(WikiDAO wikiDAO, WikiFolderDAO wikiFolderDAO, WikiPageDAO wikiPageDAO,
-                           WikiPageVersionDAO wikiPageVersionDAO, WikiAssetDAO wikiAssetDAO, WikiService wikiService)
+                           WikiPageVersionDAO wikiPageVersionDAO, WikiAssetDAO wikiAssetDAO, WikiService wikiService, ProjectDAO projectDAO)
     {
         this.wikiDAO = wikiDAO;
+        this.projectDAO = projectDAO;
         this.wikiFolderDAO = wikiFolderDAO;
         this.wikiPageDAO = wikiPageDAO;
         this.wikiPageVersionDAO = wikiPageVersionDAO;
@@ -98,6 +102,7 @@ public class WikiController
         }
 
         Wiki wiki = new Wiki();
+        wiki.setProject(projectDAO.getDefaultProject()); // phase 1: no project context yet - reassign in Admin > Projects > Assignments
         wiki.setName(name.trim());
         wiki.setCreatedAt(new Date());
         wikiDAO.saveOrUpdateWiki(wiki);

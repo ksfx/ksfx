@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Project Assignments</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a th:href="@{/admin/}">Admin</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/}">Projects</a></li>
+        <li class="breadcrumb-item active">Assignments</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<p class="text-muted">The one place where things change project. Pick entries, choose the target project and preview the move - every entry is explained (what happens to its Git file, category, workspace) or blocked with the reason before anything is done.</p>
+
+<ul class="nav nav-tabs" style="margin-bottom:12px">
+    <li class="nav-item" th:each="t : ${types}">
+        <a class="nav-link" th:classappend="${t.name() == type} ? ' active' : ''" th:href="@{/admin/projects/assignments(type=${t.name()},projectId=${filterProjectId})}"
+           th:text="${#strings.capitalize(#strings.toLowerCase(t.name()))} + (${t.name() == 'REPORT'} ? 's' : (${t.name() == 'TRACKER'} ? 's' : (${t.name() == 'CODELIB'} ? 's' : (${t.name() == 'ACTIVITY'} ? ' (Activities)' : 's'))))">Type</a>
+    </li>
+</ul>
+
+<form method="get" th:action="@{/admin/projects/assignments}" class="form-inline" style="margin-bottom:12px">
+    <input type="hidden" name="type" th:value="${type}" />
+    <label for="filterProject" style="margin-right:6px">Show project</label>
+    <select id="filterProject" name="projectId" class="form-control form-control-sm" onchange="this.form.submit()">
+        <option value="">all projects</option>
+        <option th:each="p : ${projects}" th:value="${p.id}" th:text="${p.name}" th:selected="${filterProjectId != null and p.id == filterProjectId}"></option>
+    </select>
+</form>
+
+<form method="post" th:action="@{/admin/projects/assignments/plan}" id="assignmentsForm">
+    <input type="hidden" name="type" th:value="${type}" />
+    <div class="form-inline" style="margin-bottom:10px">
+        <label for="targetProject" style="margin-right:6px">Move selected to</label>
+        <select id="targetProject" name="targetProjectId" class="form-control form-control-sm" style="margin-right:8px">
+            <option th:each="p : ${projects}" th:value="${p.id}" th:text="${p.name}"></option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Preview move&hellip;</button>
+    </div>
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th style="width:30px"><input type="checkbox" onclick="document.querySelectorAll('#assignmentsForm input[name=ids]').forEach(function (c) { c.checked = event.target.checked; })" title="select all" /></th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Project</th>
+                <th>Info</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="r : ${rows}">
+                <td><input type="checkbox" name="ids" th:value="${r.id}" /></td>
+                <td th:text="${r.id}"></td>
+                <td th:text="${r.name}"></td>
+                <td th:text="${r.projectName}"></td>
+                <td class="text-muted" th:text="${r.info}"></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(rows)}"><td colspan="5" class="text-muted">Nothing here.</td></tr>
+        </tbody>
+    </table>
+</form>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

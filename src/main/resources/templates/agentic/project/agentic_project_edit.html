@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
 <head th:replace="layout :: site-head">
-    <title>KSFX - Edit Agentic Project</title>
+    <title>KSFX - Edit Project</title>
 </head>
 <body>
 <header th:replace="layout :: site-header"/>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
-        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/}">Agentic Projects</a></li>
-        <li class="breadcrumb-item active">Edit Agentic Project</li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/}">Projects</a></li>
+        <li class="breadcrumb-item active">Edit Project</li>
     </ol>
 </nav>
 
@@ -19,7 +19,7 @@
 
  <div class="list-group">
  <div class="list-group-item">
-        <form id="agenticProjectForm" action="#" th:action="@{/agentic/projects/edit}" th:object="${agenticProject}" method="post">
+        <form id="projectForm" action="#" th:action="@{/agentic/projects/edit}" th:object="${project}" method="post">
             <input type="hidden" th:field="*{id}" />
             <div class="form-group">
                 <label for="name">Name</label>
@@ -45,22 +45,29 @@
                 </details>
             </div>
 
-            <div th:if="${agenticProject.id != null and agenticProject.dockerIsolationEnabled}" class="form-group">
+            <div th:if="${project.id != null and project.dockerIsolationEnabled}" class="form-group">
                 <label>Container</label>
                 <p class="form-control-plaintext">
-                    <span th:text="${agenticProject.dockerContainerName}"></span> &mdash;
-                    <span th:text="${agenticProject.dockerContainerStatus}"></span>
+                    <span th:text="${project.dockerContainerName}"></span> &mdash;
+                    <span th:text="${project.dockerContainerStatus}"></span>
                 </p>
-                <small class="form-text text-muted" th:if="${agenticProject.dockerContainerLastCheckedAt}">
-                    Last checked: <span th:text="${agenticProject.dockerContainerLastCheckedAt}"></span>
+                <small class="form-text text-muted" th:if="${project.dockerContainerLastCheckedAt}">
+                    Last checked: <span th:text="${project.dockerContainerLastCheckedAt}"></span>
                 </small>
                 <div style="margin-top:0.5rem">
-                    <a th:href="@{/agentic/projects/{id}/docker/start(id=${agenticProject.id})}" class="btn btn-secondary">Start</a>
-                    <a th:href="@{/agentic/projects/{id}/docker/stop(id=${agenticProject.id})}" class="btn btn-secondary">Stop</a>
-                    <a th:attr="data-href=@{/agentic/projects/{id}/docker/throwaway(id=${agenticProject.id})}" data-toggle="modal" data-target="#standard-confirm" class="btn btn-danger">Throw Away</a>
+                    <a th:href="@{/agentic/projects/{id}/docker/start(id=${project.id})}" class="btn btn-secondary">Start</a>
+                    <a th:href="@{/agentic/projects/{id}/docker/stop(id=${project.id})}" class="btn btn-secondary">Stop</a>
+                    <a th:attr="data-href=@{/agentic/projects/{id}/docker/throwaway(id=${project.id})}" data-toggle="modal" data-target="#standard-confirm" class="btn btn-danger">Throw Away</a>
                 </div>
             </div>
 
+            <div class="form-group" th:if="${project.id != null}">
+                <label>Git repository</label>
+                <p class="form-control-plaintext">
+                    <a th:href="@{/agentic/projects/{id}/git/(id=${project.id})}" class="btn btn-secondary btn-sm"><i class="fa fa-git"></i> Git Sync settings</a>
+                    <small class="form-text text-muted">One repository per project holds this project's Activities, Code Libs and Reports. Without an enabled repository the code lives in the database only.</small>
+                </p>
+            </div>
             <button type="submit" class="btn btn-primary">Submit</button>
             <a th:href="@{/agentic/projects/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
         </form>

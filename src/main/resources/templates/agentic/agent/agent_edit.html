@@ -28,10 +28,9 @@
                 <input type="text" class="form-control" id="description" th:field="*{description}" />
             </div>
             <div class="form-group">
-                <label for="agenticProject">Agentic Project</label>
-                <select class="form-control" id="agenticProject" th:field="*{agenticProject.id}">
-                    <option value="">-- No Agentic Project --</option>
-                    <option th:each="p : ${allAgenticProjects}" th:value="${p.id}" th:text="${p.name}"></option>
+                <label for="project">Project</label>
+                <select class="form-control" id="project" th:field="*{project.id}">
+                                        <option th:each="p : ${allProjects}" th:value="${p.id}" th:text="${p.name}"></option>
                 </select>
             </div>
             <div class="form-group">

@@ -17,6 +17,8 @@
 
 package ch.ksfx.services.codelib;
 
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.CodeLibDAO;
 import ch.ksfx.dao.GenericDataStoreDAO;
 import ch.ksfx.dao.NoteDAO;
@@ -48,6 +50,7 @@ public class CodeLibMigrationService
     private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("class\\s+(\\w+)");
 
     private final CodeLibDAO codeLibDAO;
+    private final ProjectDAO projectDAO;
     private final GenericDataStoreDAO genericDataStoreDAO;
     private final NoteDAO noteDAO;
     private final ActivityGitRepositoryService activityGitRepositoryService;
@@ -55,9 +58,10 @@ public class CodeLibMigrationService
     public CodeLibMigrationService(CodeLibDAO codeLibDAO,
                                     GenericDataStoreDAO genericDataStoreDAO,
                                     NoteDAO noteDAO,
-                                    ActivityGitRepositoryService activityGitRepositoryService)
+                                    ActivityGitRepositoryService activityGitRepositoryService, ProjectDAO projectDAO)
     {
         this.codeLibDAO = codeLibDAO;
+        this.projectDAO = projectDAO;
         this.genericDataStoreDAO = genericDataStoreDAO;
         this.noteDAO = noteDAO;
         this.activityGitRepositoryService = activityGitRepositoryService;
@@ -88,22 +92,25 @@ public class CodeLibMigrationService
         String source = new String(noteFile.getFileContent(), StandardCharsets.UTF_8);
         String className = extractClassName(source, noteFile.getFileName());
 
-        if (codeLibDAO.getCodeLibForName(className) != null) {
+        Project project = projectDAO.getDefaultProject();
+
+        if (codeLibDAO.getCodeLibForProjectAndName(project.getId(), className) != null) {
             return "CodeLib '" + className + "' existiert bereits - nichts getan.";
         }
 
         CodeLib codeLib = new CodeLib();
+        codeLib.setProject(project);
         codeLib.setName(className);
         codeLib.setDescription("Migriert aus NoteFile (GenericDataStore-Key " + DEFAULT_SQL_WRITER_KEY + ")");
         codeLib.setGroovyCode(source);
 
-        if (activityGitRepositoryService.isActive()) {
-            String slug = activityGitRepositoryService.uniqueSlug(
+        if (activityGitRepositoryService.isActive(project)) {
+            String slug = activityGitRepositoryService.uniqueSlug(project, 
                     activityGitRepositoryService.slugify(className),
                     ActivityGitRepositoryService.LIBS_DIRECTORY);
             String gitPath = ActivityGitRepositoryService.LIBS_DIRECTORY + "/" + slug + ".groovy";
 
-            activityGitRepositoryService.writeActivitySource(gitPath, source, "Migrate SQL writer code lib from NoteFile");
+            activityGitRepositoryService.writeActivitySource(project, gitPath, source, "Migrate SQL writer code lib from NoteFile");
 
             codeLib.setGitPath(gitPath);
         }

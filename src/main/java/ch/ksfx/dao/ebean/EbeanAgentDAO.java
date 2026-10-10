@@ -87,14 +87,14 @@ public class EbeanAgentDAO implements AgentDAO
     }
 
     @Override
-    public List<Agent> getAgentsForAgenticProject(Long agenticProjectId)
+    public List<Agent> getAgentsForProject(Long projectId)
     {
-        return Ebean.find(Agent.class).where().eq("agenticProject.id", agenticProjectId).order().asc("name").findList();
+        return Ebean.find(Agent.class).where().eq("project.id", projectId).order().asc("name").findList();
     }
 
     @Override
-    public List<Agent> getAgentsWithoutAgenticProject()
+    public List<Agent> getAgentsWithoutProject()
     {
-        return Ebean.find(Agent.class).where().isNull("agenticProject").order().asc("name").findList();
+        return Ebean.find(Agent.class).where().isNull("project").order().asc("name").findList();
     }
 }

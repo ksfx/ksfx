@@ -8,7 +8,7 @@ import ch.ksfx.model.AgentMessage;
 import ch.ksfx.model.AgentMessageRole;
 import ch.ksfx.model.AgenticAuthMode;
 import ch.ksfx.model.AgenticConfig;
-import ch.ksfx.model.AgenticProject;
+import ch.ksfx.model.Project;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import ch.ksfx.util.StacktraceUtil;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -224,7 +224,7 @@ public class ClaudeCliSessionService
         process.destroyForcibly();
 
         Agent agent = agentDAO.getAgentForId(agentId);
-        AgenticProject project = agent != null ? agent.getAgenticProject() : null;
+        Project project = agent != null ? agent.getProject() : null;
 
         if (project != null && project.getDockerIsolationEnabled()) {
             killDockerClaudeProcess(project);
@@ -662,7 +662,7 @@ public class ClaudeCliSessionService
         Path systemPromptFile = null;
         String turnError = null;
 
-        AgenticProject project = agent.getAgenticProject();
+        Project project = agent.getProject();
         boolean useDocker = project != null && project.getDockerIsolationEnabled();
 
         try {
@@ -930,7 +930,7 @@ public class ClaudeCliSessionService
      * one - posts a SYSTEM notice to each of them so that isn't silently discovered later the way
      * #52 was, only found by noticing the container's stats looked wrong.
      */
-    private void killDockerClaudeProcess(AgenticProject project)
+    private void killDockerClaudeProcess(Project project)
     {
         boolean escalatedToContainerRestart = agenticDockerService.recoverStuckContainer(project);
 
@@ -947,7 +947,7 @@ public class ClaudeCliSessionService
                 + "weiterhin vorhanden - das geht nur bei einem expliziten Throw Away verloren, nicht bei diesem "
                 + "automatischen Restart.";
 
-        for (Agent affected : agentDAO.getAgentsForAgenticProject(project.getId())) {
+        for (Agent affected : agentDAO.getAgentsForProject(project.getId())) {
             AgentMessage noticeMessage = new AgentMessage();
             noticeMessage.setAgent(affected);
             noticeMessage.setRole(AgentMessageRole.SYSTEM);
@@ -1014,7 +1014,7 @@ public class ClaudeCliSessionService
      */
     private List<String> buildCommand(Agent agent, AgenticConfig config, String userMessage, Path systemPromptFile)
     {
-        AgenticProject project = agent.getAgenticProject();
+        Project project = agent.getProject();
         boolean useDocker = project != null && project.getDockerIsolationEnabled();
 
         List<String> claudeArgs = new ArrayList<>();
@@ -1104,9 +1104,9 @@ public class ClaudeCliSessionService
      *     convention for coding-task work, purely a tidiness convention with no functional effect
      *     since the downloads/ change below; the downloads/ convention - see
      *     {@link #DOWNLOADS_DIRECTORY_NAME} - which is what actually determines what surfaces as a
-     *     download suggestion; and, if the agent has an AgenticProject, notes about its shared/
+     *     download suggestion; and, if the agent has an Project, notes about its shared/
      *     folder and Docker isolation/sudo)</li>
-     *     <li>{@link AgenticProject#getSystemPrompt()}, if the agent has a project and it's set</li>
+     *     <li>{@link Project#getSystemPrompt()}, if the agent has a project and it's set</li>
      *     <li>{@link Agent#getSystemPrompt()}, if set</li>
      * </ol>
      * All three are joined the same bare way - see the comment on the final concatenation below for
@@ -1125,7 +1125,7 @@ public class ClaudeCliSessionService
         // AgenticDockerService.ensureContainer sets on `docker run`). Non-isolated agents keep
         // calling plain localhost exactly as before. Shared by both the scheduling and the
         // agent-messaging sections below - both are /agentic/api/** self-service calls.
-        String agentApiBaseUrl = (agent.getAgenticProject() != null && agent.getAgenticProject().getDockerIsolationEnabled())
+        String agentApiBaseUrl = (agent.getProject() != null && agent.getProject().getDockerIsolationEnabled())
                 ? "http://host.docker.internal:" + serverPort
                 : "http://localhost:" + serverPort;
 
@@ -1251,11 +1251,11 @@ public class ClaudeCliSessionService
                 + "Arbeitsverzeichnis (Zwischenstände, Abhängigkeiten, Logs, Caches etc.) bleibt unsichtbar für den "
                 + "Nutzer. Lege dort nichts ab, worum der Nutzer nicht explizit gebeten hat.\n";
 
-        if (agent.getAgenticProject() != null) {
-            schedulingPrompt += "\nGeteilte Ressourcen deines Agentic Projects findest du unter ../shared "
+        if (agent.getProject() != null) {
+            schedulingPrompt += "\nGeteilte Ressourcen deines Projects findest du unter ../shared "
                     + "(relativ zu deinem eigenen Arbeitsverzeichnis).\n";
 
-            if (agent.getAgenticProject().getDockerIsolationEnabled()) {
+            if (agent.getProject().getDockerIsolationEnabled()) {
                 schedulingPrompt += "\nDu läufst isoliert in einem eigenen Docker-Container (Ubuntu) als "
                         + "normaler Benutzer, nicht als root. Für System-Installationen (z.B. apt-get, "
                         + "Paketmanager) steht dir passwortloses sudo zur Verfügung - stelle Bash-Befehlen, "
@@ -1263,15 +1263,15 @@ public class ClaudeCliSessionService
             }
         }
 
-        // Middle tier of the hardcoded-boilerplate -> AgenticProject.systemPrompt -> Agent.systemPrompt
+        // Middle tier of the hardcoded-boilerplate -> Project.systemPrompt -> Agent.systemPrompt
         // hierarchy - only present for an agent actually assigned to a project, same gating as the
         // structural notes just above. Joined the same bare, seamless way as agent.systemPrompt
         // below (see that comment) - a blank-line paragraph break, no "---"/label/attribution, since
         // that's what was found to actually work rather than trigger prompt-injection suspicion.
-        String agenticProjectSystemPrompt = agent.getAgenticProject() != null ? agent.getAgenticProject().getSystemPrompt() : null;
+        String projectSystemPrompt = agent.getProject() != null ? agent.getProject().getSystemPrompt() : null;
 
-        if (!isBlank(agenticProjectSystemPrompt)) {
-            schedulingPrompt += "\n\n" + agenticProjectSystemPrompt;
+        if (!isBlank(projectSystemPrompt)) {
+            schedulingPrompt += "\n\n" + projectSystemPrompt;
         }
 
         if (isBlank(agent.getSystemPrompt())) {

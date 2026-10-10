@@ -31,6 +31,7 @@ import java.util.Date;
 public class GitSyncConfig
 {
     private Long id;
+    private Project project;
     private String repoUrl;
     private String branch = "master";
     private String accessToken;
@@ -120,5 +121,17 @@ public class GitSyncConfig
     public void setEnabled(boolean enabled)
     {
         this.enabled = enabled;
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    public Project getProject()
+    {
+        return project;
+    }
+
+    public void setProject(Project project)
+    {
+        this.project = project;
     }
 }

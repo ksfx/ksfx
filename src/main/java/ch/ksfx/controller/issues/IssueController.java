@@ -1,5 +1,7 @@
 package ch.ksfx.controller.issues;
 
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.IssueAssetDAO;
 import ch.ksfx.dao.IssueCommentDAO;
@@ -40,6 +42,7 @@ import java.util.*;
 public class IssueController
 {
     private final IssueTrackerDAO issueTrackerDAO;
+    private final ProjectDAO projectDAO;
     private final IssueDAO issueDAO;
     private final IssueLabelDAO issueLabelDAO;
     private final IssueCommentDAO issueCommentDAO;
@@ -50,9 +53,10 @@ public class IssueController
 
     public IssueController(IssueTrackerDAO issueTrackerDAO, IssueDAO issueDAO, IssueLabelDAO issueLabelDAO,
                             IssueCommentDAO issueCommentDAO, IssueAssetDAO issueAssetDAO, IssueService issueService,
-                            UserDAO userDAO, AgentDAO agentDAO)
+                            UserDAO userDAO, AgentDAO agentDAO, ProjectDAO projectDAO)
     {
         this.issueTrackerDAO = issueTrackerDAO;
+        this.projectDAO = projectDAO;
         this.issueDAO = issueDAO;
         this.issueLabelDAO = issueLabelDAO;
         this.issueCommentDAO = issueCommentDAO;
@@ -86,6 +90,7 @@ public class IssueController
         }
 
         IssueTracker tracker = new IssueTracker();
+        tracker.setProject(projectDAO.getDefaultProject()); // phase 1: no project context yet - reassign in Admin > Projects > Assignments
         tracker.setName(name.trim());
         tracker.setCreatedAt(new Date());
         issueTrackerDAO.saveOrUpdateIssueTracker(tracker);

@@ -1,5 +1,7 @@
 package ch.ksfx.controller.api;
 
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.model.activity.Activity;
@@ -64,6 +66,7 @@ import java.util.stream.Collectors;
 public class ActivityApiController
 {
     private final ActivityDAO activityDAO;
+    private final ProjectDAO projectDAO;
     private final ActivityInstanceDAO activityInstanceDAO;
     private final ActivityInstanceRunner activityInstanceRunner;
     private final SchedulerService schedulerService;
@@ -77,9 +80,10 @@ public class ActivityApiController
                                   SchedulerService schedulerService,
                                   ServiceProvider serviceProvider,
                                   ActivityGitRepositoryService activityGitRepositoryService,
-                                  SystemLogger systemLogger)
+                                  SystemLogger systemLogger, ProjectDAO projectDAO)
     {
         this.activityDAO = activityDAO;
+        this.projectDAO = projectDAO;
         this.activityInstanceDAO = activityInstanceDAO;
         this.activityInstanceRunner = activityInstanceRunner;
         this.schedulerService = schedulerService;
@@ -117,7 +121,7 @@ public class ActivityApiController
             return notFound();
         }
 
-        return ResponseEntity.ok(ActivityApiDto.fromDetailed(activity, resolveGroovyCode(activity.getGitPath(), activity.getGroovyCode())));
+        return ResponseEntity.ok(ActivityApiDto.fromDetailed(activity, resolveGroovyCode(activity.getProject(), activity.getGitPath(), activity.getGroovyCode())));
     }
 
     @PostMapping
@@ -133,6 +137,7 @@ public class ActivityApiController
         }
 
         Activity activity = new Activity();
+        activity.setProject(projectDAO.getDefaultProject()); // phase 1: API creates land in the default project (projectId field comes with phase 3)
         activity.setName(body.name);
         activity.setCronSchedule(body.cronSchedule);
         activity.setCronScheduleEnabled(body.cronScheduleEnabled);
@@ -158,13 +163,13 @@ public class ActivityApiController
             activity.setActivityApprovalStrategy(strategy);
         }
 
-        if (activityGitRepositoryService.isActive() && activity.getGroovyCode() != null) {
+        if (activityGitRepositoryService.isActive(activity.getProject()) && activity.getGroovyCode() != null) {
             try {
-                String slug = activityGitRepositoryService.uniqueSlug(
+                String slug = activityGitRepositoryService.uniqueSlug(activity.getProject(), 
                         activityGitRepositoryService.slugify(activity.getName()),
                         ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
                 activity.setGitPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY + "/" + slug + ".groovy");
-                activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
+                activityGitRepositoryService.writeActivitySource(activity.getProject(), activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
             } catch (Exception e) {
                 return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorBody("Could not write to Git repository: " + e.getMessage()));
             }
@@ -237,14 +242,14 @@ public class ActivityApiController
         activity.setCronSchedule(body.cronSchedule);
         activity.setCronScheduleEnabled(body.cronScheduleEnabled);
 
-        if (activityGitRepositoryService.isActive() && activity.getGroovyCode() != null) {
+        if (activityGitRepositoryService.isActive(activity.getProject()) && activity.getGroovyCode() != null) {
             try {
                 if (!ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
-                    String slug = activityGitRepositoryService.uniqueSlug(
+                    String slug = activityGitRepositoryService.uniqueSlug(activity.getProject(), 
                             activityGitRepositoryService.slugify(activity.getName()),
                             ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
                     activity.setGitPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY + "/" + slug + ".groovy");
-                    activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
+                    activityGitRepositoryService.writeActivitySource(activity.getProject(), activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (Activity other : activityDAO.getAllActivities()) {
@@ -256,10 +261,10 @@ public class ActivityApiController
                     String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY, activity.getName(), activity.getGitPath(), siblingPaths);
 
                     if (!desiredPath.equals(activity.getGitPath())) {
-                        activityGitRepositoryService.renameAndWriteActivitySource(activity.getGitPath(), desiredPath, activity.getGroovyCode(), "Rename activity: " + activity.getName());
+                        activityGitRepositoryService.renameAndWriteActivitySource(activity.getProject(), activity.getGitPath(), desiredPath, activity.getGroovyCode(), "Rename activity: " + activity.getName());
                         activity.setGitPath(desiredPath);
                     } else {
-                        activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Update activity: " + activity.getName());
+                        activityGitRepositoryService.writeActivitySource(activity.getProject(), activity.getGitPath(), activity.getGroovyCode(), "Update activity: " + activity.getName());
                     }
                 }
             } catch (Exception e) {
@@ -289,9 +294,9 @@ public class ActivityApiController
         // Mirrors ActivityController.delete: a Git failure is logged but never blocks deleting the
         // DB row - an orphaned file in Git is recoverable, an Activity the API refuses to delete
         // because Git is unreachable is a worse failure mode for the caller.
-        if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive(activity.getProject())) {
             try {
-                activityGitRepositoryService.deleteAndPush(activity.getGitPath(), "Delete activity: " + activity.getName());
+                activityGitRepositoryService.deleteAndPush(activity.getProject(), activity.getGitPath(), "Delete activity: " + activity.getName());
             } catch (Exception e) {
                 systemLogger.logMessage("WARN", "Could not delete Activity '" + activity.getName() + "' from Git", e);
             }
@@ -492,15 +497,15 @@ public class ActivityApiController
      * whole request - a caller reading via the API should see the same "what's actually in Git
      * right now" answer a human editing the same Activity in the GUI would.
      */
-    private String resolveGroovyCode(String gitPath, String cachedGroovyCode)
+    private String resolveGroovyCode(Project project, String gitPath, String cachedGroovyCode)
     {
-        if (gitPath == null || !activityGitRepositoryService.isActive()) {
+        if (gitPath == null || !activityGitRepositoryService.isActive(project)) {
             return cachedGroovyCode;
         }
 
         try {
-            activityGitRepositoryService.sync();
-            return activityGitRepositoryService.readActivitySource(gitPath);
+            activityGitRepositoryService.sync(project);
+            return activityGitRepositoryService.readActivitySource(project, gitPath);
         } catch (Exception e) {
             systemLogger.logMessage("WARN", "Could not read Git source for gitPath '" + gitPath + "', falling back to cached groovyCode", e);
             return cachedGroovyCode;

@@ -22,6 +22,7 @@ import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
 import ch.ksfx.model.CodeLib;
+import ch.ksfx.model.Project;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingResource;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Reconciles KSFX's database against Git, but the two sides are the master for different things:
@@ -78,19 +80,19 @@ public class GitSyncReconciliationService
         this.systemLogger = systemLogger;
     }
 
-    public String reconcile() throws GitAPIException, IOException
+    public String reconcile(Project project) throws GitAPIException, IOException
     {
-        activityGitRepositoryService.sync();
+        activityGitRepositoryService.sync(project);
 
         Result result = new Result();
 
-        reconcileActivities(result);
-        reconcileCodeLibs(result);
-        reconcileReports(result);
-        reconcileReportResources(result);
+        reconcileActivities(project, result);
+        reconcileCodeLibs(project, result);
+        reconcileReports(project, result);
+        reconcileReportResources(project, result);
 
         if (result.gitChanges() > 0) {
-            activityGitRepositoryService.commitAndPush("Reconciliation: sync Git with KSFX entries (deletes/renames)");
+            activityGitRepositoryService.commitAndPush(project, "Reconciliation: sync Git with KSFX entries (deletes/renames)");
         }
 
         StringBuilder message = new StringBuilder();
@@ -115,14 +117,14 @@ public class GitSyncReconciliationService
             message.append(" Code aktualisiert: ").append(String.join(", ", result.contentUpdated)).append(".");
         }
 
-        systemLogger.logMessage("GITSYNC", "Reconciliation: " + message);
+        systemLogger.logMessage("GITSYNC", "Reconciliation (" + project.getName() + "): " + message);
 
         return message.toString();
     }
 
-    private void reconcileActivities(Result result) throws IOException
+    private void reconcileActivities(Project project, Result result) throws IOException
     {
-        List<Activity> activities = activityDAO.getAllActivities();
+        List<Activity> activities = activityDAO.getAllActivities().stream().filter(a -> belongsTo(a.getProject(), project)).collect(Collectors.toList());
 
         Set<String> expectedPaths = new HashSet<>();
         for (Activity activity : activities) {
@@ -131,7 +133,7 @@ public class GitSyncReconciliationService
             }
         }
 
-        removeOrphans(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY, expectedPaths, result);
+        removeOrphans(project, ActivityGitRepositoryService.ACTIVITIES_DIRECTORY, expectedPaths, result);
 
         Set<String> siblingPaths = new HashSet<>(expectedPaths);
 
@@ -143,7 +145,7 @@ public class GitSyncReconciliationService
             siblingPaths.remove(activity.getGitPath());
 
             String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY, activity.getName(), activity.getGitPath(), siblingPaths);
-            String resolvedContent = reconcileEntityFile(activity.getGitPath(), desiredPath, activity.getGroovyCode(), result);
+            String resolvedContent = reconcileEntityFile(project, activity.getGitPath(), desiredPath, activity.getGroovyCode(), result);
 
             boolean pathChanged = !desiredPath.equals(activity.getGitPath());
             boolean contentChanged = !resolvedContent.equals(activity.getGroovyCode());
@@ -158,9 +160,9 @@ public class GitSyncReconciliationService
         }
     }
 
-    private void reconcileCodeLibs(Result result) throws IOException
+    private void reconcileCodeLibs(Project project, Result result) throws IOException
     {
-        List<CodeLib> codeLibs = codeLibDAO.getAllCodeLibs();
+        List<CodeLib> codeLibs = codeLibDAO.getAllCodeLibs().stream().filter(c -> belongsTo(c.getProject(), project)).collect(Collectors.toList());
 
         Set<String> expectedPaths = new HashSet<>();
         for (CodeLib codeLib : codeLibs) {
@@ -169,7 +171,7 @@ public class GitSyncReconciliationService
             }
         }
 
-        removeOrphans(ActivityGitRepositoryService.LIBS_DIRECTORY, expectedPaths, result);
+        removeOrphans(project, ActivityGitRepositoryService.LIBS_DIRECTORY, expectedPaths, result);
 
         Set<String> siblingPaths = new HashSet<>(expectedPaths);
 
@@ -181,7 +183,7 @@ public class GitSyncReconciliationService
             siblingPaths.remove(codeLib.getGitPath());
 
             String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.LIBS_DIRECTORY, codeLib.getName(), codeLib.getGitPath(), siblingPaths);
-            String resolvedContent = reconcileEntityFile(codeLib.getGitPath(), desiredPath, codeLib.getGroovyCode(), result);
+            String resolvedContent = reconcileEntityFile(project, codeLib.getGitPath(), desiredPath, codeLib.getGroovyCode(), result);
 
             boolean pathChanged = !desiredPath.equals(codeLib.getGitPath());
             boolean contentChanged = !resolvedContent.equals(codeLib.getGroovyCode());
@@ -196,9 +198,9 @@ public class GitSyncReconciliationService
         }
     }
 
-    private void reconcileReports(Result result) throws IOException
+    private void reconcileReports(Project project, Result result) throws IOException
     {
-        List<PublishingConfiguration> reports = publishingConfigurationDAO.getAllPublishingConfigurations();
+        List<PublishingConfiguration> reports = publishingConfigurationDAO.getAllPublishingConfigurations().stream().filter(r -> belongsTo(r.getProject(), project)).collect(Collectors.toList());
 
         Set<String> expectedPaths = new HashSet<>();
         for (PublishingConfiguration report : reports) {
@@ -207,7 +209,7 @@ public class GitSyncReconciliationService
             }
         }
 
-        removeOrphans(ActivityGitRepositoryService.REPORTS_DIRECTORY, expectedPaths, result);
+        removeOrphans(project, ActivityGitRepositoryService.REPORTS_DIRECTORY, expectedPaths, result);
 
         Set<String> siblingPaths = new HashSet<>(expectedPaths);
 
@@ -219,7 +221,7 @@ public class GitSyncReconciliationService
             siblingPaths.remove(report.getGitPath());
 
             String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.REPORTS_DIRECTORY, report.getName(), report.getGitPath(), siblingPaths);
-            String resolvedContent = reconcileEntityFile(report.getGitPath(), desiredPath, report.getPublishingStrategy(), result);
+            String resolvedContent = reconcileEntityFile(project, report.getGitPath(), desiredPath, report.getPublishingStrategy(), result);
 
             boolean pathChanged = !desiredPath.equals(report.getGitPath());
             boolean contentChanged = !resolvedContent.equals(report.getPublishingStrategy());
@@ -234,9 +236,9 @@ public class GitSyncReconciliationService
         }
     }
 
-    private void reconcileReportResources(Result result) throws IOException
+    private void reconcileReportResources(Project project, Result result) throws IOException
     {
-        List<PublishingResource> resources = publishingResourceDAO.getAllPublishingResources();
+        List<PublishingResource> resources = publishingResourceDAO.getAllPublishingResources().stream().filter(r -> r.getPublishingConfiguration() != null && belongsTo(r.getPublishingConfiguration().getProject(), project)).collect(Collectors.toList());
 
         Set<String> expectedPaths = new HashSet<>();
         for (PublishingResource resource : resources) {
@@ -245,7 +247,7 @@ public class GitSyncReconciliationService
             }
         }
 
-        removeOrphans(ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY, expectedPaths, result);
+        removeOrphans(project, ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY, expectedPaths, result);
 
         Set<String> siblingPaths = new HashSet<>(expectedPaths);
 
@@ -257,7 +259,7 @@ public class GitSyncReconciliationService
             siblingPaths.remove(resource.getGitPath());
 
             String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY, resource.getTitle(), resource.getGitPath(), siblingPaths);
-            String resolvedContent = reconcileEntityFile(resource.getGitPath(), desiredPath, resource.getPublishingStrategy(), result);
+            String resolvedContent = reconcileEntityFile(project, resource.getGitPath(), desiredPath, resource.getPublishingStrategy(), result);
 
             boolean pathChanged = !desiredPath.equals(resource.getGitPath());
             boolean contentChanged = !resolvedContent.equals(resource.getPublishingStrategy());
@@ -273,11 +275,11 @@ public class GitSyncReconciliationService
     }
 
     /** Deletes any file under directory that doesn't correspond to a currently live entity's gitPath. */
-    private void removeOrphans(String directory, Set<String> expectedPaths, Result result) throws IOException
+    private void removeOrphans(Project project, String directory, Set<String> expectedPaths, Result result) throws IOException
     {
-        for (String actualPath : activityGitRepositoryService.listFiles(directory)) {
+        for (String actualPath : activityGitRepositoryService.listFiles(project, directory)) {
             if (!expectedPaths.contains(actualPath)) {
-                activityGitRepositoryService.deleteFile(actualPath);
+                activityGitRepositoryService.deleteFile(project, actualPath);
                 result.deleted.add(actualPath);
             }
         }
@@ -291,22 +293,22 @@ public class GitSyncReconciliationService
      * already existed (Git is the master for content), or cachedSource itself if the file had to
      * be recreated from it.
      */
-    private String reconcileEntityFile(String currentGitPath, String desiredGitPath, String cachedSource, Result result) throws IOException
+    private String reconcileEntityFile(Project project, String currentGitPath, String desiredGitPath, String cachedSource, Result result) throws IOException
     {
-        if (!activityGitRepositoryService.fileExists(currentGitPath)) {
+        if (!activityGitRepositoryService.fileExists(project, currentGitPath)) {
             String content = cachedSource != null ? cachedSource : "";
-            activityGitRepositoryService.writeFile(desiredGitPath, content);
+            activityGitRepositoryService.writeFile(project, desiredGitPath, content);
             result.recreated.add(desiredGitPath);
 
             return content;
         }
 
         if (!desiredGitPath.equals(currentGitPath)) {
-            activityGitRepositoryService.moveFile(currentGitPath, desiredGitPath);
+            activityGitRepositoryService.moveFile(project, currentGitPath, desiredGitPath);
             result.renamed.add(currentGitPath + " -> " + desiredGitPath);
         }
 
-        String gitContent = activityGitRepositoryService.readActivitySource(desiredGitPath);
+        String gitContent = activityGitRepositoryService.readActivitySource(project, desiredGitPath);
 
         if (!gitContent.equals(cachedSource)) {
             result.contentUpdated.add(desiredGitPath);
@@ -327,5 +329,10 @@ public class GitSyncReconciliationService
         {
             return deleted.size() + renamed.size() + recreated.size();
         }
+    }
+
+    private boolean belongsTo(Project entityProject, Project project)
+    {
+        return entityProject != null && project != null && entityProject.getId().equals(project.getId());
     }
 }

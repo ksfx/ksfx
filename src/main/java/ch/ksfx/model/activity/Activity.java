@@ -17,6 +17,7 @@
 
 package ch.ksfx.model.activity;
 
+import ch.ksfx.model.Project;
 import javax.persistence.*;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
@@ -31,6 +32,7 @@ import java.util.List;
 public class Activity
 {
     private Long id;
+    private Project project;
 
     @NotNull
     @Size(min=2, max=200)
@@ -165,5 +167,17 @@ public class Activity
     public void setActivityApprovalStrategy(ActivityApprovalStrategy activityApprovalStrategy)
     {
         this.activityApprovalStrategy = activityApprovalStrategy;
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    public Project getProject()
+    {
+        return project;
+    }
+
+    public void setProject(Project project)
+    {
+        this.project = project;
     }
 }

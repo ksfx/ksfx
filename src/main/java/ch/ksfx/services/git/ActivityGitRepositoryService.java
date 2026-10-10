@@ -19,6 +19,7 @@ package ch.ksfx.services.git;
 
 import ch.ksfx.dao.GitSyncConfigDAO;
 import ch.ksfx.model.GitSyncConfig;
+import ch.ksfx.model.Project;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
@@ -41,15 +42,20 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
- * Reads/writes Activity and CodeLib Groovy source from/to this instance's private Git repository,
- * which is the source of truth for that code (see {@link GitSyncConfig}, one row per instance).
- * Inactive (all methods no-op or throw) unless a config row exists and is enabled - callers must
- * check {@link #isActive()} first so non-migrated/non-configured instances keep behaving exactly
- * as before (DB-only).
+ * Reads/writes Activity, CodeLib and report Groovy source from/to a PROJECT's private Git
+ * repository, which is the source of truth for that code (see {@link GitSyncConfig}, one row per
+ * project since the project migration of 2026-10-10 - before that one row per instance). Every
+ * method takes the project whose repository it acts on; callers derive it from the entity at hand
+ * ({@code activity.getProject()} etc.). Inactive (all methods no-op or throw) for a project without
+ * an enabled config - callers must check {@link #isActive(Project)} first so projects that are not
+ * Git-backed keep behaving exactly as before (DB-only). Sync/commit are serialized per project
+ * (one lock per project id), different projects' repositories never block each other.
  */
 @Service
 public class ActivityGitRepositoryService
@@ -60,19 +66,42 @@ public class ActivityGitRepositoryService
     public static final String REPORT_RESOURCES_DIRECTORY = "report-resources";
 
     private final GitSyncConfigDAO gitSyncConfigDAO;
+    private final Map<Long, Object> projectLocks = new ConcurrentHashMap<>();
 
     public ActivityGitRepositoryService(GitSyncConfigDAO gitSyncConfigDAO)
     {
         this.gitSyncConfigDAO = gitSyncConfigDAO;
     }
 
-    public boolean isActive()
+    public boolean isActive(Project project)
     {
-        GitSyncConfig config = gitSyncConfigDAO.getGitSyncConfig();
+        if (project == null || project.getId() == null) {
+            return false;
+        }
+
+        GitSyncConfig config = gitSyncConfigDAO.getGitSyncConfigForProject(project.getId());
 
         return config != null && config.getEnabled()
                 && config.getRepoUrl() != null && !config.getRepoUrl().isEmpty()
                 && config.getLocalClonePath() != null && !config.getLocalClonePath().isEmpty();
+    }
+
+    /** Any project Git-backed at all - for UI hints that are not about one specific entity. */
+    public boolean isAnyActive()
+    {
+        for (GitSyncConfig config : gitSyncConfigDAO.getAllGitSyncConfigs()) {
+            if (config.getEnabled() && config.getRepoUrl() != null && !config.getRepoUrl().isEmpty()
+                    && config.getLocalClonePath() != null && !config.getLocalClonePath().isEmpty()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Object lockFor(Project project)
+    {
+        return projectLocks.computeIfAbsent(project.getId(), id -> new Object());
     }
 
     /**
@@ -80,9 +109,16 @@ public class ActivityGitRepositoryService
      * origin/&lt;branch&gt; - local edits always go through {@link #writeActivitySource} which
      * commits+pushes immediately, so there is never long-lived local-only history to preserve.
      */
-    public synchronized void sync() throws GitAPIException, IOException
+    public void sync(Project project) throws GitAPIException, IOException
     {
-        GitSyncConfig config = requireConfig();
+        synchronized (lockFor(project)) {
+            syncLocked(project);
+        }
+    }
+
+    private void syncLocked(Project project) throws GitAPIException, IOException
+    {
+        GitSyncConfig config = requireConfig(project);
         File workingDir = new File(config.getLocalClonePath());
 
         if (new File(workingDir, ".git").exists()) {
@@ -158,13 +194,13 @@ public class ActivityGitRepositoryService
      * or escaping via "..". Every file operation below goes through this, so no caller can ever
      * read, write, move or delete the clone root or anything outside it by accident.
      */
-    private Path resolveFile(String gitPath) throws IOException
+    private Path resolveFile(Project project, String gitPath) throws IOException
     {
         if (!hasGitPath(gitPath)) {
             throw new IOException("Git path must not be empty");
         }
 
-        GitSyncConfig config = requireConfig();
+        GitSyncConfig config = requireConfig(project);
         Path root = Paths.get(config.getLocalClonePath()).toAbsolutePath().normalize();
         Path file = root.resolve(gitPath.trim()).normalize();
 
@@ -175,9 +211,9 @@ public class ActivityGitRepositoryService
         return file;
     }
 
-    public String readActivitySource(String gitPath) throws IOException
+    public String readActivitySource(Project project, String gitPath) throws IOException
     {
-        Path filePath = resolveFile(gitPath);
+        Path filePath = resolveFile(project, gitPath);
 
         return new String(Files.readAllBytes(filePath), StandardCharsets.UTF_8);
     }
@@ -187,11 +223,13 @@ public class ActivityGitRepositoryService
      * commits and pushes immediately. On a push rejection (another writer pushed in the
      * meantime) retries once via pull-rebase before pushing again.
      */
-    public void writeActivitySource(String gitPath, String content, String commitMessage) throws GitAPIException, IOException
+    public void writeActivitySource(Project project, String gitPath, String content, String commitMessage) throws GitAPIException, IOException
     {
-        sync();
-        writeFile(gitPath, content);
-        commitAndPush(commitMessage);
+        synchronized (lockFor(project)) {
+            syncLocked(project);
+            writeFile(project, gitPath, content);
+            commitAndPushLocked(project, commitMessage);
+        }
     }
 
     /**
@@ -201,12 +239,44 @@ public class ActivityGitRepositoryService
      * looks for, so this is how history survives a rename without needing any special git
      * "rename" API (git doesn't actually have one - renames are always inferred, never recorded).
      */
-    public void renameAndWriteActivitySource(String oldGitPath, String newGitPath, String content, String commitMessage) throws GitAPIException, IOException
+    public void renameAndWriteActivitySource(Project project, String oldGitPath, String newGitPath, String content, String commitMessage) throws GitAPIException, IOException
     {
-        sync();
-        moveFile(oldGitPath, newGitPath);
-        writeFile(newGitPath, content);
-        commitAndPush(commitMessage);
+        synchronized (lockFor(project)) {
+            syncLocked(project);
+            moveFile(project, oldGitPath, newGitPath);
+            writeFile(project, newGitPath, content);
+            commitAndPushLocked(project, commitMessage);
+        }
+    }
+
+    /**
+     * Moves an entity's file from one project's repository to another's - the Git side of
+     * re-assigning an entity to a different project (ProjectAssignmentService). Two independent
+     * repositories, so this is a delete-and-push in the source and a write-and-push in the target,
+     * each only if that project is Git-backed; history does not follow across repositories, same as
+     * any cross-repo move. Returns the entity's new gitPath: the same path if the target is
+     * Git-backed (the slug is kept unless it collides there, then suffixed), or null if it is not -
+     * the entity then lives in the DB only until its project gets a repository.
+     */
+    public String moveToProject(Project source, Project target, String gitPath, String directory, String content, String commitMessage) throws GitAPIException, IOException
+    {
+        if (hasGitPath(gitPath) && isActive(source)) {
+            deleteAndPush(source, gitPath, commitMessage);
+        }
+
+        if (!isActive(target) || content == null || content.isEmpty()) {
+            return null;
+        }
+
+        String baseSlug = hasGitPath(gitPath)
+                ? gitPath.substring(gitPath.lastIndexOf('/') + 1).replaceAll("\\.groovy$", "")
+                : slugify(directory);
+        String slug = uniqueSlug(target, baseSlug, directory);
+        String targetPath = directory + "/" + slug + ".groovy";
+
+        writeActivitySource(target, targetPath, content, commitMessage);
+
+        return targetPath;
     }
 
     /**
@@ -245,9 +315,9 @@ public class ActivityGitRepositoryService
      * deliberate - content that already arrives CRLF, or mixed, must not end up double-converted
      * ("\r\r\n").
      */
-    public void writeFile(String gitPath, String content) throws IOException
+    public void writeFile(Project project, String gitPath, String content) throws IOException
     {
-        Path filePath = resolveFile(gitPath);
+        Path filePath = resolveFile(project, gitPath);
         String normalizedContent = content.replace("\r\n", "\n").replace("\n", "\r\n");
 
         Files.createDirectories(filePath.getParent());
@@ -258,9 +328,16 @@ public class ActivityGitRepositoryService
      * Stages every pending change in the working copy, commits and pushes. On a push rejection
      * (another writer pushed in the meantime) retries once via pull-rebase before pushing again.
      */
-    public void commitAndPush(String commitMessage) throws GitAPIException, IOException
+    public void commitAndPush(Project project, String commitMessage) throws GitAPIException, IOException
     {
-        GitSyncConfig config = requireConfig();
+        synchronized (lockFor(project)) {
+            commitAndPushLocked(project, commitMessage);
+        }
+    }
+
+    private void commitAndPushLocked(Project project, String commitMessage) throws GitAPIException, IOException
+    {
+        GitSyncConfig config = requireConfig(project);
 
         try (Git git = Git.open(new File(config.getLocalClonePath()))) {
             git.add().addFilepattern(".").call();
@@ -294,9 +371,9 @@ public class ActivityGitRepositoryService
     }
 
     /** Appends -2, -3, ... to baseSlug until no file exists yet at &lt;directory&gt;/&lt;slug&gt;.groovy. */
-    public String uniqueSlug(String baseSlug, String directory)
+    public String uniqueSlug(Project project, String baseSlug, String directory)
     {
-        GitSyncConfig config = requireConfig();
+        GitSyncConfig config = requireConfig(project);
         String candidate = baseSlug;
         int suffix = 2;
 
@@ -308,19 +385,19 @@ public class ActivityGitRepositoryService
         return candidate;
     }
 
-    public boolean fileExists(String gitPath)
+    public boolean fileExists(Project project, String gitPath)
     {
         try {
-            return Files.isRegularFile(resolveFile(gitPath));
+            return Files.isRegularFile(resolveFile(project, gitPath));
         } catch (IOException e) {
             return false;
         }
     }
 
     /** Lists the git-relative paths of every file currently under the given directory in the working copy. */
-    public List<String> listFiles(String directory) throws IOException
+    public List<String> listFiles(Project project, String directory) throws IOException
     {
-        GitSyncConfig config = requireConfig();
+        GitSyncConfig config = requireConfig(project);
         Path dir = Paths.get(config.getLocalClonePath(), directory);
 
         if (!Files.exists(dir)) {
@@ -338,9 +415,9 @@ public class ActivityGitRepositoryService
     }
 
     /** Deletes a file from the local working copy without staging/committing/pushing it. */
-    public void deleteFile(String gitPath) throws IOException
+    public void deleteFile(Project project, String gitPath) throws IOException
     {
-        Files.deleteIfExists(resolveFile(gitPath));
+        Files.deleteIfExists(resolveFile(project, gitPath));
     }
 
     /**
@@ -349,18 +426,20 @@ public class ActivityGitRepositoryService
      * for which entries exist, so Git should follow immediately rather than waiting for the next
      * manual reconciliation run).
      */
-    public void deleteAndPush(String gitPath, String commitMessage) throws GitAPIException, IOException
+    public void deleteAndPush(Project project, String gitPath, String commitMessage) throws GitAPIException, IOException
     {
-        sync();
-        deleteFile(gitPath);
-        commitAndPush(commitMessage);
+        synchronized (lockFor(project)) {
+            syncLocked(project);
+            deleteFile(project, gitPath);
+            commitAndPushLocked(project, commitMessage);
+        }
     }
 
     /** Moves a file within the local working copy without staging/committing/pushing it. Does nothing if the source doesn't exist. */
-    public void moveFile(String oldGitPath, String newGitPath) throws IOException
+    public void moveFile(Project project, String oldGitPath, String newGitPath) throws IOException
     {
-        Path oldFile = resolveFile(oldGitPath);
-        Path newFile = resolveFile(newGitPath);
+        Path oldFile = resolveFile(project, oldGitPath);
+        Path newFile = resolveFile(project, newGitPath);
 
         if (!Files.isRegularFile(oldFile)) {
             return;
@@ -372,13 +451,13 @@ public class ActivityGitRepositoryService
 
     /**
      * Deletes the local working copy entirely and clears the last-synced bookkeeping, so the
-     * next {@link #sync()} clones fresh - needed both to let an admin re-test the migration from
+     * next {@link #sync(Project)} clones fresh - needed both to let an admin re-test the migration from
      * scratch and to switch repoUrl to a different repository (the existing clone's git remote
      * would otherwise keep pointing at the old one).
      */
-    public void deleteLocalClone() throws IOException
+    public void deleteLocalClone(Project project) throws IOException
     {
-        GitSyncConfig config = gitSyncConfigDAO.getGitSyncConfig();
+        GitSyncConfig config = project != null && project.getId() != null ? gitSyncConfigDAO.getGitSyncConfigForProject(project.getId()) : null;
 
         if (config == null || config.getLocalClonePath() == null) {
             return;
@@ -397,12 +476,12 @@ public class ActivityGitRepositoryService
         gitSyncConfigDAO.saveOrUpdateGitSyncConfig(config);
     }
 
-    private GitSyncConfig requireConfig()
+    private GitSyncConfig requireConfig(Project project)
     {
-        GitSyncConfig config = gitSyncConfigDAO.getGitSyncConfig();
+        GitSyncConfig config = project != null && project.getId() != null ? gitSyncConfigDAO.getGitSyncConfigForProject(project.getId()) : null;
 
         if (config == null || !config.getEnabled()) {
-            throw new IllegalStateException("Activity Git repository is not configured/enabled");
+            throw new IllegalStateException("Git repository is not configured/enabled for project " + (project != null ? project.getName() : "?"));
         }
 
         return config;

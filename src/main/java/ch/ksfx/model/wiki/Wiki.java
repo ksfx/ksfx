@@ -1,5 +1,6 @@
 package ch.ksfx.model.wiki;
 
+import ch.ksfx.model.Project;
 import javax.persistence.*;
 import java.util.Date;
 
@@ -14,6 +15,7 @@ import java.util.Date;
 public class Wiki
 {
     private Long id;
+    private Project project;
     private String name;
     private Date createdAt;
 
@@ -47,5 +49,17 @@ public class Wiki
     public void setCreatedAt(Date createdAt)
     {
         this.createdAt = createdAt;
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    public Project getProject()
+    {
+        return project;
+    }
+
+    public void setProject(Project project)
+    {
+        this.project = project;
     }
 }

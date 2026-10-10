@@ -17,6 +17,7 @@
 
 package ch.ksfx.model.activity;
 
+import ch.ksfx.model.Project;
 import javax.persistence.*;
 
 
@@ -24,6 +25,7 @@ import javax.persistence.*;
 @Table(name = "activity_category")
 public class ActivityCategory {
     private Long id;
+    private Project project;
     private String name;
 
     @Id
@@ -45,5 +47,17 @@ public class ActivityCategory {
     public void setName(String name)
     {
         this.name = name;
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    public Project getProject()
+    {
+        return project;
+    }
+
+    public void setProject(Project project)
+    {
+        this.project = project;
     }
 }

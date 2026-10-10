@@ -1,5 +1,7 @@
 package ch.ksfx.controller.api;
 
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
 import ch.ksfx.model.publishing.PublishingCategory;
@@ -60,6 +62,7 @@ import java.util.stream.Collectors;
 public class PublishingConfigurationApiController
 {
     private final PublishingConfigurationDAO publishingConfigurationDAO;
+    private final ProjectDAO projectDAO;
     private final PublishingResourceDAO publishingResourceDAO;
     private final PublicationLoaderRunner publicationLoaderRunner;
     private final SchedulerService schedulerService;
@@ -73,9 +76,10 @@ public class PublishingConfigurationApiController
                                                  SchedulerService schedulerService,
                                                  ServiceProvider serviceProvider,
                                                  ActivityGitRepositoryService activityGitRepositoryService,
-                                                 SystemLogger systemLogger)
+                                                 SystemLogger systemLogger, ProjectDAO projectDAO)
     {
         this.publishingConfigurationDAO = publishingConfigurationDAO;
+        this.projectDAO = projectDAO;
         this.publishingResourceDAO = publishingResourceDAO;
         this.publicationLoaderRunner = publicationLoaderRunner;
         this.schedulerService = schedulerService;
@@ -113,7 +117,7 @@ public class PublishingConfigurationApiController
             return notFound();
         }
 
-        return ResponseEntity.ok(PublishingConfigurationApiDto.fromDetailed(configuration, resolvePublishingStrategy(configuration.getGitPath(), configuration.getPublishingStrategy())));
+        return ResponseEntity.ok(PublishingConfigurationApiDto.fromDetailed(configuration, resolvePublishingStrategy(configuration.getProject(), configuration.getGitPath(), configuration.getPublishingStrategy())));
     }
 
     @PostMapping
@@ -129,6 +133,7 @@ public class PublishingConfigurationApiController
         }
 
         PublishingConfiguration configuration = new PublishingConfiguration();
+        configuration.setProject(projectDAO.getDefaultProject()); // phase 1: see ActivityApiController.create
         configuration.setName(body.name);
         configuration.setUri(body.uri);
         configuration.setCronSchedule(body.cronSchedule);
@@ -149,13 +154,13 @@ public class PublishingConfigurationApiController
             configuration.setPublishingCategory(category);
         }
 
-        if (activityGitRepositoryService.isActive() && configuration.getPublishingStrategy() != null) {
+        if (activityGitRepositoryService.isActive(configuration.getProject()) && configuration.getPublishingStrategy() != null) {
             try {
-                String slug = activityGitRepositoryService.uniqueSlug(
+                String slug = activityGitRepositoryService.uniqueSlug(configuration.getProject(), 
                         activityGitRepositoryService.slugify(configuration.getName()),
                         ActivityGitRepositoryService.REPORTS_DIRECTORY);
                 configuration.setGitPath(ActivityGitRepositoryService.REPORTS_DIRECTORY + "/" + slug + ".groovy");
-                activityGitRepositoryService.writeActivitySource(configuration.getGitPath(), configuration.getPublishingStrategy(), "Create report: " + configuration.getName());
+                activityGitRepositoryService.writeActivitySource(configuration.getProject(), configuration.getGitPath(), configuration.getPublishingStrategy(), "Create report: " + configuration.getName());
             } catch (Exception e) {
                 return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorBody("Could not write to Git repository: " + e.getMessage()));
             }
@@ -223,14 +228,14 @@ public class PublishingConfigurationApiController
         configuration.setLayoutIntegration(body.layoutIntegration);
         configuration.setAllowInternalLoad(body.allowInternalLoad);
 
-        if (activityGitRepositoryService.isActive() && configuration.getPublishingStrategy() != null) {
+        if (activityGitRepositoryService.isActive(configuration.getProject()) && configuration.getPublishingStrategy() != null) {
             try {
                 if (!ActivityGitRepositoryService.hasGitPath(configuration.getGitPath())) {
-                    String slug = activityGitRepositoryService.uniqueSlug(
+                    String slug = activityGitRepositoryService.uniqueSlug(configuration.getProject(), 
                             activityGitRepositoryService.slugify(configuration.getName()),
                             ActivityGitRepositoryService.REPORTS_DIRECTORY);
                     configuration.setGitPath(ActivityGitRepositoryService.REPORTS_DIRECTORY + "/" + slug + ".groovy");
-                    activityGitRepositoryService.writeActivitySource(configuration.getGitPath(), configuration.getPublishingStrategy(), "Create report: " + configuration.getName());
+                    activityGitRepositoryService.writeActivitySource(configuration.getProject(), configuration.getGitPath(), configuration.getPublishingStrategy(), "Create report: " + configuration.getName());
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (PublishingConfiguration other : publishingConfigurationDAO.getAllPublishingConfigurations()) {
@@ -242,10 +247,10 @@ public class PublishingConfigurationApiController
                     String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.REPORTS_DIRECTORY, configuration.getName(), configuration.getGitPath(), siblingPaths);
 
                     if (!desiredPath.equals(configuration.getGitPath())) {
-                        activityGitRepositoryService.renameAndWriteActivitySource(configuration.getGitPath(), desiredPath, configuration.getPublishingStrategy(), "Rename report: " + configuration.getName());
+                        activityGitRepositoryService.renameAndWriteActivitySource(configuration.getProject(), configuration.getGitPath(), desiredPath, configuration.getPublishingStrategy(), "Rename report: " + configuration.getName());
                         configuration.setGitPath(desiredPath);
                     } else {
-                        activityGitRepositoryService.writeActivitySource(configuration.getGitPath(), configuration.getPublishingStrategy(), "Update report: " + configuration.getName());
+                        activityGitRepositoryService.writeActivitySource(configuration.getProject(), configuration.getGitPath(), configuration.getPublishingStrategy(), "Update report: " + configuration.getName());
                     }
                 }
             } catch (Exception e) {
@@ -277,26 +282,26 @@ public class PublishingConfigurationApiController
         // publishingResourceDAO, so their Git files have to be cleaned up here explicitly too, same
         // as the MVC controller does - otherwise API-triggered deletes would leave orphaned Git
         // files the MVC path never would.
-        if (activityGitRepositoryService.isActive()) {
+        if (activityGitRepositoryService.isActive(configuration.getProject())) {
             try {
-                activityGitRepositoryService.sync();
+                activityGitRepositoryService.sync(configuration.getProject());
 
                 boolean deletedAny = false;
 
                 if (ActivityGitRepositoryService.hasGitPath(configuration.getGitPath())) {
-                    activityGitRepositoryService.deleteFile(configuration.getGitPath());
+                    activityGitRepositoryService.deleteFile(configuration.getProject(), configuration.getGitPath());
                     deletedAny = true;
                 }
 
                 for (PublishingResource resource : publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(configuration)) {
                     if (ActivityGitRepositoryService.hasGitPath(resource.getGitPath())) {
-                        activityGitRepositoryService.deleteFile(resource.getGitPath());
+                        activityGitRepositoryService.deleteFile(configuration.getProject(), resource.getGitPath());
                         deletedAny = true;
                     }
                 }
 
                 if (deletedAny) {
-                    activityGitRepositoryService.commitAndPush("Delete report: " + configuration.getName());
+                    activityGitRepositoryService.commitAndPush(configuration.getProject(), "Delete report: " + configuration.getName());
                 }
             } catch (Exception e) {
                 systemLogger.logMessage("WARN", "Could not delete PublishingConfiguration '" + configuration.getName() + "' from Git", e);
@@ -368,15 +373,15 @@ public class PublishingConfigurationApiController
      * instead of the possibly-stale DB cache, falling back to the cache on any Git error rather than
      * failing the whole request.
      */
-    private String resolvePublishingStrategy(String gitPath, String cachedPublishingStrategy)
+    private String resolvePublishingStrategy(Project project, String gitPath, String cachedPublishingStrategy)
     {
-        if (gitPath == null || !activityGitRepositoryService.isActive()) {
+        if (gitPath == null || !activityGitRepositoryService.isActive(project)) {
             return cachedPublishingStrategy;
         }
 
         try {
-            activityGitRepositoryService.sync();
-            return activityGitRepositoryService.readActivitySource(gitPath);
+            activityGitRepositoryService.sync(project);
+            return activityGitRepositoryService.readActivitySource(project, gitPath);
         } catch (Exception e) {
             systemLogger.logMessage("WARN", "Could not read Git source for gitPath '" + gitPath + "', falling back to cached publishingStrategy", e);
             return cachedPublishingStrategy;

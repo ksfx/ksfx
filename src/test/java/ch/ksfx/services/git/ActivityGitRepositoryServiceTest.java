@@ -2,6 +2,9 @@ package ch.ksfx.services.git;
 
 import ch.ksfx.dao.GitSyncConfigDAO;
 import ch.ksfx.model.GitSyncConfig;
+import java.util.List;
+import java.util.Collections;
+import ch.ksfx.model.Project;
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +26,7 @@ public class ActivityGitRepositoryServiceTest
     private Path bareRepoDir;
     private Path localCloneDir;
     private ActivityGitRepositoryService service;
+    private Project project;
 
     @BeforeEach
     public void setUp() throws Exception
@@ -46,7 +50,12 @@ public class ActivityGitRepositoryServiceTest
             seed.push().call();
         }
 
+        project = new Project();
+        project.setId(1L);
+        project.setName("Test");
+
         GitSyncConfig config = new GitSyncConfig();
+        config.setProject(project);
         config.setRepoUrl(bareRepoDir.toUri().toString());
         config.setBranch("master");
         config.setLocalClonePath(localCloneDir.toString());
@@ -58,7 +67,7 @@ public class ActivityGitRepositoryServiceTest
     @Test
     public void syncClonesRepositoryOnFirstUse() throws Exception
     {
-        service.sync();
+        service.sync(project);
 
         assertTrue(new File(localCloneDir.toFile(), ".git").exists());
         assertTrue(new File(localCloneDir.toFile(), "README.md").exists());
@@ -67,11 +76,11 @@ public class ActivityGitRepositoryServiceTest
     @Test
     public void writeActivitySourceCommitsAndPushesAndReadActivitySourceReadsItBack() throws Exception
     {
-        service.sync();
+        service.sync(project);
 
-        service.writeActivitySource("activities/test-activity.groovy", "class TestActivity {}", "Add test activity");
+        service.writeActivitySource(project, "activities/test-activity.groovy", "class TestActivity {}", "Add test activity");
 
-        assertEquals("class TestActivity {}", service.readActivitySource("activities/test-activity.groovy"));
+        assertEquals("class TestActivity {}", service.readActivitySource(project, "activities/test-activity.groovy"));
 
         // verify the commit actually reached the (bare) remote, not just the local working copy
         Path verifyCloneDir = Files.createTempDirectory("activity-git-verify");
@@ -91,10 +100,10 @@ public class ActivityGitRepositoryServiceTest
     @Test
     public void uniqueSlugAppendsSuffixOnCollision() throws Exception
     {
-        service.sync();
-        service.writeFile("activities/my-activity.groovy", "class A {}");
+        service.sync(project);
+        service.writeFile(project, "activities/my-activity.groovy", "class A {}");
 
-        assertEquals("my-activity-2", service.uniqueSlug("my-activity", "activities"));
+        assertEquals("my-activity-2", service.uniqueSlug(project, "my-activity", "activities"));
     }
 
     @Test
@@ -113,9 +122,15 @@ public class ActivityGitRepositoryServiceTest
         }
 
         @Override
-        public GitSyncConfig getGitSyncConfig()
+        public GitSyncConfig getGitSyncConfigForProject(Long projectId)
         {
             return config;
+        }
+
+        @Override
+        public List<GitSyncConfig> getAllGitSyncConfigs()
+        {
+            return Collections.singletonList(config);
         }
 
         @Override

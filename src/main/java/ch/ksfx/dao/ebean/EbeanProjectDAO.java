@@ -1,7 +1,7 @@
 package ch.ksfx.dao.ebean;
 
-import ch.ksfx.dao.AgenticProjectDAO;
-import ch.ksfx.model.AgenticProject;
+import ch.ksfx.dao.ProjectDAO;
+import ch.ksfx.model.Project;
 import io.ebean.Ebean;
 import io.ebean.ExpressionList;
 import org.springframework.data.domain.Page;
@@ -14,34 +14,34 @@ import java.util.Iterator;
 import java.util.List;
 
 @Repository
-public class EbeanAgenticProjectDAO implements AgenticProjectDAO
+public class EbeanProjectDAO implements ProjectDAO
 {
     @Override
-    public void saveOrUpdateAgenticProject(AgenticProject agenticProject)
+    public void saveOrUpdateProject(Project project)
     {
-        if (agenticProject.getId() != null) {
-            Ebean.update(agenticProject);
+        if (project.getId() != null) {
+            Ebean.update(project);
         } else {
-            Ebean.save(agenticProject);
+            Ebean.save(project);
         }
     }
 
     @Override
-    public void deleteAgenticProject(AgenticProject agenticProject)
+    public void deleteProject(Project project)
     {
-        Ebean.delete(agenticProject);
+        Ebean.delete(project);
     }
 
     @Override
-    public List<AgenticProject> getAllAgenticProjects()
+    public List<Project> getAllProjects()
     {
-        return Ebean.find(AgenticProject.class).order().asc("name").findList();
+        return Ebean.find(Project.class).order().asc("name").findList();
     }
 
     @Override
-    public Page<AgenticProject> getAgenticProjectsForPageable(Pageable pageable)
+    public Page<Project> getProjectsForPageable(Pageable pageable)
     {
-        ExpressionList expressionList = Ebean.find(AgenticProject.class).where();
+        ExpressionList expressionList = Ebean.find(Project.class).where();
 
         expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
         expressionList.setMaxRows(pageable.getPageSize());
@@ -71,12 +71,18 @@ public class EbeanAgenticProjectDAO implements AgenticProjectDAO
             expressionList.order().asc("name");
         }
 
-        return new PageImpl<AgenticProject>(expressionList.findList(), pageable, expressionList.findCount());
+        return new PageImpl<Project>(expressionList.findList(), pageable, expressionList.findCount());
     }
 
     @Override
-    public AgenticProject getAgenticProjectForId(Long agenticProjectId)
+    public Project getProjectForId(Long projectId)
     {
-        return Ebean.find(AgenticProject.class, agenticProjectId);
+        return Ebean.find(Project.class, projectId);
+    }
+
+    @Override
+    public Project getDefaultProject()
+    {
+        return Ebean.find(Project.class).where().eq("defaultProject", true).setMaxRows(1).findOne();
     }
 }

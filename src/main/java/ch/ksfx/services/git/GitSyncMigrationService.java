@@ -22,6 +22,7 @@ import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
 import ch.ksfx.model.CodeLib;
+import ch.ksfx.model.Project;
 import ch.ksfx.model.activity.Activity;
 import ch.ksfx.model.publishing.PublishingConfiguration;
 import ch.ksfx.model.publishing.PublishingResource;
@@ -61,13 +62,17 @@ public class GitSyncMigrationService
         this.systemLogger = systemLogger;
     }
 
-    public String migrateAllToGit() throws GitAPIException, IOException
+    public String migrateAllToGit(Project project) throws GitAPIException, IOException
     {
-        activityGitRepositoryService.sync();
+        activityGitRepositoryService.sync(project);
 
         int migratedActivities = 0;
 
         for (Activity activity : activityDAO.getAllActivities()) {
+            if (!belongsTo(activity.getProject(), project)) {
+                continue;
+            }
+
             if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
                 continue;
             }
@@ -76,12 +81,12 @@ public class GitSyncMigrationService
                 continue;
             }
 
-            String slug = activityGitRepositoryService.uniqueSlug(
+            String slug = activityGitRepositoryService.uniqueSlug(project, 
                     activityGitRepositoryService.slugify(activity.getName()),
                     ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
             String gitPath = ActivityGitRepositoryService.ACTIVITIES_DIRECTORY + "/" + slug + ".groovy";
 
-            activityGitRepositoryService.writeFile(gitPath, activity.getGroovyCode());
+            activityGitRepositoryService.writeFile(project, gitPath, activity.getGroovyCode());
 
             activity.setGitPath(gitPath);
             activityDAO.saveOrUpdateActivity(activity);
@@ -92,6 +97,10 @@ public class GitSyncMigrationService
         int migratedCodeLibs = 0;
 
         for (CodeLib codeLib : codeLibDAO.getAllCodeLibs()) {
+            if (!belongsTo(codeLib.getProject(), project)) {
+                continue;
+            }
+
             if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
                 continue;
             }
@@ -100,12 +109,12 @@ public class GitSyncMigrationService
                 continue;
             }
 
-            String slug = activityGitRepositoryService.uniqueSlug(
+            String slug = activityGitRepositoryService.uniqueSlug(project, 
                     activityGitRepositoryService.slugify(codeLib.getName()),
                     ActivityGitRepositoryService.LIBS_DIRECTORY);
             String gitPath = ActivityGitRepositoryService.LIBS_DIRECTORY + "/" + slug + ".groovy";
 
-            activityGitRepositoryService.writeFile(gitPath, codeLib.getGroovyCode());
+            activityGitRepositoryService.writeFile(project, gitPath, codeLib.getGroovyCode());
 
             codeLib.setGitPath(gitPath);
             codeLibDAO.saveOrUpdateCodeLib(codeLib);
@@ -116,6 +125,10 @@ public class GitSyncMigrationService
         int migratedReports = 0;
 
         for (PublishingConfiguration publishingConfiguration : publishingConfigurationDAO.getAllPublishingConfigurations()) {
+            if (!belongsTo(publishingConfiguration.getProject(), project)) {
+                continue;
+            }
+
             if (ActivityGitRepositoryService.hasGitPath(publishingConfiguration.getGitPath())) {
                 continue;
             }
@@ -124,12 +137,12 @@ public class GitSyncMigrationService
                 continue;
             }
 
-            String slug = activityGitRepositoryService.uniqueSlug(
+            String slug = activityGitRepositoryService.uniqueSlug(project, 
                     activityGitRepositoryService.slugify(publishingConfiguration.getName()),
                     ActivityGitRepositoryService.REPORTS_DIRECTORY);
             String gitPath = ActivityGitRepositoryService.REPORTS_DIRECTORY + "/" + slug + ".groovy";
 
-            activityGitRepositoryService.writeFile(gitPath, publishingConfiguration.getPublishingStrategy());
+            activityGitRepositoryService.writeFile(project, gitPath, publishingConfiguration.getPublishingStrategy());
 
             publishingConfiguration.setGitPath(gitPath);
             publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
@@ -140,6 +153,10 @@ public class GitSyncMigrationService
         int migratedReportResources = 0;
 
         for (PublishingResource publishingResource : publishingResourceDAO.getAllPublishingResources()) {
+            if (publishingResource.getPublishingConfiguration() == null || !belongsTo(publishingResource.getPublishingConfiguration().getProject(), project)) {
+                continue;
+            }
+
             if (ActivityGitRepositoryService.hasGitPath(publishingResource.getGitPath())) {
                 continue;
             }
@@ -148,12 +165,12 @@ public class GitSyncMigrationService
                 continue;
             }
 
-            String slug = activityGitRepositoryService.uniqueSlug(
+            String slug = activityGitRepositoryService.uniqueSlug(project, 
                     activityGitRepositoryService.slugify(publishingResource.getTitle()),
                     ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY);
             String gitPath = ActivityGitRepositoryService.REPORT_RESOURCES_DIRECTORY + "/" + slug + ".groovy";
 
-            activityGitRepositoryService.writeFile(gitPath, publishingResource.getPublishingStrategy());
+            activityGitRepositoryService.writeFile(project, gitPath, publishingResource.getPublishingStrategy());
 
             publishingResource.setGitPath(gitPath);
             publishingResourceDAO.saveOrUpdatePublishingResource(publishingResource);
@@ -162,7 +179,7 @@ public class GitSyncMigrationService
         }
 
         if (migratedActivities > 0 || migratedCodeLibs > 0 || migratedReports > 0 || migratedReportResources > 0) {
-            activityGitRepositoryService.commitAndPush("Initial migration of activity, code lib and report scripts from database");
+            activityGitRepositoryService.commitAndPush(project, "Initial migration of activity, code lib and report scripts from database");
         }
 
         String message = migratedActivities + " Activity/-ies, " + migratedCodeLibs + " Code Lib(s), "
@@ -174,16 +191,20 @@ public class GitSyncMigrationService
     }
 
     /**
-     * Reverts every Git-linked Activity, CodeLib and Publishing entity back to DB-only (clears
+     * Reverts every Git-linked Activity, CodeLib and Publishing entity OF THE PROJECT back to DB-only (clears
      * gitPath, the DB-cached source is untouched so nothing is lost) and deletes the local clone,
      * so the migration can be re-run from scratch or the admin can point this instance at a
      * different repository.
      */
-    public String unlinkAllFromGit() throws IOException
+    public String unlinkAllFromGit(Project project) throws IOException
     {
         int unlinkedActivities = 0;
 
         for (Activity activity : activityDAO.getAllActivities()) {
+            if (!belongsTo(activity.getProject(), project)) {
+                continue;
+            }
+
             if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
                 activity.setGitPath(null);
                 activityDAO.saveOrUpdateActivity(activity);
@@ -195,6 +216,10 @@ public class GitSyncMigrationService
         int unlinkedCodeLibs = 0;
 
         for (CodeLib codeLib : codeLibDAO.getAllCodeLibs()) {
+            if (!belongsTo(codeLib.getProject(), project)) {
+                continue;
+            }
+
             if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
                 codeLib.setGitPath(null);
                 codeLibDAO.saveOrUpdateCodeLib(codeLib);
@@ -206,6 +231,10 @@ public class GitSyncMigrationService
         int unlinkedReports = 0;
 
         for (PublishingConfiguration publishingConfiguration : publishingConfigurationDAO.getAllPublishingConfigurations()) {
+            if (!belongsTo(publishingConfiguration.getProject(), project)) {
+                continue;
+            }
+
             if (ActivityGitRepositoryService.hasGitPath(publishingConfiguration.getGitPath())) {
                 publishingConfiguration.setGitPath(null);
                 publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
@@ -217,6 +246,10 @@ public class GitSyncMigrationService
         int unlinkedReportResources = 0;
 
         for (PublishingResource publishingResource : publishingResourceDAO.getAllPublishingResources()) {
+            if (publishingResource.getPublishingConfiguration() == null || !belongsTo(publishingResource.getPublishingConfiguration().getProject(), project)) {
+                continue;
+            }
+
             if (ActivityGitRepositoryService.hasGitPath(publishingResource.getGitPath())) {
                 publishingResource.setGitPath(null);
                 publishingResourceDAO.saveOrUpdatePublishingResource(publishingResource);
@@ -225,7 +258,7 @@ public class GitSyncMigrationService
             }
         }
 
-        activityGitRepositoryService.deleteLocalClone();
+        activityGitRepositoryService.deleteLocalClone(project);
 
         String message = unlinkedActivities + " Activity/-ies, " + unlinkedCodeLibs + " Code Lib(s), "
                 + unlinkedReports + " Report(s) and " + unlinkedReportResources + " Report Resource(s) unlinked from Git, local clone removed.";
@@ -233,5 +266,11 @@ public class GitSyncMigrationService
         systemLogger.logMessage("GITSYNC", "Unlink: " + message);
 
         return message;
+    }
+
+    /** Entities are migrated/unlinked per project (one repository per project since 2026-10-10). */
+    private boolean belongsTo(Project entityProject, Project project)
+    {
+        return entityProject != null && project != null && entityProject.getId().equals(project.getId());
     }
 }

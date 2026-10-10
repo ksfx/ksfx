@@ -30,5 +30,7 @@ public interface CodeLibDAO
     public List<CodeLib> getAllCodeLibs();
     public Page<CodeLib> getCodeLibsForPageable(Pageable pageable);
     public CodeLib getCodeLibForId(Long codeLibId);
-    public CodeLib getCodeLibForName(String name);
+    /** All libs with this name across projects - names are unique per project only since 2026-10-10. */
+    public List<CodeLib> getCodeLibsForName(String name);
+    public CodeLib getCodeLibForProjectAndName(Long projectId, String name);
 }

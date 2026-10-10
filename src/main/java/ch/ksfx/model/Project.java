@@ -8,13 +8,14 @@ import java.util.Date;
 
 /**
  * Groups {@link Agent}s that share a workspace root folder (and optionally shared resources
- * within it). An Agent's assignment to an AgenticProject is optional.
+ * within it). An Agent's assignment to an Project is optional.
  */
 @Entity
-@Table(name = "agentic_project")
-public class AgenticProject
+@Table(name = "project")
+public class Project
 {
     private Long id;
+    private boolean defaultProject = false;
 
     @NotNull
     @Size(min = 2, max = 200)
@@ -127,5 +128,21 @@ public class AgenticProject
     public void setDockerContainerLastCheckedAt(Date dockerContainerLastCheckedAt)
     {
         this.dockerContainerLastCheckedAt = dockerContainerLastCheckedAt;
+    }
+
+    /**
+     * The project the migration created and attached all pre-existing, project-less content to;
+     * the fallback for everything created without an explicit project and the one project that can
+     * never be deleted (see ProjectController#delete). Exactly one row has this set.
+     */
+    @Column(name = "is_default")
+    public boolean getDefaultProject()
+    {
+        return defaultProject;
+    }
+
+    public void setDefaultProject(boolean defaultProject)
+    {
+        this.defaultProject = defaultProject;
     }
 }
