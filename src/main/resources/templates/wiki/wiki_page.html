@@ -12,6 +12,7 @@
      page, same as before this feature. -->
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
         <li class="breadcrumb-item"><a th:href="@{/wiki/{wikiId}/(wikiId=${currentWiki.id})}" th:text="${currentWiki.name}">Wiki</a></li>
         <li class="breadcrumb-item" th:each="ancestor : ${ancestors}">
             <a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${ancestor.id})}" th:text="${ancestor.title}">Ancestor</a>

@@ -1,5 +1,7 @@
 package ch.ksfx.controller.issues;
 
+import java.util.ArrayList;
+import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.AgentDAO;
@@ -42,6 +44,7 @@ import java.util.*;
 public class IssueController
 {
     private final IssueTrackerDAO issueTrackerDAO;
+    private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
     private final IssueDAO issueDAO;
     private final IssueLabelDAO issueLabelDAO;
@@ -53,9 +56,10 @@ public class IssueController
 
     public IssueController(IssueTrackerDAO issueTrackerDAO, IssueDAO issueDAO, IssueLabelDAO issueLabelDAO,
                             IssueCommentDAO issueCommentDAO, IssueAssetDAO issueAssetDAO, IssueService issueService,
-                            UserDAO userDAO, AgentDAO agentDAO, ProjectDAO projectDAO)
+                            UserDAO userDAO, AgentDAO agentDAO, ProjectDAO projectDAO, ProjectContextService projectContextService)
     {
         this.issueTrackerDAO = issueTrackerDAO;
+        this.projectContextService = projectContextService;
         this.projectDAO = projectDAO;
         this.issueDAO = issueDAO;
         this.issueLabelDAO = issueLabelDAO;
@@ -69,8 +73,23 @@ public class IssueController
     @GetMapping({"/", ""})
     public String root()
     {
-        List<IssueTracker> trackers = issueTrackerDAO.getAllIssueTrackers();
+        List<IssueTracker> trackers = trackersOfCurrentProject();
         return trackers.isEmpty() ? "redirect:/issues/none" : "redirect:/issues/" + trackers.get(0).getId() + "/";
+    }
+
+    /** The current project's trackers (concept, section 3) - the switcher's list and the root redirect's candidates. */
+    private List<IssueTracker> trackersOfCurrentProject()
+    {
+        Project project = projectContextService.current();
+        List<IssueTracker> trackers = new ArrayList<>();
+
+        for (IssueTracker tracker : issueTrackerDAO.getAllIssueTrackers()) {
+            if (tracker.getProject() != null && project != null && tracker.getProject().getId().equals(project.getId())) {
+                trackers.add(tracker);
+            }
+        }
+
+        return trackers;
     }
 
     @GetMapping("/none")
@@ -90,7 +109,7 @@ public class IssueController
         }
 
         IssueTracker tracker = new IssueTracker();
-        tracker.setProject(projectDAO.getDefaultProject()); // phase 1: no project context yet - reassign in Admin > Projects > Assignments
+        tracker.setProject(projectContextService.current()); // created inside the current project
         tracker.setName(name.trim());
         tracker.setCreatedAt(new Date());
         issueTrackerDAO.saveOrUpdateIssueTracker(tracker);
@@ -418,7 +437,8 @@ public class IssueController
 
     private void baseModel(Model model, IssueTracker tracker)
     {
-        model.addAttribute("allTrackers", issueTrackerDAO.getAllIssueTrackers());
+        projectContextService.follow(tracker.getProject()); // deep links win: opening a tracker switches the context to its project
+        model.addAttribute("allTrackers", trackersOfCurrentProject());
         model.addAttribute("currentTracker", tracker);
         model.addAttribute("trackerLabels", issueLabelDAO.getLabelsForTracker(tracker.getId()));
         model.addAttribute("openCount", issueDAO.countIssuesForTracker(tracker.getId(), Arrays.asList(IssueStatus.OPEN, IssueStatus.IN_PROGRESS)));

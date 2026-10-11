@@ -1,5 +1,6 @@
 package ch.ksfx.controller.agentic;
 
+import ch.ksfx.services.project.AgentScope;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.model.Agent;
 import ch.ksfx.services.agentic.ClaudeCliSessionService;
@@ -54,7 +55,7 @@ public class AgentMessageApiController
 
         Agent target = agentDAO.getAgentForId(body.targetAgentId);
 
-        if (target == null || !target.getEnabled()) {
+        if (target == null || !AgentScope.canAccess(caller, target.getProject()) || !target.getEnabled()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("Target agent not found or disabled."));
         }
 

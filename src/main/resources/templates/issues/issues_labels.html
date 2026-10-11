@@ -8,6 +8,7 @@
 <header th:replace="layout :: site-header"/>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
         <li class="breadcrumb-item"><a th:href="@{/issues/{trackerId}/(trackerId=${currentTracker.id})}" th:text="${currentTracker.name}">Tracker</a></li>
         <li class="breadcrumb-item active">Labels</li>
     </ol>

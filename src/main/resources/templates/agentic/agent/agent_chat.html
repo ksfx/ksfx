@@ -14,6 +14,7 @@
 <header th:replace="layout :: site-header"/>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
         <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
         <li class="breadcrumb-item active" th:text="${agent.name}">Agent</li>
     </ol>
@@ -25,24 +26,9 @@
 
     <aside class="agentic-sidebar" th:data-status-endpoint="@{/agentic/status}"
            th:data-csrf-header="${_csrf.headerName}" th:data-csrf-token="${_csrf.token}">
-        <!-- Project switcher - same pattern as the wiki/issue-tracker sidebars: the select decides
-             which project the list below shows, "+" and trash act on projects (the full project
-             form lives at /agentic/projects/edit - Docker settings, system prompt - so "+" opens
-             that rather than a name prompt; editing the current project goes via the footer's
-             Projects link, rare enough not to need a third button crowding the select). Deleting
-             is guarded in agentic-chat.js
-             with a confirm plus typing the project name, like deleting a wiki; it leaves the
-             project's agents ungrouped (see ProjectController#delete). -->
-        <div class="agentic-switcher">
-            <select id="projectSelect" class="agentic-switcher-select" title="Switch project">
-                <option th:each="p : ${allProjects}" th:value="${p.id}" th:text="${p.name}"
-                        th:selected="${currentProject != null and p.id == currentProject.id}"></option>
-                <option th:if="${hasUnassignedAgents}" value="ungrouped" th:selected="${currentProject == null}">Ungrouped</option>
-            </select>
-            <a th:href="@{/agentic/projects/edit}" class="agentic-switcher-btn" title="New project" aria-label="New project"><i class="fa fa-plus"></i></a>
-            <button th:if="${currentProject != null}" type="button" id="projectDeleteBtn" class="agentic-switcher-btn agentic-switcher-delete-btn" title="Delete this project" aria-label="Delete this project"
-                    th:data-project-name="${currentProject.name}" th:data-delete-href="@{/agentic/projects/delete/{id}(id=${currentProject.id})}"><i class="fa fa-trash-o"></i></button>
-        </div>
+        <!-- The project is chosen in the header's switcher (the one visible place for the context,
+             concept section 3); this sidebar lists the current project's agents. The interim
+             per-sidebar project select of 2026-10-09 is gone with phase 2. -->
         <div class="agentic-sidebar-header">
             <span>Agents</span>
             <span class="agentic-sidebar-header-actions">

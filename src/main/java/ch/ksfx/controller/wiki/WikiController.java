@@ -1,5 +1,7 @@
 package ch.ksfx.controller.wiki;
 
+import java.util.ArrayList;
+import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.WikiAssetDAO;
@@ -58,6 +60,7 @@ import java.util.*;
 public class WikiController
 {
     private final WikiDAO wikiDAO;
+    private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
     private final WikiFolderDAO wikiFolderDAO;
     private final WikiPageDAO wikiPageDAO;
@@ -66,9 +69,10 @@ public class WikiController
     private final WikiService wikiService;
 
     public WikiController(WikiDAO wikiDAO, WikiFolderDAO wikiFolderDAO, WikiPageDAO wikiPageDAO,
-                           WikiPageVersionDAO wikiPageVersionDAO, WikiAssetDAO wikiAssetDAO, WikiService wikiService, ProjectDAO projectDAO)
+                           WikiPageVersionDAO wikiPageVersionDAO, WikiAssetDAO wikiAssetDAO, WikiService wikiService, ProjectDAO projectDAO, ProjectContextService projectContextService)
     {
         this.wikiDAO = wikiDAO;
+        this.projectContextService = projectContextService;
         this.projectDAO = projectDAO;
         this.wikiFolderDAO = wikiFolderDAO;
         this.wikiPageDAO = wikiPageDAO;
@@ -81,8 +85,23 @@ public class WikiController
     @GetMapping({"/", ""})
     public String root()
     {
-        List<Wiki> wikis = wikiDAO.getAllWikis();
+        List<Wiki> wikis = wikisOfCurrentProject();
         return wikis.isEmpty() ? "redirect:/wiki/none" : "redirect:/wiki/" + wikis.get(0).getId() + "/";
+    }
+
+    /** The current project's wikis (concept, section 3) - the switcher's list and the root redirect's candidates. */
+    private List<Wiki> wikisOfCurrentProject()
+    {
+        Project project = projectContextService.current();
+        List<Wiki> wikis = new ArrayList<>();
+
+        for (Wiki wiki : wikiDAO.getAllWikis()) {
+            if (wiki.getProject() != null && project != null && wiki.getProject().getId().equals(project.getId())) {
+                wikis.add(wiki);
+            }
+        }
+
+        return wikis;
     }
 
     @GetMapping("/none")
@@ -102,7 +121,7 @@ public class WikiController
         }
 
         Wiki wiki = new Wiki();
-        wiki.setProject(projectDAO.getDefaultProject()); // phase 1: no project context yet - reassign in Admin > Projects > Assignments
+        wiki.setProject(projectContextService.current()); // created inside the current project
         wiki.setName(name.trim());
         wiki.setCreatedAt(new Date());
         wikiDAO.saveOrUpdateWiki(wiki);
@@ -491,7 +510,8 @@ public class WikiController
     /** Every wiki-scoped page needs the switcher dropdown's data and the folder/page tree - set once here instead of in every handler. */
     private void baseModel(Model model, Wiki wiki)
     {
-        model.addAttribute("allWikis", wikiDAO.getAllWikis());
+        projectContextService.follow(wiki.getProject()); // deep links win: opening a wiki switches the context to its project
+        model.addAttribute("allWikis", wikisOfCurrentProject());
         model.addAttribute("currentWiki", wiki);
         model.addAttribute("tree", buildTree(wikiFolderDAO.getFoldersForWiki(wiki.getId()), wikiPageDAO.getAllWikiPages(wiki.getId())));
     }

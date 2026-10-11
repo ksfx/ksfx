@@ -62,3 +62,50 @@ th[data-grid-property="observationTime"]
     font-style: italic;
     opacity: 0.65;
 }
+
+/* Project switcher as the breadcrumb root (layout :: project-crumb) - looks like a crumb, acts as a dropdown. */
+.ksfx-project-crumb .dropdown {
+    display: inline-block;
+}
+
+.ksfx-project-crumb-toggle {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.ksfx-project-crumb-toggle:hover {
+    text-decoration: none;
+}
+
+.ksfx-project-crumb .dropdown-menu {
+    min-width: 12rem;
+}
+
+/* Project initial badge (layout :: project-crumb) - CI navy, white letter; in the open list the
+   active project's row inverts, so the badge gets a light variant there. */
+.ksfx-project-badge {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    border-radius: 5px;
+    background: #0b2142;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    vertical-align: -3px;
+    margin-right: 2px;
+}
+
+.ksfx-project-crumb .dropdown-item.active .ksfx-project-badge,
+.ksfx-project-crumb .dropdown-item:active .ksfx-project-badge {
+    background: #fff;
+    color: #0b2142;
+}
+
+/* The active project row must read as active in both themes (bootstrap-dark's own .active is too subtle). */
+.ksfx-project-crumb .dropdown-item.active {
+    background: #2e77d0;
+    color: #fff;
+}

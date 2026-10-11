@@ -7,6 +7,7 @@
 <header th:replace="layout :: site-header"/>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
         <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
         <li class="breadcrumb-item"><a th:href="@{/agentic/projects/}">Projects</a></li>
         <li class="breadcrumb-item active">Edit Project</li>
@@ -34,6 +35,11 @@
                 <label for="systemPrompt">System Prompt</label>
                 <textarea class="form-control" id="systemPrompt" th:field="*{systemPrompt}" style="height:200px"></textarea>
                 <small class="form-text text-muted">Applied to every Agent in this project, between the platform boilerplate and that Agent's own System Prompt (see its edit page for the full, exact text actually sent). Optional - leave empty to add nothing at this level.</small>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="adminProject" th:field="*{adminProject}" />
+                <label class="form-check-label" for="adminProject">Admin project</label>
+                <small class="form-text text-muted">Agents of this project may read and write the wikis and issue trackers of every project and message every agent. Agents of ordinary projects are confined to their own project.</small>
             </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="dockerIsolationEnabled" th:field="*{dockerIsolationEnabled}" />

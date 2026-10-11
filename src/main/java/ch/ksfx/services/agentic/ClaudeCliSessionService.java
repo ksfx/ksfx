@@ -1,5 +1,6 @@
 package ch.ksfx.services.agentic;
 
+import ch.ksfx.services.project.AgentScope;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.AgentMessageDAO;
 import ch.ksfx.dao.AgenticConfigDAO;
@@ -1146,8 +1147,9 @@ public class ClaudeCliSessionService
                 + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
                 + "-d '{\"name\":\"Tägliche Erinnerung\",\"taskPrompt\":\"Prüfe X\",\"cronSchedule\":\"0 0 9 * * ?\",\"cronScheduleEnabled\":true}'\n";
 
+        // Only agents this agent may message (its project's, or all for an admin project) - see AgentScope.
         List<Agent> otherAgents = agentDAO.getAllAgents().stream()
-                .filter(a -> a.getEnabled() && !a.getId().equals(agent.getId()))
+                .filter(a -> a.getEnabled() && !a.getId().equals(agent.getId()) && AgentScope.canAccess(agent, a.getProject()))
                 .sorted(Comparator.comparing(Agent::getName))
                 .collect(Collectors.toList());
 

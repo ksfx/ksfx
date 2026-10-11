@@ -1,5 +1,6 @@
 package ch.ksfx.controller.agentic;
 
+import ch.ksfx.services.project.AgentScope;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.IssueAssetDAO;
 import ch.ksfx.dao.IssueCommentDAO;
@@ -68,13 +69,19 @@ public class AgentIssueApiController
     @GetMapping("/trackers")
     public ResponseEntity<?> trackers(HttpServletRequest request)
     {
-        if (authenticate(request) == null) {
+        Agent agent = authenticate(request);
+
+        if (agent == null) {
             return unauthorized();
         }
 
         List<TrackerDto> trackers = new ArrayList<>();
 
         for (IssueTracker tracker : issueTrackerDAO.getAllIssueTrackers()) {
+            if (!AgentScope.canAccess(agent, tracker.getProject())) {
+                continue;
+            }
+
             TrackerDto dto = new TrackerDto();
             dto.id = tracker.getId();
             dto.name = tracker.getName();
@@ -88,7 +95,9 @@ public class AgentIssueApiController
     @GetMapping("/assignees")
     public ResponseEntity<?> assignees(HttpServletRequest request)
     {
-        if (authenticate(request) == null) {
+        Agent caller = authenticate(request);
+
+        if (caller == null) {
             return unauthorized();
         }
 
@@ -103,7 +112,7 @@ public class AgentIssueApiController
         }
 
         for (Agent agent : agentDAO.getAllAgents()) {
-            if (!agent.getEnabled()) {
+            if (!agent.getEnabled() || !AgentScope.canAccess(caller, agent.getProject())) {
                 continue;
             }
 
@@ -122,8 +131,14 @@ public class AgentIssueApiController
     public ResponseEntity<?> list(HttpServletRequest request, @PathVariable Long trackerId,
                                    @RequestParam(defaultValue = "open") String status)
     {
-        if (authenticate(request) == null) {
+        Agent agent = authenticate(request);
+
+        if (agent == null) {
             return unauthorized();
+        }
+
+        if (!accessible(agent, trackerId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No tracker with that id."));
         }
 
         if (issueTrackerDAO.getIssueTrackerForId(trackerId) == null) {
@@ -150,8 +165,14 @@ public class AgentIssueApiController
     @GetMapping("/{trackerId}/issue/{issueNumber}")
     public ResponseEntity<?> read(HttpServletRequest request, @PathVariable Long trackerId, @PathVariable Long issueNumber)
     {
-        if (authenticate(request) == null) {
+        Agent agent = authenticate(request);
+
+        if (agent == null) {
             return unauthorized();
+        }
+
+        if (!accessible(agent, trackerId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No tracker with that id."));
         }
 
         Issue issue = findIssue(trackerId, issueNumber);
@@ -196,6 +217,10 @@ public class AgentIssueApiController
             return unauthorized();
         }
 
+        if (!accessible(agent, trackerId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No tracker with that id."));
+        }
+
         IssueTracker tracker = issueTrackerDAO.getIssueTrackerForId(trackerId);
 
         if (tracker == null) {
@@ -237,6 +262,10 @@ public class AgentIssueApiController
             return unauthorized();
         }
 
+        if (!accessible(agent, trackerId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No tracker with that id."));
+        }
+
         Issue issue = findIssue(trackerId, issueNumber);
 
         if (issue == null) {
@@ -262,6 +291,10 @@ public class AgentIssueApiController
 
         if (agent == null) {
             return unauthorized();
+        }
+
+        if (!accessible(agent, trackerId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No tracker with that id."));
         }
 
         Issue issue = findIssue(trackerId, issueNumber);
@@ -313,6 +346,10 @@ public class AgentIssueApiController
             return ResponseEntity.badRequest().body(errorBody("file is required"));
         }
 
+        if (trackerId != null && !accessible(agent, trackerId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No tracker with that id."));
+        }
+
         if ((trackerId == null) != (issueNumber == null)) {
             return ResponseEntity.badRequest().body(errorBody("To attach to an issue, send BOTH trackerId and issueNumber."));
         }
@@ -355,11 +392,17 @@ public class AgentIssueApiController
     @GetMapping("/asset/{assetId}")
     public ResponseEntity<?> downloadAsset(HttpServletRequest request, @PathVariable Long assetId)
     {
-        if (authenticate(request) == null) {
+        Agent agent = authenticate(request);
+
+        if (agent == null) {
             return unauthorized();
         }
 
         IssueAsset asset = issueAssetDAO.getIssueAssetForId(assetId);
+
+        if (asset != null && asset.getIssue() != null && !AgentScope.canAccess(agent, asset.getIssue().getIssueTracker().getProject())) {
+            asset = null;
+        }
 
         if (asset == null || asset.getContent() == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No asset with id " + assetId));
@@ -490,6 +533,14 @@ public class AgentIssueApiController
         }
 
         return user != null ? user.getUsername() : null;
+    }
+
+    /** The project rule (AgentScope) applied to a tracker id - a tracker outside the agent's scope reads as "no such tracker". */
+    private boolean accessible(Agent agent, Long trackerId)
+    {
+        IssueTracker tracker = issueTrackerDAO.getIssueTrackerForId(trackerId);
+
+        return tracker != null && AgentScope.canAccess(agent, tracker.getProject());
     }
 
     private Agent authenticate(HttpServletRequest request)

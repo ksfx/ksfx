@@ -72,6 +72,36 @@
             -->
         </header>
 
+        <!-- Project switcher as the ROOT of every breadcrumb (every page's <ol class="breadcrumb">
+             starts with <li th:replace="layout :: project-crumb">): the breadcrumb is the
+             hierarchy and the project is its root, so "Alpha / Wiki / Page" reads as what it is -
+             the one visible place for the current project (concept, section 3). Read at RENDER
+             time via the bean, not from a @ModelAttribute: those are computed before the handler
+             runs, and a handler that follows a deep link into another project
+             (ProjectContextService#follow) would otherwise still show the old project here.
+             Switching returns to the current page, or to the area's root if the page belonged to
+             a specific entity of the old project (ProjectSwitchController). -->
+        <li th:fragment="project-crumb" class="breadcrumb-item ksfx-project-crumb" th:with="currentProject=${@projectContextService.current()}" sec:authorize="isAuthenticated()">
+            <th:block th:if="${currentProject != null}">
+                <div class="dropdown">
+                    <!-- Initial badge instead of an icon (decided 2026-10-11): a project is a context,
+                         not a folder, and the badge makes projects tellable apart at a glance - in
+                         the crumb and, stacked, in the list. -->
+                    <a href="#" id="projectSwitcher" class="ksfx-project-crumb-toggle dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Current project - click to switch">
+                        <span class="ksfx-project-badge" th:text="${#strings.toUpperCase(#strings.substring(currentProject.name, 0, 1))}">P</span> <span th:text="${currentProject.name}">Project</span>
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="projectSwitcher">
+                        <a th:each="p : ${allProjects}" class="dropdown-item" th:classappend="${p.id == currentProject.id} ? ' active' : ''"
+                           th:href="@{/projects/switch/{id}(id=${p.id},returnTo=${#httpServletRequest.requestURI})}">
+                            <span class="ksfx-project-badge" th:text="${#strings.toUpperCase(#strings.substring(p.name, 0, 1))}">P</span> <span th:text="${p.name}"></span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" th:href="@{/agentic/projects/}"><i class="fa fa-cog"></i> Manage projects</a>
+                    </div>
+                </div>
+            </th:block>
+        </li>
+
         <footer th:fragment="site-footer" th:remove="tag">
             <br />
             <br />

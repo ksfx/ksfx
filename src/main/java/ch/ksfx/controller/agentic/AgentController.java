@@ -1,5 +1,6 @@
 package ch.ksfx.controller.agentic;
 
+import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.AgentMessageDAO;
 import ch.ksfx.dao.AgentScheduleDAO;
@@ -48,6 +49,7 @@ import java.util.Map;
 public class AgentController
 {
     private final AgentDAO agentDAO;
+    private final ProjectContextService projectContextService;
     private final AgentMessageDAO agentMessageDAO;
     private final AgenticConfigDAO agenticConfigDAO;
     private final ProjectDAO projectDAO;
@@ -63,9 +65,10 @@ public class AgentController
                             AgentWorkspaceService agentWorkspaceService,
                             ClaudeCliSessionService claudeCliSessionService,
                             AgentScheduleDAO agentScheduleDAO,
-                            SchedulerService schedulerService)
+                            SchedulerService schedulerService, ProjectContextService projectContextService)
     {
         this.agentDAO = agentDAO;
+        this.projectContextService = projectContextService;
         this.agentMessageDAO = agentMessageDAO;
         this.agenticConfigDAO = agenticConfigDAO;
         this.projectDAO = projectDAO;
@@ -88,15 +91,17 @@ public class AgentController
         return redirectToFirstAgentOrNew();
     }
 
+    /** The current project's first agent, or the new-agent form pre-set to the current project if it has none yet. */
     private String redirectToFirstAgentOrNew()
     {
-        Page<Agent> firstPage = agentDAO.getAgentsForPageable(PageRequest.of(0, 1));
+        Project project = projectContextService.current();
+        List<Agent> agents = project != null ? agentDAO.getAgentsForProject(project.getId()) : agentDAO.getAllAgents();
 
-        if (firstPage.isEmpty()) {
-            return "redirect:/agentic/edit";
+        if (agents.isEmpty()) {
+            return project != null ? "redirect:/agentic/edit?projectId=" + project.getId() : "redirect:/agentic/edit";
         }
 
-        return "redirect:/agentic/chat/" + firstPage.getContent().get(0).getId();
+        return "redirect:/agentic/chat/" + agents.get(0).getId();
     }
 
     /**
@@ -243,10 +248,11 @@ public class AgentController
         // switcher on top, same pattern as the wiki and issue-tracker sidebars (one wiki/tracker at
         // a time instead of everything stacked). "Ungrouped" (agents without a project) is a
         // pseudo-project in that switcher, only offered while such agents exist.
-        List<Project> allProjects = projectDAO.getAllProjects();
-        List<Agent> unassignedAgents = agentDAO.getAgentsWithoutProject();
-        Project currentProject = agent.getProject();
-        List<Agent> sidebarAgents = currentProject != null ? agentDAO.getAgentsForProject(currentProject.getId()) : unassignedAgents;
+        // Deep links win: opening an agent switches the session's project to the agent's (the
+        // header switcher is the one visible place for that), and the sidebar lists that project.
+        projectContextService.follow(agent.getProject());
+        Project currentProject = projectContextService.current();
+        List<Agent> sidebarAgents = currentProject != null ? agentDAO.getAgentsForProject(currentProject.getId()) : agentDAO.getAllAgents();
 
         boolean agentRunning = claudeCliSessionService.isRunning(agentId);
         ClaudeCliSessionService.PartialTurn partialTurn = agentRunning ? claudeCliSessionService.getPartialTurn(agentId) : null;
@@ -266,9 +272,6 @@ public class AgentController
         // treat that the same as "no output yet, but still show the busy indicator".
         model.addAttribute("partialText", partialTurn != null ? partialTurn.getText() : null);
         model.addAttribute("partialToolActivity", partialTurn != null ? partialTurn.getToolActivityJson() : null);
-        model.addAttribute("allProjects", allProjects);
-        model.addAttribute("currentProject", currentProject);
-        model.addAttribute("hasUnassignedAgents", !unassignedAgents.isEmpty());
         model.addAttribute("sidebarAgents", sidebarAgents);
 
         return "agentic/agent/agent_chat";
@@ -300,6 +303,8 @@ public class AgentController
         if (projectDAO.getProjectForId(projectId) == null) {
             return "redirect:/agentic/";
         }
+
+        projectContextService.follow(projectDAO.getProjectForId(projectId));
 
         List<Agent> agents = agentDAO.getAgentsForProject(projectId);
 

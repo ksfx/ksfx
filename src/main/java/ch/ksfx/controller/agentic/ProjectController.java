@@ -95,6 +95,7 @@ public class ProjectController
             project.setDockerContainerStatus(previous.getDockerContainerStatus());
             project.setDockerContainerLastCheckedAt(previous.getDockerContainerLastCheckedAt());
             project.setCreatedAt(previous.getCreatedAt());
+            project.setDefaultProject(previous.getDefaultProject()); // not a form field - never lose the default flag
         } else {
             project.setCreatedAt(new Date());
         }

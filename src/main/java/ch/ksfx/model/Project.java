@@ -16,6 +16,7 @@ public class Project
 {
     private Long id;
     private boolean defaultProject = false;
+    private boolean adminProject = false;
 
     @NotNull
     @Size(min = 2, max = 200)
@@ -144,5 +145,21 @@ public class Project
     public void setDefaultProject(boolean defaultProject)
     {
         this.defaultProject = defaultProject;
+    }
+
+    /**
+     * Agents of an admin project may read and write every project's wikis and trackers and may
+     * message every agent; agents of ordinary projects are confined to their own project (see
+     * AgentScope). Decided 2026-10-10 (concept, Q6).
+     */
+    @Column(name = "is_admin")
+    public boolean getAdminProject()
+    {
+        return adminProject;
+    }
+
+    public void setAdminProject(boolean adminProject)
+    {
+        this.adminProject = adminProject;
     }
 }

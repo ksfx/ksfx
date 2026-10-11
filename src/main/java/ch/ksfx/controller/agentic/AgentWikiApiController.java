@@ -12,6 +12,7 @@ import ch.ksfx.model.wiki.WikiAsset;
 import ch.ksfx.model.wiki.WikiFolder;
 import ch.ksfx.model.wiki.WikiPage;
 import ch.ksfx.model.wiki.WikiPageVersion;
+import ch.ksfx.services.project.AgentScope;
 import ch.ksfx.services.wiki.WikiService;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.core.io.ByteArrayResource;
@@ -75,13 +76,21 @@ public class AgentWikiApiController
     @GetMapping("/wikis")
     public ResponseEntity<?> listWikis(HttpServletRequest request)
     {
-        if (authenticate(request) == null) {
+        Agent agent = authenticate(request);
+
+        if (agent == null) {
             return unauthorized();
         }
 
         List<WikiDto> wikis = new ArrayList<>();
 
+        // Only the wikis this agent may use (its project's, or all for an admin project) - the
+        // prompt lists the same set, so the agent never sees an id it cannot act on.
         for (Wiki wiki : wikiDAO.getAllWikis()) {
+            if (!AgentScope.canAccess(agent, wiki.getProject())) {
+                continue;
+            }
+
             WikiDto dto = new WikiDto();
             dto.id = wiki.getId();
             dto.name = wiki.getName();
@@ -95,8 +104,14 @@ public class AgentWikiApiController
     @GetMapping("/{wikiId}/pages")
     public ResponseEntity<?> list(HttpServletRequest request, @PathVariable Long wikiId)
     {
-        if (authenticate(request) == null) {
+        Agent agent = authenticate(request);
+
+        if (agent == null) {
             return unauthorized();
+        }
+
+        if (!accessible(agent, wikiId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No wiki with that id."));
         }
 
         if (wikiDAO.getWikiForId(wikiId) == null) {
@@ -115,8 +130,14 @@ public class AgentWikiApiController
     @GetMapping("/{wikiId}/page/{pageId}")
     public ResponseEntity<?> readById(HttpServletRequest request, @PathVariable Long wikiId, @PathVariable Long pageId)
     {
-        if (authenticate(request) == null) {
+        Agent agent = authenticate(request);
+
+        if (agent == null) {
             return unauthorized();
+        }
+
+        if (!accessible(agent, wikiId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No wiki with that id."));
         }
 
         WikiPage page = wikiPageDAO.getWikiPageForId(pageId);
@@ -132,8 +153,14 @@ public class AgentWikiApiController
     public ResponseEntity<?> readByLocation(HttpServletRequest request, @PathVariable Long wikiId,
                                              @RequestParam(required = false) String folderPath, @RequestParam String title)
     {
-        if (authenticate(request) == null) {
+        Agent agent = authenticate(request);
+
+        if (agent == null) {
             return unauthorized();
+        }
+
+        if (!accessible(agent, wikiId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No wiki with that id."));
         }
 
         Wiki wiki = wikiDAO.getWikiForId(wikiId);
@@ -173,6 +200,10 @@ public class AgentWikiApiController
 
         if (agent == null) {
             return unauthorized();
+        }
+
+        if (!accessible(agent, wikiId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No wiki with that id."));
         }
 
         Wiki wiki = wikiDAO.getWikiForId(wikiId);
@@ -251,7 +282,7 @@ public class AgentWikiApiController
         if (pageId != null) {
             page = wikiPageDAO.getWikiPageForId(pageId);
 
-            if (page == null) {
+            if (page == null || !AgentScope.canAccess(agent, page.getWiki().getProject())) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No page with that id."));
             }
         }
@@ -285,11 +316,17 @@ public class AgentWikiApiController
     @GetMapping("/asset/{assetId}")
     public ResponseEntity<?> downloadAsset(HttpServletRequest request, @PathVariable Long assetId)
     {
-        if (authenticate(request) == null) {
+        Agent agent = authenticate(request);
+
+        if (agent == null) {
             return unauthorized();
         }
 
         WikiAsset asset = wikiAssetDAO.getWikiAssetForId(assetId);
+
+        if (asset != null && asset.getWikiPage() != null && !AgentScope.canAccess(agent, asset.getWikiPage().getWiki().getProject())) {
+            asset = null;
+        }
 
         if (asset == null || asset.getContent() == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No asset with id " + assetId));
@@ -382,6 +419,14 @@ public class AgentWikiApiController
         }
 
         return dto;
+    }
+
+    /** The project rule (AgentScope) applied to a wiki id - a wiki outside the agent's scope reads as "no such wiki". */
+    private boolean accessible(Agent agent, Long wikiId)
+    {
+        Wiki wiki = wikiDAO.getWikiForId(wikiId);
+
+        return wiki != null && AgentScope.canAccess(agent, wiki.getProject());
     }
 
     private Agent authenticate(HttpServletRequest request)

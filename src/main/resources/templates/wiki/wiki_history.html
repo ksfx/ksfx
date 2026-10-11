@@ -8,6 +8,7 @@
 <header th:replace="layout :: site-header"/>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
         <li class="breadcrumb-item"><a th:href="@{/wiki/{wikiId}/(wikiId=${currentWiki.id})}" th:text="${currentWiki.name}">Wiki</a></li>
         <li class="breadcrumb-item"><a th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${page.id})}" th:text="${page.title}">Page</a></li>
         <li class="breadcrumb-item active">History</li>
