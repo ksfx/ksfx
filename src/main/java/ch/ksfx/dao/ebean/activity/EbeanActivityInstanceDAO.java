@@ -129,7 +129,23 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
     }
 
     @Override
-    public Page<ActivityInstance> getActivityInstancesForFilter(Pageable pageable, Long activityId, Date startedAfter, Date startedBefore,
+    public Page<ActivityInstance> getUnapprovedActivityInstancesForPageableAndProject(Pageable pageable, Long projectId)
+    {
+        ExpressionList<ActivityInstance> expressionList = Ebean.find(ActivityInstance.class).where().eq("approved", false);
+
+        if (projectId != null) {
+            expressionList.eq("activity.project.id", projectId);
+        }
+
+        expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
+        expressionList.setMaxRows(pageable.getPageSize());
+        expressionList.order().desc("id");
+
+        return new PageImpl<ActivityInstance>(expressionList.findList(), pageable, expressionList.findCount());
+    }
+
+    @Override
+    public Page<ActivityInstance> getActivityInstancesForFilter(Pageable pageable, Long projectId, Long activityId, Date startedAfter, Date startedBefore,
                                                                  Boolean finished, Collection<Long> idIn, Collection<Long> idNotIn)
     {
         // "console" is a LONGTEXT on the same row - never load it for a listing (same blob-in-listing
@@ -138,6 +154,10 @@ public class EbeanActivityInstanceDAO implements ActivityInstanceDAO
                 .select("id, started, finished, approved, activity")
                 .fetch("activity", "id, name")
                 .where();
+
+        if (projectId != null) {
+            expressionList.eq("activity.project.id", projectId);
+        }
 
         if (activityId != null) {
             expressionList.eq("activity.id", activityId);

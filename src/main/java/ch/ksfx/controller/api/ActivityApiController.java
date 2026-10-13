@@ -67,6 +67,7 @@ public class ActivityApiController
 {
     private final ActivityDAO activityDAO;
     private final ProjectDAO projectDAO;
+    private final ApiProjectScope apiProjectScope;
     private final ActivityInstanceDAO activityInstanceDAO;
     private final ActivityInstanceRunner activityInstanceRunner;
     private final SchedulerService schedulerService;
@@ -80,10 +81,11 @@ public class ActivityApiController
                                   SchedulerService schedulerService,
                                   ServiceProvider serviceProvider,
                                   ActivityGitRepositoryService activityGitRepositoryService,
-                                  SystemLogger systemLogger, ProjectDAO projectDAO)
+                                  SystemLogger systemLogger, ProjectDAO projectDAO, ApiProjectScope apiProjectScope)
     {
         this.activityDAO = activityDAO;
         this.projectDAO = projectDAO;
+        this.apiProjectScope = apiProjectScope;
         this.activityInstanceDAO = activityInstanceDAO;
         this.activityInstanceRunner = activityInstanceRunner;
         this.schedulerService = schedulerService;
@@ -93,9 +95,16 @@ public class ActivityApiController
     }
 
     @GetMapping
-    public ResponseEntity<?> list(@RequestParam(required = false) Long activityCategoryId)
+    public ResponseEntity<?> list(@RequestParam(required = false) Long activityCategoryId, @RequestParam(required = false) Long projectId)
     {
         List<Activity> activities;
+        Long scopeProjectId;
+
+        try {
+            scopeProjectId = apiProjectScope.forList(projectId);
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
 
         if (activityCategoryId != null) {
             ActivityCategory category = activityDAO.getActivityCategoryForId(activityCategoryId);
@@ -106,7 +115,11 @@ public class ActivityApiController
 
             activities = activityDAO.getAllActivitiesForActivityCategory(category);
         } else {
-            activities = activityDAO.getAllActivities();
+            activities = scopeProjectId != null ? activityDAO.getAllActivitiesForProject(scopeProjectId) : activityDAO.getAllActivities();
+        }
+
+        if (scopeProjectId != null) {
+            activities = activities.stream().filter(a -> a.getProject() != null && scopeProjectId.equals(a.getProject().getId())).collect(Collectors.toList());
         }
 
         return ResponseEntity.ok(activities.stream().map(ActivityApiDto::from).collect(Collectors.toList()));
@@ -137,7 +150,12 @@ public class ActivityApiController
         }
 
         Activity activity = new Activity();
-        activity.setProject(projectDAO.getDefaultProject()); // phase 1: API creates land in the default project (projectId field comes with phase 3)
+
+        try {
+            activity.setProject(apiProjectScope.forWrite(body.projectId)); // explicit projectId > client's bound project > default project
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
         activity.setName(body.name);
         activity.setCronSchedule(body.cronSchedule);
         activity.setCronScheduleEnabled(body.cronScheduleEnabled);
@@ -530,6 +548,8 @@ public class ActivityApiController
         public String groovyCode;
         public Long activityCategoryId;
         public Long activityApprovalStrategyId;
+        /** Create only: the project to create in (default: the client's bound project, else the default project). Ignored on update - projects change in Admin > Projects > Assignments. */
+        public Long projectId;
     }
 
     /**
@@ -543,6 +563,8 @@ public class ActivityApiController
     {
         public Long id;
         public String name;
+        public Long projectId;
+        public String projectName;
         public String cronSchedule;
         public boolean cronScheduleEnabled;
         public Long activityCategoryId;
@@ -561,6 +583,8 @@ public class ActivityApiController
             dto.cronSchedule = activity.getCronSchedule();
             dto.cronScheduleEnabled = activity.getCronScheduleEnabled();
             dto.gitPath = activity.getGitPath();
+            dto.projectId = activity.getProject() != null ? activity.getProject().getId() : null;
+            dto.projectName = activity.getProject() != null ? activity.getProject().getName() : null;
 
             if (activity.getActivityCategory() != null) {
                 dto.activityCategoryId = activity.getActivityCategory().getId();

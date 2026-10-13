@@ -17,6 +17,7 @@ public class Project
     private Long id;
     private boolean defaultProject = false;
     private boolean adminProject = false;
+    private String dashboardContent;
 
     @NotNull
     @Size(min = 2, max = 200)
@@ -161,5 +162,18 @@ public class Project
     public void setAdminProject(boolean adminProject)
     {
         this.adminProject = adminProject;
+    }
+
+    /** The project's dashboard (HTML), shown at /dashboard/ while this is the current project; edited via Admin > Dashboard Manager. Was one global Generic Data Store entry before phase 3. */
+    @Lob
+    @Column(name = "dashboard_content")
+    public String getDashboardContent()
+    {
+        return dashboardContent;
+    }
+
+    public void setDashboardContent(String dashboardContent)
+    {
+        this.dashboardContent = dashboardContent;
     }
 }

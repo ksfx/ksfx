@@ -45,8 +45,10 @@ public interface ActivityInstanceDAO
      * rows without a finished timestamp); {@code idIn}/{@code idNotIn} (used by the caller to apply
      * the in-memory "running" state, which the DB can't know). Newest first (id desc).
      */
-    public Page<ActivityInstance> getActivityInstancesForFilter(Pageable pageable, Long activityId, Date startedAfter, Date startedBefore,
+    public Page<ActivityInstance> getActivityInstancesForFilter(Pageable pageable, Long projectId, Long activityId, Date startedAfter, Date startedBefore,
                                                                  Boolean finished, Collection<Long> idIn, Collection<Long> idNotIn);
+    /** The approval queue of one project (phase 3). */
+    public Page<ActivityInstance> getUnapprovedActivityInstancesForPageableAndProject(Pageable pageable, Long projectId);
     public ActivityInstance getActivityInstanceForId(Long activityInstanceId);
     public ActivityInstanceParameter getActivityInstanceParameterForId(Long activityInstanceParameterId);
     public void deleteActivityInstance(ActivityInstance activityInstance);

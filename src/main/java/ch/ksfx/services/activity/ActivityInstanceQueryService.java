@@ -62,6 +62,7 @@ public class ActivityInstanceQueryService
 
     public static class Filter
     {
+        public Long projectId;
         public Long activityId;
         public String status;
         public String startedAfter;
@@ -106,6 +107,7 @@ public class ActivityInstanceQueryService
         Result result = new Result();
         result.runningIds = runningIds;
         result.appliedFilters = new LinkedHashMap<>();
+        result.appliedFilters.put("projectId", filter.projectId);
         result.appliedFilters.put("activityId", filter.activityId);
         result.appliedFilters.put("status", status == null || status.isEmpty() ? null : status);
         result.appliedFilters.put("startedAfter", startedAfter);
@@ -117,13 +119,13 @@ public class ActivityInstanceQueryService
                 return result;
             }
 
-            result.page = activityInstanceDAO.getActivityInstancesForFilter(pageable, filter.activityId, startedAfter, startedBefore, null, runningIds, null);
+            result.page = activityInstanceDAO.getActivityInstancesForFilter(pageable, filter.projectId, filter.activityId, startedAfter, startedBefore, null, runningIds, null);
         } else if ("FINISHED".equals(status)) {
-            result.page = activityInstanceDAO.getActivityInstancesForFilter(pageable, filter.activityId, startedAfter, startedBefore, Boolean.TRUE, null, null);
+            result.page = activityInstanceDAO.getActivityInstancesForFilter(pageable, filter.projectId, filter.activityId, startedAfter, startedBefore, Boolean.TRUE, null, null);
         } else if ("PENDING_APPROVAL".equals(status)) {
-            result.page = activityInstanceDAO.getActivityInstancesForFilter(pageable, filter.activityId, startedAfter, startedBefore, Boolean.FALSE, null, runningIds);
+            result.page = activityInstanceDAO.getActivityInstancesForFilter(pageable, filter.projectId, filter.activityId, startedAfter, startedBefore, Boolean.FALSE, null, runningIds);
         } else {
-            result.page = activityInstanceDAO.getActivityInstancesForFilter(pageable, filter.activityId, startedAfter, startedBefore, null, null, null);
+            result.page = activityInstanceDAO.getActivityInstancesForFilter(pageable, filter.projectId, filter.activityId, startedAfter, startedBefore, null, null, null);
         }
 
         return result;
@@ -152,6 +154,8 @@ public class ActivityInstanceQueryService
         dto.put("instanceId", instance.getId());
         dto.put("activityId", instance.getActivity() != null ? instance.getActivity().getId() : null);
         dto.put("activityName", instance.getActivity() != null ? instance.getActivity().getName() : null);
+        dto.put("projectId", instance.getActivity() != null && instance.getActivity().getProject() != null ? instance.getActivity().getProject().getId() : null);
+        dto.put("projectName", instance.getActivity() != null && instance.getActivity().getProject() != null ? instance.getActivity().getProject().getName() : null);
         dto.put("status", statusOf(instance, runningIds));
         dto.put("started", instance.getStarted());
         dto.put("finished", instance.getFinished());

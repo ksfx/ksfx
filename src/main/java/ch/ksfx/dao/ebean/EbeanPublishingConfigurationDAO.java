@@ -63,10 +63,32 @@ public class EbeanPublishingConfigurationDAO implements PublishingConfigurationD
 
     public Page<PublishingConfiguration> getPublishingConfigutationsForPageableAndPublishingCategory(Pageable pageable, PublishingCategory publishingCategory)
     {
+        return getPublishingConfigurationsForPageableAndPublishingCategoryAndProject(pageable, publishingCategory, null);
+    }
+
+    @Override
+    public List<PublishingConfiguration> getAllPublishingConfigurationsForProject(Long projectId)
+    {
+        return Ebean.find(PublishingConfiguration.class).where().eq("project.id", projectId).order().asc("name").findList();
+    }
+
+    @Override
+    public List<PublishingCategory> getAllPublishingCategoriesForProject(Long projectId)
+    {
+        return Ebean.find(PublishingCategory.class).where().eq("project.id", projectId).findList();
+    }
+
+    @Override
+    public Page<PublishingConfiguration> getPublishingConfigurationsForPageableAndPublishingCategoryAndProject(Pageable pageable, PublishingCategory publishingCategory, Long projectId)
+    {
         ExpressionList expressionList = Ebean.find(PublishingConfiguration.class).where();
 
         if (publishingCategory != null) {
             expressionList.eq("publishingCategory", publishingCategory);
+        }
+
+        if (projectId != null) {
+            expressionList.eq("project.id", projectId);
         }
 
         expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());

@@ -1,5 +1,6 @@
 package ch.ksfx.controller.admin.codelib;
 
+import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.CodeLibDAO;
@@ -25,15 +26,17 @@ import java.util.Set;
 public class CodeLibController
 {
     private final CodeLibDAO codeLibDAO;
+    private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
     private final ActivityGitRepositoryService activityGitRepositoryService;
     private final CodeLibMigrationService codeLibMigrationService;
 
     public CodeLibController(CodeLibDAO codeLibDAO,
                               ActivityGitRepositoryService activityGitRepositoryService,
-                              CodeLibMigrationService codeLibMigrationService, ProjectDAO projectDAO)
+                              CodeLibMigrationService codeLibMigrationService, ProjectDAO projectDAO, ProjectContextService projectContextService)
     {
         this.codeLibDAO = codeLibDAO;
+        this.projectContextService = projectContextService;
         this.projectDAO = projectDAO;
         this.activityGitRepositoryService = activityGitRepositoryService;
         this.codeLibMigrationService = codeLibMigrationService;
@@ -48,7 +51,8 @@ public class CodeLibController
     @GetMapping("/")
     public String index(Pageable pageable, Model model)
     {
-        Page<CodeLib> codeLibsPage = codeLibDAO.getCodeLibsForPageable(pageable);
+        // The current project's libs only (concept, section 3) - reached from the project form.
+        Page<CodeLib> codeLibsPage = codeLibDAO.getCodeLibsForPageableAndProject(pageable, projectContextService.current().getId());
 
         model.addAttribute("codeLibsPage", codeLibsPage);
 
@@ -62,6 +66,7 @@ public class CodeLibController
 
         if (codeLibId != null) {
             codeLib = codeLibDAO.getCodeLibForId(codeLibId);
+            projectContextService.follow(codeLib.getProject()); // deep links win
 
             if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive(codeLib.getProject())) {
                 try {
@@ -89,7 +94,7 @@ public class CodeLibController
 
         // No project on the form (see ActivityController.activitySubmit) - keep the stored one on edit, default on create.
         CodeLib previousCodeLib = codeLib.getId() != null ? codeLibDAO.getCodeLibForId(codeLib.getId()) : null;
-        codeLib.setProject(previousCodeLib != null && previousCodeLib.getProject() != null ? previousCodeLib.getProject() : projectDAO.getDefaultProject());
+        codeLib.setProject(previousCodeLib != null && previousCodeLib.getProject() != null ? previousCodeLib.getProject() : projectContextService.current());
 
         // Names are unique per project (the loader resolves libs by project + name).
         CodeLib sameName = codeLibDAO.getCodeLibForProjectAndName(codeLib.getProject().getId(), codeLib.getName());

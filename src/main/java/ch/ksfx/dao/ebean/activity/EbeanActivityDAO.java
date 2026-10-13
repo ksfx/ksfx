@@ -83,10 +83,32 @@ public class EbeanActivityDAO implements ActivityDAO
     @Override
     public Page<Activity> getActivitiesForPageableAndActivityCategory(Pageable pageable, ActivityCategory activityCategory)
     {
+        return getActivitiesForPageableAndActivityCategoryAndProject(pageable, activityCategory, null);
+    }
+
+    @Override
+    public List<Activity> getAllActivitiesForProject(Long projectId)
+    {
+        return Ebean.find(Activity.class).where().eq("project.id", projectId).order().asc("name").findList();
+    }
+
+    @Override
+    public List<ActivityCategory> getAllActivityCategoriesForProject(Long projectId)
+    {
+        return Ebean.find(ActivityCategory.class).where().eq("project.id", projectId).findList();
+    }
+
+    @Override
+    public Page<Activity> getActivitiesForPageableAndActivityCategoryAndProject(Pageable pageable, ActivityCategory activityCategory, Long projectId)
+    {
         ExpressionList expressionList = Ebean.find(Activity.class).where();
 
         if (activityCategory != null) {
             expressionList.eq("activityCategory", activityCategory);
+        }
+
+        if (projectId != null) {
+            expressionList.eq("project.id", projectId);
         }
 
         expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());

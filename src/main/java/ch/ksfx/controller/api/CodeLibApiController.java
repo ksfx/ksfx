@@ -1,5 +1,6 @@
 package ch.ksfx.controller.api;
 
+import org.springframework.web.bind.annotation.RequestParam;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.CodeLibDAO;
@@ -44,6 +45,7 @@ public class CodeLibApiController
 {
     private final CodeLibDAO codeLibDAO;
     private final ProjectDAO projectDAO;
+    private final ApiProjectScope apiProjectScope;
     private final ServiceProvider serviceProvider;
     private final ActivityGitRepositoryService activityGitRepositoryService;
     private final SystemLogger systemLogger;
@@ -51,19 +53,28 @@ public class CodeLibApiController
     public CodeLibApiController(CodeLibDAO codeLibDAO,
                                  ServiceProvider serviceProvider,
                                  ActivityGitRepositoryService activityGitRepositoryService,
-                                 SystemLogger systemLogger, ProjectDAO projectDAO)
+                                 SystemLogger systemLogger, ProjectDAO projectDAO, ApiProjectScope apiProjectScope)
     {
         this.codeLibDAO = codeLibDAO;
         this.projectDAO = projectDAO;
+        this.apiProjectScope = apiProjectScope;
         this.serviceProvider = serviceProvider;
         this.activityGitRepositoryService = activityGitRepositoryService;
         this.systemLogger = systemLogger;
     }
 
     @GetMapping
-    public ResponseEntity<?> list()
+    public ResponseEntity<?> list(@RequestParam(required = false) Long projectId)
     {
-        List<CodeLib> codeLibs = codeLibDAO.getAllCodeLibs();
+        Long scopeProjectId;
+
+        try {
+            scopeProjectId = apiProjectScope.forList(projectId);
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+
+        List<CodeLib> codeLibs = scopeProjectId != null ? codeLibDAO.getAllCodeLibsForProject(scopeProjectId) : codeLibDAO.getAllCodeLibs();
 
         return ResponseEntity.ok(codeLibs.stream().map(CodeLibApiDto::from).collect(Collectors.toList()));
     }
@@ -93,7 +104,16 @@ public class CodeLibApiController
         }
 
         CodeLib codeLib = new CodeLib();
-        codeLib.setProject(projectDAO.getDefaultProject()); // phase 1: see ActivityApiController.create
+
+        try {
+            codeLib.setProject(apiProjectScope.forWrite(body.projectId));
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+
+        if (codeLibDAO.getCodeLibForProjectAndName(codeLib.getProject().getId(), body.name) != null) {
+            return ResponseEntity.badRequest().body(errorBody("A code lib named '" + body.name + "' already exists in project " + codeLib.getProject().getName()));
+        }
         codeLib.setName(body.name);
         codeLib.setDescription(body.description);
         codeLib.setGroovyCode(body.groovyCode);
@@ -260,6 +280,8 @@ public class CodeLibApiController
         public String name;
         public String description;
         public String groovyCode;
+        /** Create only - see ActivityApiController.ActivityApiRequest#projectId. */
+        public Long projectId;
     }
 
     /**
@@ -272,6 +294,8 @@ public class CodeLibApiController
     private static class CodeLibApiDto
     {
         public Long id;
+        public Long projectId;
+        public String projectName;
         public String name;
         public String description;
         public String gitPath;
@@ -285,6 +309,8 @@ public class CodeLibApiController
             dto.name = codeLib.getName();
             dto.description = codeLib.getDescription();
             dto.gitPath = codeLib.getGitPath();
+            dto.projectId = codeLib.getProject() != null ? codeLib.getProject().getId() : null;
+            dto.projectName = codeLib.getProject() != null ? codeLib.getProject().getName() : null;
 
             return dto;
         }

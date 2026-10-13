@@ -1,5 +1,6 @@
 package ch.ksfx.controller;
 
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.ApiClientDAO;
 import ch.ksfx.model.ApiClient;
 import org.springframework.stereotype.Controller;
@@ -26,10 +27,12 @@ import java.util.UUID;
 public class ApiClientController
 {
     private final ApiClientDAO apiClientDAO;
+    private final ProjectDAO projectDAO;
 
-    public ApiClientController(ApiClientDAO apiClientDAO)
+    public ApiClientController(ApiClientDAO apiClientDAO, ProjectDAO projectDAO)
     {
         this.apiClientDAO = apiClientDAO;
+        this.projectDAO = projectDAO;
     }
 
     @GetMapping("/")
@@ -45,6 +48,8 @@ public class ApiClientController
     {
         ApiClient apiClient = id != null ? apiClientDAO.getApiClientForId(id) : new ApiClient();
 
+        model.addAttribute("allProjects", projectDAO.getAllProjects());
+
         model.addAttribute("apiClient", apiClient);
 
         return "apiclient/apiclient_edit";
@@ -54,7 +59,13 @@ public class ApiClientController
     public String submit(@PathVariable(value = "id", required = false) Long id, @Valid @ModelAttribute ApiClient apiClient, BindingResult bindingResult, Model model)
     {
         if (bindingResult.hasErrors()) {
+            model.addAttribute("allProjects", projectDAO.getAllProjects());
             return "apiclient/apiclient_edit";
+        }
+
+        // "(no project)" binds to a stub with a null id - see AgentController.submit
+        if (apiClient.getProject() != null && apiClient.getProject().getId() == null) {
+            apiClient.setProject(null);
         }
 
         boolean isNew = apiClient.getId() == null;

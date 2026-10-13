@@ -63,6 +63,7 @@ public class PublishingConfigurationApiController
 {
     private final PublishingConfigurationDAO publishingConfigurationDAO;
     private final ProjectDAO projectDAO;
+    private final ApiProjectScope apiProjectScope;
     private final PublishingResourceDAO publishingResourceDAO;
     private final PublicationLoaderRunner publicationLoaderRunner;
     private final SchedulerService schedulerService;
@@ -76,10 +77,11 @@ public class PublishingConfigurationApiController
                                                  SchedulerService schedulerService,
                                                  ServiceProvider serviceProvider,
                                                  ActivityGitRepositoryService activityGitRepositoryService,
-                                                 SystemLogger systemLogger, ProjectDAO projectDAO)
+                                                 SystemLogger systemLogger, ProjectDAO projectDAO, ApiProjectScope apiProjectScope)
     {
         this.publishingConfigurationDAO = publishingConfigurationDAO;
         this.projectDAO = projectDAO;
+        this.apiProjectScope = apiProjectScope;
         this.publishingResourceDAO = publishingResourceDAO;
         this.publicationLoaderRunner = publicationLoaderRunner;
         this.schedulerService = schedulerService;
@@ -89,9 +91,16 @@ public class PublishingConfigurationApiController
     }
 
     @GetMapping
-    public ResponseEntity<?> list(@RequestParam(required = false) Long publishingCategoryId)
+    public ResponseEntity<?> list(@RequestParam(required = false) Long publishingCategoryId, @RequestParam(required = false) Long projectId)
     {
         List<PublishingConfiguration> configurations;
+        Long scopeProjectId;
+
+        try {
+            scopeProjectId = apiProjectScope.forList(projectId);
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
 
         if (publishingCategoryId != null) {
             PublishingCategory category = publishingConfigurationDAO.getPublishingCategoryForId(publishingCategoryId);
@@ -102,7 +111,11 @@ public class PublishingConfigurationApiController
 
             configurations = publishingConfigurationDAO.getPublishingConfigurationsForPublishingCategory(category);
         } else {
-            configurations = publishingConfigurationDAO.getAllPublishingConfigurations();
+            configurations = scopeProjectId != null ? publishingConfigurationDAO.getAllPublishingConfigurationsForProject(scopeProjectId) : publishingConfigurationDAO.getAllPublishingConfigurations();
+        }
+
+        if (scopeProjectId != null) {
+            configurations = configurations.stream().filter(c -> c.getProject() != null && scopeProjectId.equals(c.getProject().getId())).collect(Collectors.toList());
         }
 
         return ResponseEntity.ok(configurations.stream().map(PublishingConfigurationApiDto::from).collect(Collectors.toList()));
@@ -133,7 +146,12 @@ public class PublishingConfigurationApiController
         }
 
         PublishingConfiguration configuration = new PublishingConfiguration();
-        configuration.setProject(projectDAO.getDefaultProject()); // phase 1: see ActivityApiController.create
+
+        try {
+            configuration.setProject(apiProjectScope.forWrite(body.projectId));
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
         configuration.setName(body.name);
         configuration.setUri(body.uri);
         configuration.setCronSchedule(body.cronSchedule);
@@ -402,6 +420,8 @@ public class PublishingConfigurationApiController
     {
         public String name;
         public String uri;
+        /** Create only - see ActivityApiController.ActivityApiRequest#projectId. */
+        public Long projectId;
         public String cronSchedule;
         public boolean cronScheduleEnabled;
         public String publishingStrategy;
@@ -424,6 +444,8 @@ public class PublishingConfigurationApiController
     private static class PublishingConfigurationApiDto
     {
         public Long id;
+        public Long projectId;
+        public String projectName;
         public String name;
         public String uri;
         public String cronSchedule;
@@ -457,6 +479,8 @@ public class PublishingConfigurationApiController
             dto.lockedForEditing = configuration.getLockedForEditing();
             dto.lockedForCacheUpdate = configuration.getLockedForCacheUpdate();
             dto.gitPath = configuration.getGitPath();
+            dto.projectId = configuration.getProject() != null ? configuration.getProject().getId() : null;
+            dto.projectName = configuration.getProject() != null ? configuration.getProject().getName() : null;
 
             if (configuration.getPublishingCategory() != null) {
                 dto.publishingCategoryId = configuration.getPublishingCategory().getId();

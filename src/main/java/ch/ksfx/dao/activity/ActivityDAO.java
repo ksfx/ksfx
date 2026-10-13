@@ -34,6 +34,10 @@ public interface ActivityDAO
     public List<Activity> getAllActivities();
     public List<Activity> getAllActivitiesForActivityCategory(ActivityCategory activityCategory);
     public Page<Activity> getActivitiesForPageableAndActivityCategory(Pageable pageable, ActivityCategory activityCategory);
+    /** Project-scoped variants (phase 3 of the project concept): null projectId = all projects. */
+    public Page<Activity> getActivitiesForPageableAndActivityCategoryAndProject(Pageable pageable, ActivityCategory activityCategory, Long projectId);
+    public List<Activity> getAllActivitiesForProject(Long projectId);
+    public List<ActivityCategory> getAllActivityCategoriesForProject(Long projectId);
     public Activity getActivityForId(Long activityId);
     public void deleteActivity(Activity activity);
     public List<Activity> getScheduledActivities();

@@ -1,5 +1,6 @@
 package ch.ksfx.controller.publishing;
 
+import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.PublishingConfigurationDAO;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
 public class PublishingController
 {
     private PublishingConfigurationDAO publishingConfigurationDAO;
+    private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
     private PublishingResourceDAO publishingResourceDAO;
     private PublishingSharedDataDAO publishingSharedDataDAO;
@@ -50,9 +52,10 @@ public class PublishingController
     private SchedulerService schedulerService;
     private ActivityGitRepositoryService activityGitRepositoryService;
 
-    public PublishingController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO, PublishingSharedDataDAO publishingSharedDataDAO, ServiceProvider serviceProvider, PublicationLoaderRunner publicationLoaderRunner, SchedulerService schedulerService, ActivityGitRepositoryService activityGitRepositoryService, ProjectDAO projectDAO)
+    public PublishingController(PublishingConfigurationDAO publishingConfigurationDAO, PublishingResourceDAO publishingResourceDAO, PublishingSharedDataDAO publishingSharedDataDAO, ServiceProvider serviceProvider, PublicationLoaderRunner publicationLoaderRunner, SchedulerService schedulerService, ActivityGitRepositoryService activityGitRepositoryService, ProjectDAO projectDAO, ProjectContextService projectContextService)
     {
         this.publishingConfigurationDAO = publishingConfigurationDAO;
+        this.projectContextService = projectContextService;
         this.projectDAO = projectDAO;
         this.publishingResourceDAO = publishingResourceDAO;
         this.publishingSharedDataDAO = publishingSharedDataDAO;
@@ -71,7 +74,8 @@ public class PublishingController
     @GetMapping("/")
     public String publishingIndex(Pageable pageable, Model model)
     {
-        Page<PublishingConfiguration> publishingConfigurationsPage = publishingConfigurationDAO.getPublishingConfigutationsForPageableAndPublishingCategory(pageable, null);
+        // The current project's reports only (phase 3 of the project concept).
+        Page<PublishingConfiguration> publishingConfigurationsPage = publishingConfigurationDAO.getPublishingConfigurationsForPageableAndPublishingCategoryAndProject(pageable, null, projectContextService.current().getId());
 
         model.addAttribute("publicationLoaderRunner", publicationLoaderRunner);
         model.addAttribute("publishingConfigurationsPage", publishingConfigurationsPage);
@@ -96,6 +100,7 @@ public class PublishingController
 
         if (publishingConfigurationId != null) {
             publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+            projectContextService.follow(publishingConfiguration.getProject()); // deep links win
 
             if (ActivityGitRepositoryService.hasGitPath(publishingConfiguration.getGitPath()) && activityGitRepositoryService.isActive(publishingConfiguration.getProject())) {
                 try {
@@ -126,7 +131,7 @@ public class PublishingController
             publishingConfiguration.setPublishingStrategy(demoPublishingStrategy);
         }
 
-        model.addAttribute("allPublishingCategories", publishingConfigurationDAO.getAllPublishingCategories());
+        model.addAttribute("allPublishingCategories", publishingConfigurationDAO.getAllPublishingCategoriesForProject(projectContextService.current().getId()));
 
         if (publishingConfiguration.getId() != null) {
             model.addAttribute("publishingResources", publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(publishingConfiguration));
@@ -144,7 +149,7 @@ public class PublishingController
         validatePublishingConfiguration(publishingConfiguration, bindingResult);
 
         if (bindingResult.hasErrors()) {
-            model.addAttribute("allPublishingCategories", publishingConfigurationDAO.getAllPublishingCategories());
+            model.addAttribute("allPublishingCategories", publishingConfigurationDAO.getAllPublishingCategoriesForProject(projectContextService.current().getId()));
 
             if (publishingConfiguration.getId() != null) {
                 model.addAttribute("publishingResources", publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(publishingConfiguration));
@@ -160,7 +165,7 @@ public class PublishingController
 
         // No project on the form (see ActivityController.activitySubmit) - keep the stored one on edit, default on create.
         PublishingConfiguration previousConfiguration = publishingConfiguration.getId() != null ? publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfiguration.getId()) : null;
-        publishingConfiguration.setProject(previousConfiguration != null && previousConfiguration.getProject() != null ? previousConfiguration.getProject() : projectDAO.getDefaultProject());
+        publishingConfiguration.setProject(previousConfiguration != null && previousConfiguration.getProject() != null ? previousConfiguration.getProject() : projectContextService.current());
 
         if (activityGitRepositoryService.isActive(publishingConfiguration.getProject())) {
             try {
@@ -190,7 +195,7 @@ public class PublishingController
             } catch (Exception e) {
                 bindingResult.rejectValue("publishingStrategy", "publishingConfiguration.publishingStrategy", "Konnte nicht ins Git-Repository schreiben: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
 
-                model.addAttribute("allPublishingCategories", publishingConfigurationDAO.getAllPublishingCategories());
+                model.addAttribute("allPublishingCategories", publishingConfigurationDAO.getAllPublishingCategoriesForProject(projectContextService.current().getId()));
 
                 if (publishingConfiguration.getId() != null) {
                     model.addAttribute("publishingResources", publishingResourceDAO.getAllPublishingResourcesForPublishingConfiguration(publishingConfiguration));

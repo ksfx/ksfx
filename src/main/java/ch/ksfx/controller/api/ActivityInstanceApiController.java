@@ -26,20 +26,24 @@ import java.util.Collections;
 public class ActivityInstanceApiController
 {
     private final ActivityInstanceQueryService queryService;
+    private final ApiProjectScope apiProjectScope;
 
-    public ActivityInstanceApiController(ActivityInstanceQueryService queryService)
+    public ActivityInstanceApiController(ActivityInstanceQueryService queryService, ApiProjectScope apiProjectScope)
     {
         this.queryService = queryService;
+        this.apiProjectScope = apiProjectScope;
     }
 
     /**
      * All filters optional: {@code status} (RUNNING | FINISHED | PENDING_APPROVAL),
+     * {@code projectId} (defaults to the calling client's bound project, else all projects),
      * {@code activityId}, {@code startedAfter} / {@code startedBefore} (ISO date or date-time),
      * {@code lastHours} (shorthand that overrides startedAfter), {@code page} / {@code size}
      * (size capped at {@link ActivityInstanceQueryService#MAX_PAGE_SIZE}). Newest first.
      */
     @GetMapping
-    public ResponseEntity<?> list(@RequestParam(required = false) Long activityId,
+    public ResponseEntity<?> list(@RequestParam(required = false) Long projectId,
+                                  @RequestParam(required = false) Long activityId,
                                   @RequestParam(required = false) String status,
                                   @RequestParam(required = false) String startedAfter,
                                   @RequestParam(required = false) String startedBefore,
@@ -48,6 +52,13 @@ public class ActivityInstanceApiController
                                   @RequestParam(defaultValue = "50") Integer size)
     {
         ActivityInstanceQueryService.Filter filter = new ActivityInstanceQueryService.Filter();
+
+        try {
+            filter.projectId = apiProjectScope.forList(projectId);
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.singletonMap("error", e.getMessage()));
+        }
+
         filter.activityId = activityId;
         filter.status = status;
         filter.startedAfter = startedAfter;

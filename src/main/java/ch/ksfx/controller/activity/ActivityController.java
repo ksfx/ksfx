@@ -1,5 +1,6 @@
 package ch.ksfx.controller.activity;
 
+import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
 public class ActivityController
 {
     private ActivityDAO activityDAO;
+    private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
     private ActivityInstanceDAO activityInstanceDAO;
     private ActivityInstanceRunner activityInstanceRunner;
@@ -50,9 +52,10 @@ public class ActivityController
                               ActivityInstanceRunner activityInstanceRunner,
                               ServiceProvider serviceProvider,
                               SchedulerService schedulerService,
-                              ActivityGitRepositoryService activityGitRepositoryService, ProjectDAO projectDAO)
+                              ActivityGitRepositoryService activityGitRepositoryService, ProjectDAO projectDAO, ProjectContextService projectContextService)
     {
         this.activityDAO = activityDAO;
+        this.projectContextService = projectContextService;
         this.projectDAO = projectDAO;
         this.activityInstanceDAO = activityInstanceDAO;
         this.activityInstanceRunner = activityInstanceRunner;
@@ -85,10 +88,12 @@ public class ActivityController
             activityCategory = activityDAO.getActivityCategoryForId(Long.parseLong(selectedActivityCategory));
         }
 
-        Page<Activity> activitiesPage = activityDAO.getActivitiesForPageableAndActivityCategory(pageable, activityCategory);
+        // The current project's activities and categories only (phase 3 of the project concept).
+        Long projectId = projectContextService.current().getId();
+        Page<Activity> activitiesPage = activityDAO.getActivitiesForPageableAndActivityCategoryAndProject(pageable, activityCategory, projectId);
 
         model.addAttribute("activitiesPage", activitiesPage);
-        model.addAttribute("activityCategories", activityDAO.getAllActivityCategories());
+        model.addAttribute("activityCategories", activityDAO.getAllActivityCategoriesForProject(projectId));
         model.addAttribute("selectedActivityCategory", selectedActivityCategory);
         model.addAttribute("activityInstanceRunner",activityInstanceRunner);
 
@@ -106,6 +111,7 @@ public class ActivityController
     @GetMapping("/activityinstances/{activityid}")
     public String activityInstancesViewer(Pageable pageable, @PathVariable(value = "activityid", required = true) Long activityId, Model model)
     {
+        projectContextService.follow(activityDAO.getActivityForId(activityId).getProject()); // deep links win
         Page<ActivityInstance> activityInstancePage = activityInstanceDAO.getActivityInstancesForPageableAndActivity(pageable, activityDAO.getActivityForId(activityId), false);
 
         model.addAttribute("activityInstanceRunner", activityInstanceRunner);
@@ -122,6 +128,7 @@ public class ActivityController
 
         if (activityId != null) {
             activity = activityDAO.getActivityForId(activityId);
+            projectContextService.follow(activity.getProject()); // deep links win
 
             if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive(activity.getProject())) {
                 try {
@@ -153,7 +160,7 @@ public class ActivityController
         }
 
         model.addAttribute("allActivityApprovalStrategies", activityDAO.getAllActivityApprovalStrategies());
-        model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategories());
+        model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategoriesForProject(projectContextService.current().getId()));
         model.addAttribute("activity", activity);
 
         return "activity/activity_edit";
@@ -166,7 +173,7 @@ public class ActivityController
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("allActivityApprovalStrategies", activityDAO.getAllActivityApprovalStrategies());
-            model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategories());
+            model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategoriesForProject(projectContextService.current().getId()));
 
             return "activity/activity_edit";
         }
@@ -179,7 +186,7 @@ public class ActivityController
         // keep the stored one on edit, default project on create. Must precede the Git block,
         // which writes into the project's repository.
         Activity previousActivity = activity.getId() != null ? activityDAO.getActivityForId(activity.getId()) : null;
-        activity.setProject(previousActivity != null && previousActivity.getProject() != null ? previousActivity.getProject() : projectDAO.getDefaultProject());
+        activity.setProject(previousActivity != null && previousActivity.getProject() != null ? previousActivity.getProject() : projectContextService.current());
 
         if (activityGitRepositoryService.isActive(activity.getProject())) {
             try {
@@ -210,7 +217,7 @@ public class ActivityController
                 bindingResult.rejectValue("groovyCode", "activity.groovyCode", "Konnte nicht ins Git-Repository schreiben: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
 
                 model.addAttribute("allActivityApprovalStrategies", activityDAO.getAllActivityApprovalStrategies());
-                model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategories());
+                model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategoriesForProject(projectContextService.current().getId()));
 
                 return "activity/activity_edit";
             }

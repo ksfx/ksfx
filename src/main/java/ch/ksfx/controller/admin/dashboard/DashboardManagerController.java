@@ -1,8 +1,8 @@
 package ch.ksfx.controller.admin.dashboard;
 
-import ch.ksfx.controller.dashboard.DashboardController;
-import ch.ksfx.dao.GenericDataStoreDAO;
-import ch.ksfx.model.GenericDataStore;
+import ch.ksfx.dao.ProjectDAO;
+import ch.ksfx.model.Project;
+import ch.ksfx.services.project.ProjectContextService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,27 +10,27 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+/** Edits the CURRENT project's dashboard (Project.dashboardContent) - reached from the project form or the Admin menu. */
 @Controller
 @RequestMapping("/admin/dashboardmanager")
 public class DashboardManagerController
 {
-    private GenericDataStoreDAO genericDataStoreDAO;
+    private final ProjectDAO projectDAO;
+    private final ProjectContextService projectContextService;
 
-    public DashboardManagerController(GenericDataStoreDAO genericDataStoreDAO)
+    public DashboardManagerController(ProjectDAO projectDAO, ProjectContextService projectContextService)
     {
-        this.genericDataStoreDAO = genericDataStoreDAO;
+        this.projectDAO = projectDAO;
+        this.projectContextService = projectContextService;
     }
 
     @GetMapping("/")
     public String editDashboardContent(Model model)
     {
-        GenericDataStore genericDataStore = genericDataStoreDAO.getGenericDataStoreForKey(DashboardController.DASHBOARD_CONTENT_KEY);
+        Project project = projectContextService.current();
 
-        if (genericDataStore == null) {
-            genericDataStore = new GenericDataStore(DashboardController.DASHBOARD_CONTENT_KEY, "");
-        }
-
-        model.addAttribute("dashboardContent", genericDataStore.getDataValue());
+        model.addAttribute("project", project);
+        model.addAttribute("dashboardContent", project.getDashboardContent() != null ? project.getDashboardContent() : "");
 
         return "admin/dashboard/dashboard_manager";
     }
@@ -38,15 +38,9 @@ public class DashboardManagerController
     @PostMapping("/")
     public String editDashboardContent(@RequestParam(value = "content", required = true) String content)
     {
-        GenericDataStore genericDataStore = genericDataStoreDAO.getGenericDataStoreForKey(DashboardController.DASHBOARD_CONTENT_KEY);
-
-        if (genericDataStore == null) {
-            genericDataStore = new GenericDataStore(DashboardController.DASHBOARD_CONTENT_KEY, "");
-        }
-
-        genericDataStore.setDataValue(content);
-
-        genericDataStoreDAO.saveOrUpdateGenericDataStore(genericDataStore);
+        Project project = projectDAO.getProjectForId(projectContextService.current().getId());
+        project.setDashboardContent(content);
+        projectDAO.saveOrUpdateProject(project);
 
         return "redirect:/admin/dashboardmanager/";
     }
