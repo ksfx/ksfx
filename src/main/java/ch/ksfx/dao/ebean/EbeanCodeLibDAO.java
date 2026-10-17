@@ -56,9 +56,25 @@ public class EbeanCodeLibDAO implements CodeLibDAO
     }
 
     @Override
+    public List<CodeLib> getAllCodeLibsForProject(Long projectId)
+    {
+        return Ebean.find(CodeLib.class).where().eq("project.id", projectId).order().asc("name").findList();
+    }
+
+    @Override
     public Page<CodeLib> getCodeLibsForPageable(Pageable pageable)
     {
+        return getCodeLibsForPageableAndProject(pageable, null);
+    }
+
+    @Override
+    public Page<CodeLib> getCodeLibsForPageableAndProject(Pageable pageable, Long projectId)
+    {
         ExpressionList expressionList = Ebean.find(CodeLib.class).where();
+
+        if (projectId != null) {
+            expressionList.eq("project.id", projectId);
+        }
 
         expressionList.setFirstRow(new Long(pageable.getOffset()).intValue());
         expressionList.setMaxRows(pageable.getPageSize());
@@ -98,8 +114,14 @@ public class EbeanCodeLibDAO implements CodeLibDAO
     }
 
     @Override
-    public CodeLib getCodeLibForName(String name)
+    public List<CodeLib> getCodeLibsForName(String name)
     {
-        return Ebean.find(CodeLib.class).where().eq("name", name).findUnique();
+        return Ebean.find(CodeLib.class).where().eq("name", name).findList();
+    }
+
+    @Override
+    public CodeLib getCodeLibForProjectAndName(Long projectId, String name)
+    {
+        return Ebean.find(CodeLib.class).where().eq("project.id", projectId).eq("name", name).setMaxRows(1).findOne();
     }
 }

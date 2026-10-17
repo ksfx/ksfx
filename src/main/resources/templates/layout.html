@@ -6,7 +6,7 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <meta name="author" content="Kejo Starosta" />
-        <link rel="icon" type="image/png" th:href="@{/images/ksfx-header.png}" />
+        <link rel="icon" type="image/svg+xml" th:href="@{/images/ksfx-logo.svg}" />
         <meta name="description" content="KSFX Data Analysis: Information Retrieval, Sentiment Analysis, Data-Science" />
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" />
         <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" /> -->
@@ -71,6 +71,36 @@
             </div>
             -->
         </header>
+
+        <!-- Project switcher as the ROOT of every breadcrumb (every page's <ol class="breadcrumb">
+             starts with <li th:replace="layout :: project-crumb">): the breadcrumb is the
+             hierarchy and the project is its root, so "Alpha / Wiki / Page" reads as what it is -
+             the one visible place for the current project (concept, section 3). Read at RENDER
+             time via the bean, not from a @ModelAttribute: those are computed before the handler
+             runs, and a handler that follows a deep link into another project
+             (ProjectContextService#follow) would otherwise still show the old project here.
+             Switching returns to the current page, or to the area's root if the page belonged to
+             a specific entity of the old project (ProjectSwitchController). -->
+        <li th:fragment="project-crumb" class="breadcrumb-item ksfx-project-crumb" th:with="currentProject=${@projectContextService.current()}" sec:authorize="isAuthenticated()">
+            <th:block th:if="${currentProject != null}">
+                <div class="dropdown">
+                    <!-- Initial badge instead of an icon (decided 2026-10-11): a project is a context,
+                         not a folder, and the badge makes projects tellable apart at a glance - in
+                         the crumb and, stacked, in the list. -->
+                    <a href="#" id="projectSwitcher" class="ksfx-project-crumb-toggle dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Current project - click to switch">
+                        <span class="ksfx-project-badge" th:text="${#strings.toUpperCase(#strings.substring(currentProject.name, 0, 1))}">P</span> <span th:text="${currentProject.name}">Project</span>
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="projectSwitcher">
+                        <a th:each="p : ${allProjects}" class="dropdown-item" th:classappend="${p.id == currentProject.id} ? ' active' : ''"
+                           th:href="@{/projects/switch/{id}(id=${p.id},returnTo=${#httpServletRequest.requestURI})}">
+                            <span class="ksfx-project-badge" th:text="${#strings.toUpperCase(#strings.substring(p.name, 0, 1))}">P</span> <span th:text="${p.name}"></span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" th:href="@{/agentic/projects/}"><i class="fa fa-cog"></i> Manage projects</a>
+                    </div>
+                </div>
+            </th:block>
+        </li>
 
         <footer th:fragment="site-footer" th:remove="tag">
             <br />
@@ -169,21 +199,11 @@
 
         <navigation th:fragment="bumble2" th:remove="tag">
             <nav class="navbar navbar-expand-sm navbar-light bg-light">
-                <a href="" class="pull-left">
-                    <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
-                        <th:block th:if="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                            <a th:href="@{/}"><img th:src="@{/images/ksfx-header-dark.png}" /></a>
-                        </th:block>
-                    </th:block>
-                    <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
-                        <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                            <a th:href="@{/}"><img th:src="@{/images/ksfx-header.png}" /></a>
-                        </th:block>
-                    </th:block>
-                    <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode')}" >
-                        <a th:href="@{/}"><img th:src="@{/images/ksfx-header.png}" /></a>
-                    </th:block>
-
+                <!-- One logo for both display modes - the badge mark carries its own navy
+                     background (see the SVG), so the old light/dark PNG switching (and its
+                     invalid nested <a> markup) is gone. -->
+                <a th:href="@{/}" class="pull-left" style="margin-right:10px">
+                    <img th:src="@{/images/ksfx-logo.svg}" alt="KSFX" style="height:42px;width:42px" />
                 </a>
                 <a class="navbar-brand" th:href="@{/}">KSFX</a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample03" aria-controls="navbarsExample03" aria-expanded="false" aria-label="Toggle navigation">
@@ -198,8 +218,11 @@
                         <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'agentic')} ? 'nav-item active' : 'nav-item'">
                             <a class="nav-link" th:href="@{/agentic/}">Agentic</a>
                         </li>
-                        <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'dataexplorer')} ? 'nav-item active' : 'nav-item'">
-                            <a class="nav-link" th:href="@{/dataexplorer/}">Data Explorer</a>
+                        <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'issues')} ? 'nav-item active' : 'nav-item'">
+                            <a class="nav-link" th:href="@{/issues/}">Issues</a>
+                        </li>
+                        <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'wiki')} ? 'nav-item active' : 'nav-item'">
+                            <a class="nav-link" th:href="@{/wiki/}">Wiki</a>
                         </li>
                         <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'activity')} ? 'nav-item dropdown active' : 'nav-item dropdown'">
                             <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Activities</a>
@@ -216,17 +239,7 @@
                                 <a class="dropdown-item" href="#">Report Categories</a>
                             </div>
                         </li>
-                        <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'informationretrieval')} ? 'nav-item dropdown active' : 'nav-item dropdown'">
-                            <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown03" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Information Retrieval</a>
-                            <div class="dropdown-menu" aria-labelledby="dropdown03">
-                                <a class="dropdown-item" th:href="@{/informationretrieval/}" >Information Retrieval</a>
-                                <a class="dropdown-item" href="#">Result Units</a>
-                                <a class="dropdown-item" th:href="@{/informationretrieval/resultunitmodifierconfiguration/}">Result Unit Modifier Configurations</a>
-                                <a class="dropdown-item" th:href="@{/informationretrieval/resultverifierconfiguration/}">Result Verifier Configurations</a>
-                                <a class="dropdown-item" th:href="@{/informationretrieval/resourceloaderpluginconfiguration/}">Resource Loader Plugin Configurations</a>
-                            </div>
-                        </li>
-                        <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'admin')} ? 'nav-item dropdown active' : 'nav-item dropdown'">
+                        <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'admin') or #strings.contains(#httpServletRequest.requestURI, 'dataexplorer') or #strings.contains(#httpServletRequest.requestURI, 'informationretrieval')} ? 'nav-item dropdown active' : 'nav-item dropdown'">
                             <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Admin</a>
                             <div class="dropdown-menu" aria-labelledby="dropdown04">
                                 <a class="dropdown-item" href="#">Admin</a>
@@ -234,14 +247,25 @@
                                 <a class="dropdown-item" th:href="@{/admin/category/}">Data Structure</a>
                                 <a class="dropdown-item" th:href="@{/admin/genericdatastore/}">Generic Data Store</a>
                                 <a class="dropdown-item" th:href="@{/admin/note/}">Notes</a>
-                                <a class="dropdown-item" th:href="@{/admin/codelib/}">Code Libs</a>
                                 <a class="dropdown-item" th:href="@{/admin/systemlog/}">System Logs</a>
                                 <a class="dropdown-item" th:href="@{/admin/scheduler/}">Scheduler</a>
                                 <a class="dropdown-item" th:href="@{/admin/homepagemanager/}">Homepage Manager</a>
                                 <a class="dropdown-item" th:href="@{/admin/dashboardmanager/}">Dashboard Manager</a>
-                                <a class="dropdown-item" th:href="@{/admin/gitsync/}">KSFX - GIT Sync</a>
+                                <a class="dropdown-item" th:href="@{/agentic/projects/}">Projects</a>
                                 <a class="dropdown-item" th:href="@{/apiclients/}">API Clients</a>
+                                <a class="dropdown-item" th:href="@{/admin/usermanagement/}">User Management</a>
                                 <a class="dropdown-item" th:href="@{/admin/user/changepassword}">Change Password</a>
+                                <!-- End-of-life features, parked here instead of cluttering the top
+                                     bar (Bootstrap 4 has no nested dropdowns, so a labeled section
+                                     is the two-stage menu) - kept reachable until they're actually
+                                     removed. See KSFX issue #1 (Header cluttered). -->
+                                <div class="dropdown-divider"></div>
+                                <h6 class="dropdown-header">Legacy (end-of-life)</h6>
+                                <a class="dropdown-item ksfx-legacy-item" th:href="@{/dataexplorer/}">Data Explorer</a>
+                                <a class="dropdown-item ksfx-legacy-item" th:href="@{/informationretrieval/}">Information Retrieval</a>
+                                <a class="dropdown-item ksfx-legacy-item" th:href="@{/informationretrieval/resultunitmodifierconfiguration/}">Result Unit Modifier Configurations</a>
+                                <a class="dropdown-item ksfx-legacy-item" th:href="@{/informationretrieval/resultverifierconfiguration/}">Result Verifier Configurations</a>
+                                <a class="dropdown-item ksfx-legacy-item" th:href="@{/informationretrieval/resourceloaderpluginconfiguration/}">Resource Loader Plugin Configurations</a>
                             </div>
                         </li>
                     </ul>

@@ -1,36 +1,29 @@
 package ch.ksfx.controller.dashboard;
 
-import ch.ksfx.controller.HomeController;
-import ch.ksfx.dao.GenericDataStoreDAO;
-import ch.ksfx.model.GenericDataStore;
-import ch.ksfx.services.lucene.IndexService;
+import ch.ksfx.model.Project;
+import ch.ksfx.services.project.ProjectContextService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+/** The current project's dashboard (phase 3 of the project concept, 2026-10-12 - one global dashboard before). */
 @Controller
 @RequestMapping("/dashboard")
 public class DashboardController
 {
-    public static final String DASHBOARD_CONTENT_KEY = "DASHBOARD_CONTENT";
+    private final ProjectContextService projectContextService;
 
-    private GenericDataStoreDAO genericDataStoreDAO;
-
-    public DashboardController(GenericDataStoreDAO genericDataStoreDAO)
+    public DashboardController(ProjectContextService projectContextService)
     {
-        this.genericDataStoreDAO = genericDataStoreDAO;
+        this.projectContextService = projectContextService;
     }
 
     @RequestMapping("/")
     public String index(Model model)
     {
-        GenericDataStore genericDataStore = genericDataStoreDAO.getGenericDataStoreForKey(DashboardController.DASHBOARD_CONTENT_KEY);
+        Project project = projectContextService.current();
 
-        if (genericDataStore == null) {
-            genericDataStore = new GenericDataStore(DashboardController.DASHBOARD_CONTENT_KEY, "");
-        }
-
-        model.addAttribute("dashboardContent", genericDataStore.getDataValue());
+        model.addAttribute("dashboardContent", project != null && project.getDashboardContent() != null ? project.getDashboardContent() : "");
 
         return "dashboard/dashboard";
     }

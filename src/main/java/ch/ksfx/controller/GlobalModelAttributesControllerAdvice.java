@@ -17,6 +17,9 @@
 
 package ch.ksfx.controller;
 
+import java.util.List;
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.services.SystemEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -38,6 +41,15 @@ public class GlobalModelAttributesControllerAdvice
     public String instanceName()
     {
         return systemEnvironment.getMainConfiguration().getString("instanceName");
+    }
+
+    @Autowired
+    private ProjectDAO projectDAO;
+
+    @ModelAttribute("allProjects")
+    public List<Project> allProjects()
+    {
+        return projectDAO.getAllProjects();
     }
 
     @ModelAttribute("isProductionInstance")

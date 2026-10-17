@@ -28,7 +28,12 @@ public interface CodeLibDAO
     public void saveOrUpdateCodeLib(CodeLib codeLib);
     public void deleteCodeLib(CodeLib codeLib);
     public List<CodeLib> getAllCodeLibs();
+    public List<CodeLib> getAllCodeLibsForProject(Long projectId);
     public Page<CodeLib> getCodeLibsForPageable(Pageable pageable);
+    /** The project's libs, paged - the Code Libs page works inside the current project (2026-10-11). */
+    public Page<CodeLib> getCodeLibsForPageableAndProject(Pageable pageable, Long projectId);
     public CodeLib getCodeLibForId(Long codeLibId);
-    public CodeLib getCodeLibForName(String name);
+    /** All libs with this name across projects - names are unique per project only since 2026-10-10. */
+    public List<CodeLib> getCodeLibsForName(String name);
+    public CodeLib getCodeLibForProjectAndName(Long projectId, String name);
 }

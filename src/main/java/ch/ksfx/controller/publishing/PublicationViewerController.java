@@ -1,5 +1,6 @@
 package ch.ksfx.controller.publishing;
 
+import ch.ksfx.model.Project;
 import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.publishing.PublishingResourceDAO;
 import ch.ksfx.model.publishing.*;
@@ -164,7 +165,7 @@ public class PublicationViewerController
             Console.startConsole(publishingConfiguration);
             PublishingDataShare.startShare(publishingConfiguration);
 
-            GenericResponse streamResponse = loadPublishingStrategy(resolveGroovySource(publishingConfiguration.getGitPath(), publishingConfiguration.getPublishingStrategy()), uriParameters);
+            GenericResponse streamResponse = loadPublishingStrategy(resolveGroovySource(publishingConfiguration.getProject(), publishingConfiguration.getGitPath(), publishingConfiguration.getPublishingStrategy()), uriParameters);
 
             systemLogger.logMessage("PUBLICATION", "Data can be cached: " + publishingConfiguration.getName());
 
@@ -298,7 +299,7 @@ public class PublicationViewerController
             Console.startConsole(publishingConfiguration);
             PublishingDataShare.startShare(publishingConfiguration);
 
-            GenericResponse streamResponse = loadPublishingStrategy(resolveGroovySource(publishingResource.getGitPath(), publishingResource.getPublishingStrategy()), uriParameters);
+            GenericResponse streamResponse = loadPublishingStrategy(resolveGroovySource(publishingResource.getPublishingConfiguration().getProject(), publishingResource.getGitPath(), publishingResource.getPublishingStrategy()), uriParameters);
 //            InputStream inputStream = streamResponse.getStream();
 
             systemLogger.logMessage("PUBLICATION", "Data can be cached: " + publishingResource.getTitle());
@@ -384,12 +385,12 @@ public class PublicationViewerController
     }
 
     /** Reads the Groovy source from Git when gitPath is set and Git is active, falling back to the DB-cached value on failure. */
-    private String resolveGroovySource(String gitPath, String dbGroovyCode)
+    private String resolveGroovySource(Project project, String gitPath, String dbGroovyCode)
     {
-        if (gitPath != null && activityGitRepositoryService.isActive()) {
+        if (gitPath != null && activityGitRepositoryService.isActive(project)) {
             try {
-                activityGitRepositoryService.sync();
-                return activityGitRepositoryService.readActivitySource(gitPath);
+                activityGitRepositoryService.sync(project);
+                return activityGitRepositoryService.readActivitySource(project, gitPath);
             } catch (Exception e) {
                 systemLogger.logMessage("WARN", "Could not read publishing strategy source from Git, falling back to cached value", e);
             }

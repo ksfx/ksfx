@@ -1,5 +1,8 @@
 package ch.ksfx.controller.api;
 
+import org.springframework.web.bind.annotation.RequestParam;
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.CodeLibDAO;
 import ch.ksfx.model.CodeLib;
 import ch.ksfx.services.ServiceProvider;
@@ -41,6 +44,8 @@ import java.util.stream.Collectors;
 public class CodeLibApiController
 {
     private final CodeLibDAO codeLibDAO;
+    private final ProjectDAO projectDAO;
+    private final ApiProjectScope apiProjectScope;
     private final ServiceProvider serviceProvider;
     private final ActivityGitRepositoryService activityGitRepositoryService;
     private final SystemLogger systemLogger;
@@ -48,18 +53,28 @@ public class CodeLibApiController
     public CodeLibApiController(CodeLibDAO codeLibDAO,
                                  ServiceProvider serviceProvider,
                                  ActivityGitRepositoryService activityGitRepositoryService,
-                                 SystemLogger systemLogger)
+                                 SystemLogger systemLogger, ProjectDAO projectDAO, ApiProjectScope apiProjectScope)
     {
         this.codeLibDAO = codeLibDAO;
+        this.projectDAO = projectDAO;
+        this.apiProjectScope = apiProjectScope;
         this.serviceProvider = serviceProvider;
         this.activityGitRepositoryService = activityGitRepositoryService;
         this.systemLogger = systemLogger;
     }
 
     @GetMapping
-    public ResponseEntity<?> list()
+    public ResponseEntity<?> list(@RequestParam(required = false) Long projectId)
     {
-        List<CodeLib> codeLibs = codeLibDAO.getAllCodeLibs();
+        Long scopeProjectId;
+
+        try {
+            scopeProjectId = apiProjectScope.forList(projectId);
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+
+        List<CodeLib> codeLibs = scopeProjectId != null ? codeLibDAO.getAllCodeLibsForProject(scopeProjectId) : codeLibDAO.getAllCodeLibs();
 
         return ResponseEntity.ok(codeLibs.stream().map(CodeLibApiDto::from).collect(Collectors.toList()));
     }
@@ -73,7 +88,7 @@ public class CodeLibApiController
             return notFound();
         }
 
-        return ResponseEntity.ok(CodeLibApiDto.fromDetailed(codeLib, resolveGroovyCode(codeLib.getGitPath(), codeLib.getGroovyCode())));
+        return ResponseEntity.ok(CodeLibApiDto.fromDetailed(codeLib, resolveGroovyCode(codeLib.getProject(), codeLib.getGitPath(), codeLib.getGroovyCode())));
     }
 
     @PostMapping
@@ -89,17 +104,27 @@ public class CodeLibApiController
         }
 
         CodeLib codeLib = new CodeLib();
+
+        try {
+            codeLib.setProject(apiProjectScope.forWrite(body.projectId));
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+
+        if (codeLibDAO.getCodeLibForProjectAndName(codeLib.getProject().getId(), body.name) != null) {
+            return ResponseEntity.badRequest().body(errorBody("A code lib named '" + body.name + "' already exists in project " + codeLib.getProject().getName()));
+        }
         codeLib.setName(body.name);
         codeLib.setDescription(body.description);
         codeLib.setGroovyCode(body.groovyCode);
 
-        if (activityGitRepositoryService.isActive() && codeLib.getGroovyCode() != null) {
+        if (activityGitRepositoryService.isActive(codeLib.getProject()) && codeLib.getGroovyCode() != null) {
             try {
-                String slug = activityGitRepositoryService.uniqueSlug(
+                String slug = activityGitRepositoryService.uniqueSlug(codeLib.getProject(), 
                         activityGitRepositoryService.slugify(codeLib.getName()),
                         ActivityGitRepositoryService.LIBS_DIRECTORY);
                 codeLib.setGitPath(ActivityGitRepositoryService.LIBS_DIRECTORY + "/" + slug + ".groovy");
-                activityGitRepositoryService.writeActivitySource(codeLib.getGitPath(), codeLib.getGroovyCode(), "Create code lib: " + codeLib.getName());
+                activityGitRepositoryService.writeActivitySource(codeLib.getProject(), codeLib.getGitPath(), codeLib.getGroovyCode(), "Create code lib: " + codeLib.getName());
             } catch (Exception e) {
                 return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorBody("Could not write to Git repository: " + e.getMessage()));
             }
@@ -138,18 +163,18 @@ public class CodeLibApiController
         codeLib.setName(body.name);
         codeLib.setDescription(body.description);
 
-        if (activityGitRepositoryService.isActive() && codeLib.getGroovyCode() != null) {
+        if (activityGitRepositoryService.isActive(codeLib.getProject()) && codeLib.getGroovyCode() != null) {
             try {
-                if (codeLib.getGitPath() == null) {
-                    String slug = activityGitRepositoryService.uniqueSlug(
+                if (!ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath())) {
+                    String slug = activityGitRepositoryService.uniqueSlug(codeLib.getProject(), 
                             activityGitRepositoryService.slugify(codeLib.getName()),
                             ActivityGitRepositoryService.LIBS_DIRECTORY);
                     codeLib.setGitPath(ActivityGitRepositoryService.LIBS_DIRECTORY + "/" + slug + ".groovy");
-                    activityGitRepositoryService.writeActivitySource(codeLib.getGitPath(), codeLib.getGroovyCode(), "Create code lib: " + codeLib.getName());
+                    activityGitRepositoryService.writeActivitySource(codeLib.getProject(), codeLib.getGitPath(), codeLib.getGroovyCode(), "Create code lib: " + codeLib.getName());
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (CodeLib other : codeLibDAO.getAllCodeLibs()) {
-                        if (!other.getId().equals(codeLib.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(codeLib.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -157,10 +182,10 @@ public class CodeLibApiController
                     String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.LIBS_DIRECTORY, codeLib.getName(), codeLib.getGitPath(), siblingPaths);
 
                     if (!desiredPath.equals(codeLib.getGitPath())) {
-                        activityGitRepositoryService.renameAndWriteActivitySource(codeLib.getGitPath(), desiredPath, codeLib.getGroovyCode(), "Rename code lib: " + codeLib.getName());
+                        activityGitRepositoryService.renameAndWriteActivitySource(codeLib.getProject(), codeLib.getGitPath(), desiredPath, codeLib.getGroovyCode(), "Rename code lib: " + codeLib.getName());
                         codeLib.setGitPath(desiredPath);
                     } else {
-                        activityGitRepositoryService.writeActivitySource(codeLib.getGitPath(), codeLib.getGroovyCode(), "Update code lib: " + codeLib.getName());
+                        activityGitRepositoryService.writeActivitySource(codeLib.getProject(), codeLib.getGitPath(), codeLib.getGroovyCode(), "Update code lib: " + codeLib.getName());
                     }
                 }
             } catch (Exception e) {
@@ -185,9 +210,9 @@ public class CodeLibApiController
         // Mirrors CodeLibController.delete: a Git failure is logged but never blocks deleting the
         // DB row - an orphaned file in Git is recoverable, a CodeLib the API refuses to delete
         // because Git is unreachable is a worse failure mode for the caller.
-        if (codeLib.getGitPath() != null && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive(codeLib.getProject())) {
             try {
-                activityGitRepositoryService.deleteAndPush(codeLib.getGitPath(), "Delete code lib: " + codeLib.getName());
+                activityGitRepositoryService.deleteAndPush(codeLib.getProject(), codeLib.getGitPath(), "Delete code lib: " + codeLib.getName());
             } catch (Exception e) {
                 systemLogger.logMessage("WARN", "Could not delete CodeLib '" + codeLib.getName() + "' from Git", e);
             }
@@ -225,15 +250,15 @@ public class CodeLibApiController
      * and sync is active, re-fetch and return the live Git content instead of the possibly-stale
      * DB cache, falling back to the cache on any Git error rather than failing the whole request.
      */
-    private String resolveGroovyCode(String gitPath, String cachedGroovyCode)
+    private String resolveGroovyCode(Project project, String gitPath, String cachedGroovyCode)
     {
-        if (gitPath == null || !activityGitRepositoryService.isActive()) {
+        if (gitPath == null || !activityGitRepositoryService.isActive(project)) {
             return cachedGroovyCode;
         }
 
         try {
-            activityGitRepositoryService.sync();
-            return activityGitRepositoryService.readActivitySource(gitPath);
+            activityGitRepositoryService.sync(project);
+            return activityGitRepositoryService.readActivitySource(project, gitPath);
         } catch (Exception e) {
             systemLogger.logMessage("WARN", "Could not read Git source for gitPath '" + gitPath + "', falling back to cached groovyCode", e);
             return cachedGroovyCode;
@@ -255,6 +280,8 @@ public class CodeLibApiController
         public String name;
         public String description;
         public String groovyCode;
+        /** Create only - see ActivityApiController.ActivityApiRequest#projectId. */
+        public Long projectId;
     }
 
     /**
@@ -267,6 +294,8 @@ public class CodeLibApiController
     private static class CodeLibApiDto
     {
         public Long id;
+        public Long projectId;
+        public String projectName;
         public String name;
         public String description;
         public String gitPath;
@@ -280,6 +309,8 @@ public class CodeLibApiController
             dto.name = codeLib.getName();
             dto.description = codeLib.getDescription();
             dto.gitPath = codeLib.getGitPath();
+            dto.projectId = codeLib.getProject() != null ? codeLib.getProject().getId() : null;
+            dto.projectName = codeLib.getProject() != null ? codeLib.getProject().getName() : null;
 
             return dto;
         }

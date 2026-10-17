@@ -16,7 +16,7 @@ import java.util.Date;
 public class Agent
 {
     private Long id;
-    private AgenticProject agenticProject;
+    private Project project;
 
     @NotNull
     @Size(min = 2, max = 200)
@@ -45,15 +45,15 @@ public class Agent
     }
 
     @ManyToOne
-    @JoinColumn(name = "agentic_project_id")
-    public AgenticProject getAgenticProject()
+    @JoinColumn(name = "project_id")
+    public Project getProject()
     {
-        return agenticProject;
+        return project;
     }
 
-    public void setAgenticProject(AgenticProject agenticProject)
+    public void setProject(Project project)
     {
-        this.agenticProject = agenticProject;
+        this.project = project;
     }
 
     public String getName()

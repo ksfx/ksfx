@@ -2,7 +2,7 @@ package ch.ksfx.services.agentic;
 
 import ch.ksfx.model.Agent;
 import ch.ksfx.model.AgenticConfig;
-import ch.ksfx.model.AgenticProject;
+import ch.ksfx.model.Project;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -18,18 +18,18 @@ import java.nio.file.Paths;
 @Service
 public class AgentWorkspaceService
 {
-    public Path resolveAgenticProjectWorkspace(AgenticProject agenticProject, AgenticConfig config)
+    public Path resolveProjectWorkspace(Project project, AgenticConfig config)
     {
-        return Paths.get(config.getWorkspaceRoot(), "project-" + agenticProject.getId());
+        return Paths.get(config.getWorkspaceRoot(), "project-" + project.getId());
     }
 
     public Path resolveWorkspace(Agent agent, AgenticConfig config)
     {
-        if (agent.getAgenticProject() == null) {
+        if (agent.getProject() == null) {
             return Paths.get(config.getWorkspaceRoot(), "agent-" + agent.getId());
         }
 
-        return resolveAgenticProjectWorkspace(agent.getAgenticProject(), config).resolve("agent-" + agent.getId());
+        return resolveProjectWorkspace(agent.getProject(), config).resolve("agent-" + agent.getId());
     }
 
     public Path ensureWorkspace(Agent agent, AgenticConfig config) throws IOException
@@ -38,15 +38,15 @@ public class AgentWorkspaceService
 
         Files.createDirectories(workspace);
 
-        if (agent.getAgenticProject() != null) {
-            Files.createDirectories(resolveAgenticProjectWorkspace(agent.getAgenticProject(), config).resolve("shared"));
+        if (agent.getProject() != null) {
+            Files.createDirectories(resolveProjectWorkspace(agent.getProject(), config).resolve("shared"));
         }
 
         return workspace;
     }
 
     /**
-     * Physically relocates an agent's workspace after its AgenticProject assignment changes, so
+     * Physically relocates an agent's workspace after its Project assignment changes, so
      * existing files/history aren't silently orphaned. No-op if the paths are already the same or
      * the source doesn't exist yet (agent never ran); refuses to clobber an existing destination.
      */

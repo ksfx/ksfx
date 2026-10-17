@@ -32,6 +32,18 @@ public class Console
         private static final ThreadLocal<Long> publishingConfigurationId = new ThreadLocal<Long>();
         private static final ThreadLocal<Long> activityInstanceId = new ThreadLocal<Long>();
        
+        /** The activity instance whose run the current thread belongs to, or null (used by CodeLibLoaderService to resolve per-project libs). */
+        public static Long currentActivityInstanceId()
+        {
+                return activityInstanceId.get();
+        }
+
+        /** The publishing configuration whose run the current thread belongs to, or null. */
+        public static Long currentPublishingConfigurationId()
+        {
+                return publishingConfigurationId.get();
+        }
+
         public static void startConsole(PublishingConfiguration publishingConfiguration)
         {
                 publishingConfigurationId.set(publishingConfiguration.getId());
