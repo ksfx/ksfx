@@ -86,19 +86,6 @@ public class ActivityGitRepositoryService
                 && config.getLocalClonePath() != null && !config.getLocalClonePath().isEmpty();
     }
 
-    /** Any project Git-backed at all - for UI hints that are not about one specific entity. */
-    public boolean isAnyActive()
-    {
-        for (GitSyncConfig config : gitSyncConfigDAO.getAllGitSyncConfigs()) {
-            if (config.getEnabled() && config.getRepoUrl() != null && !config.getRepoUrl().isEmpty()
-                    && config.getLocalClonePath() != null && !config.getLocalClonePath().isEmpty()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private Object lockFor(Project project)
     {
         return projectLocks.computeIfAbsent(project.getId(), id -> new Object());

@@ -68,7 +68,8 @@ public class PublishingController
     @ModelAttribute("gitSyncActive")
     public boolean gitSyncActive()
     {
-        return activityGitRepositoryService.isAnyActive();
+        // "Is the CURRENT project Git-backed?" - drives the "changes stay in the database" hint on the pages of this area.
+        return activityGitRepositoryService.isActive(projectContextService.current());
     }
 
     @GetMapping("/")
