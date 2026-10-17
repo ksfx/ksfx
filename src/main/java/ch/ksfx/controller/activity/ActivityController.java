@@ -1,5 +1,8 @@
 package ch.ksfx.controller.activity;
 
+import ch.ksfx.services.project.ProjectContextService;
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.model.activity.Activity;
@@ -36,6 +39,8 @@ import java.util.stream.Collectors;
 public class ActivityController
 {
     private ActivityDAO activityDAO;
+    private final ProjectContextService projectContextService;
+    private final ProjectDAO projectDAO;
     private ActivityInstanceDAO activityInstanceDAO;
     private ActivityInstanceRunner activityInstanceRunner;
     private ServiceProvider serviceProvider;
@@ -47,9 +52,11 @@ public class ActivityController
                               ActivityInstanceRunner activityInstanceRunner,
                               ServiceProvider serviceProvider,
                               SchedulerService schedulerService,
-                              ActivityGitRepositoryService activityGitRepositoryService)
+                              ActivityGitRepositoryService activityGitRepositoryService, ProjectDAO projectDAO, ProjectContextService projectContextService)
     {
         this.activityDAO = activityDAO;
+        this.projectContextService = projectContextService;
+        this.projectDAO = projectDAO;
         this.activityInstanceDAO = activityInstanceDAO;
         this.activityInstanceRunner = activityInstanceRunner;
         this.serviceProvider = serviceProvider;
@@ -60,7 +67,8 @@ public class ActivityController
     @ModelAttribute("gitSyncActive")
     public boolean gitSyncActive()
     {
-        return activityGitRepositoryService.isActive();
+        // "Is the CURRENT project Git-backed?" - drives the "changes stay in the database" hint on the pages of this area.
+        return activityGitRepositoryService.isActive(projectContextService.current());
     }
 
     @GetMapping("/")
@@ -81,10 +89,12 @@ public class ActivityController
             activityCategory = activityDAO.getActivityCategoryForId(Long.parseLong(selectedActivityCategory));
         }
 
-        Page<Activity> activitiesPage = activityDAO.getActivitiesForPageableAndActivityCategory(pageable, activityCategory);
+        // The current project's activities and categories only (phase 3 of the project concept).
+        Long projectId = projectContextService.current().getId();
+        Page<Activity> activitiesPage = activityDAO.getActivitiesForPageableAndActivityCategoryAndProject(pageable, activityCategory, projectId);
 
         model.addAttribute("activitiesPage", activitiesPage);
-        model.addAttribute("activityCategories", activityDAO.getAllActivityCategories());
+        model.addAttribute("activityCategories", activityDAO.getAllActivityCategoriesForProject(projectId));
         model.addAttribute("selectedActivityCategory", selectedActivityCategory);
         model.addAttribute("activityInstanceRunner",activityInstanceRunner);
 
@@ -102,6 +112,7 @@ public class ActivityController
     @GetMapping("/activityinstances/{activityid}")
     public String activityInstancesViewer(Pageable pageable, @PathVariable(value = "activityid", required = true) Long activityId, Model model)
     {
+        projectContextService.follow(activityDAO.getActivityForId(activityId).getProject()); // deep links win
         Page<ActivityInstance> activityInstancePage = activityInstanceDAO.getActivityInstancesForPageableAndActivity(pageable, activityDAO.getActivityForId(activityId), false);
 
         model.addAttribute("activityInstanceRunner", activityInstanceRunner);
@@ -118,11 +129,12 @@ public class ActivityController
 
         if (activityId != null) {
             activity = activityDAO.getActivityForId(activityId);
+            projectContextService.follow(activity.getProject()); // deep links win
 
-            if (activity.getGitPath() != null && activityGitRepositoryService.isActive()) {
+            if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive(activity.getProject())) {
                 try {
-                    activityGitRepositoryService.sync();
-                    activity.setGroovyCode(activityGitRepositoryService.readActivitySource(activity.getGitPath()));
+                    activityGitRepositoryService.sync(activity.getProject());
+                    activity.setGroovyCode(activityGitRepositoryService.readActivitySource(activity.getProject(), activity.getGitPath()));
                 } catch (Exception e) {
                     model.addAttribute("gitSyncWarning", "Konnte nicht mit Git synchronisieren, zeige zwischengespeicherten Stand: " + e.getMessage());
                 }
@@ -149,7 +161,7 @@ public class ActivityController
         }
 
         model.addAttribute("allActivityApprovalStrategies", activityDAO.getAllActivityApprovalStrategies());
-        model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategories());
+        model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategoriesForProject(projectContextService.current().getId()));
         model.addAttribute("activity", activity);
 
         return "activity/activity_edit";
@@ -162,7 +174,7 @@ public class ActivityController
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("allActivityApprovalStrategies", activityDAO.getAllActivityApprovalStrategies());
-            model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategories());
+            model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategoriesForProject(projectContextService.current().getId()));
 
             return "activity/activity_edit";
         }
@@ -171,18 +183,24 @@ public class ActivityController
             activity.setActivityCategory(null);
         }
 
-        if (activityGitRepositoryService.isActive()) {
+        // The form carries no project (projects change only in Admin > Projects > Assignments) -
+        // keep the stored one on edit, default project on create. Must precede the Git block,
+        // which writes into the project's repository.
+        Activity previousActivity = activity.getId() != null ? activityDAO.getActivityForId(activity.getId()) : null;
+        activity.setProject(previousActivity != null && previousActivity.getProject() != null ? previousActivity.getProject() : projectContextService.current());
+
+        if (activityGitRepositoryService.isActive(activity.getProject())) {
             try {
-                if (activity.getGitPath() == null) {
-                    String slug = activityGitRepositoryService.uniqueSlug(
+                if (!ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
+                    String slug = activityGitRepositoryService.uniqueSlug(activity.getProject(), 
                             activityGitRepositoryService.slugify(activity.getName()),
                             ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
                     activity.setGitPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY + "/" + slug + ".groovy");
-                    activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
+                    activityGitRepositoryService.writeActivitySource(activity.getProject(), activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (Activity other : activityDAO.getAllActivities()) {
-                        if (!other.getId().equals(activity.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(activity.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -190,17 +208,17 @@ public class ActivityController
                     String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY, activity.getName(), activity.getGitPath(), siblingPaths);
 
                     if (!desiredPath.equals(activity.getGitPath())) {
-                        activityGitRepositoryService.renameAndWriteActivitySource(activity.getGitPath(), desiredPath, activity.getGroovyCode(), "Rename activity: " + activity.getName());
+                        activityGitRepositoryService.renameAndWriteActivitySource(activity.getProject(), activity.getGitPath(), desiredPath, activity.getGroovyCode(), "Rename activity: " + activity.getName());
                         activity.setGitPath(desiredPath);
                     } else {
-                        activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Update activity: " + activity.getName());
+                        activityGitRepositoryService.writeActivitySource(activity.getProject(), activity.getGitPath(), activity.getGroovyCode(), "Update activity: " + activity.getName());
                     }
                 }
             } catch (Exception e) {
                 bindingResult.rejectValue("groovyCode", "activity.groovyCode", "Konnte nicht ins Git-Repository schreiben: " + e.getMessage() + StacktraceUtil.getStackTrace(e));
 
                 model.addAttribute("allActivityApprovalStrategies", activityDAO.getAllActivityApprovalStrategies());
-                model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategories());
+                model.addAttribute("allActivityCategories", activityDAO.getAllActivityCategoriesForProject(projectContextService.current().getId()));
 
                 return "activity/activity_edit";
             }
@@ -276,9 +294,9 @@ public class ActivityController
     {
         Activity activity = activityDAO.getActivityForId(activityId);
 
-        if (activity.getGitPath() != null && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive(activity.getProject())) {
             try {
-                activityGitRepositoryService.deleteAndPush(activity.getGitPath(), "Delete activity: " + activity.getName());
+                activityGitRepositoryService.deleteAndPush(activity.getProject(), activity.getGitPath(), "Delete activity: " + activity.getName());
             } catch (Exception e) {
                 redirectAttributes.addFlashAttribute("gitSyncWarning", "Konnte Datei nicht aus Git löschen: " + e.getMessage());
             }

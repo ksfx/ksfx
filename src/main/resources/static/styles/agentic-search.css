@@ -105,7 +105,7 @@
 
 .agentic-search-result-agent {
     font-weight: 600;
-    color: #5b5bd6;
+    color: #2e77d0;
 }
 
 .agentic-search-result-role {
@@ -120,7 +120,7 @@
 }
 
 .agentic-search-result-snippet mark {
-    background: rgba(91, 91, 214, 0.25);
+    background: rgba(48, 136, 232, 0.25);
     color: inherit;
     border-radius: 2px;
     padding: 0 1px;
@@ -148,7 +148,7 @@
 
 .agentic-search-context-open {
     font-size: 0.82rem;
-    color: #5b5bd6;
+    color: #2e77d0;
     text-decoration: none;
 }
 
@@ -159,7 +159,7 @@
 /* Context view reuses the real chat's own .agentic-msg bubbles (agentic-chat.css) - only the
    matched message itself needs new styling, to stand out from its 10-before/10-after neighbors. */
 .agentic-search-highlight .agentic-bubble {
-    outline: 2px solid #5b5bd6;
+    outline: 2px solid #2e77d0;
     outline-offset: 2px;
 }
 

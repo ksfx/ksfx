@@ -1,9 +1,9 @@
 package ch.ksfx.services.agentic;
 
-import ch.ksfx.dao.AgenticProjectDAO;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.model.AgenticAuthMode;
 import ch.ksfx.model.AgenticConfig;
-import ch.ksfx.model.AgenticProject;
+import ch.ksfx.model.Project;
 import ch.ksfx.model.DockerContainerStatus;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import org.apache.commons.net.util.SubnetUtils;
@@ -26,13 +26,13 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Optional, per-AgenticProject Docker isolation for the headless claude CLI subprocess a turn
+ * Optional, per-Project Docker isolation for the headless claude CLI subprocess a turn
  * spawns - see ksfx/ksfx#25 and the Agentic wiki page for the full design rationale. Deliberately
  * opt-in: {@link #isTrustedDockerAddress} and every lifecycle method here are only ever called for
  * an agent/project that has {@code dockerIsolationEnabled} set, so KSFX never shells out to
- * {@code docker} at all unless at least one AgenticProject has actually turned this on.
+ * {@code docker} at all unless at least one Project has actually turned this on.
  *
- * One long-lived container per AgenticProject (not per Agent, not per-turn), named
+ * One long-lived container per Project (not per Agent, not per-turn), named
  * "ksfx-agentic-&lt;projectId&gt;", built from a single plain ubuntu:24.04 image with no custom
  * per-project images - see {@link #ensureContainer}. The project's workspace folder is bind-mounted
  * in at /workspace, so uploads/downloads/code/shared all survive a {@link #throwAway} rebuild;
@@ -81,7 +81,7 @@ public class AgenticDockerService
     static final int HOST_PORT_BASE = 18080;
     static final int HOST_PORT_STRIDE_PER_PROJECT = 10;
 
-    private final AgenticProjectDAO agenticProjectDAO;
+    private final ProjectDAO projectDAO;
     private final AgentWorkspaceService agentWorkspaceService;
     private final SystemLogger systemLogger;
 
@@ -93,16 +93,16 @@ public class AgenticDockerService
     private volatile List<SubnetUtils.SubnetInfo> trustedDockerSubnets = new ArrayList<>();
     private volatile long trustedDockerSubnetsCheckedAt = 0;
 
-    public AgenticDockerService(AgenticProjectDAO agenticProjectDAO, AgentWorkspaceService agentWorkspaceService, SystemLogger systemLogger)
+    public AgenticDockerService(ProjectDAO projectDAO, AgentWorkspaceService agentWorkspaceService, SystemLogger systemLogger)
     {
-        this.agenticProjectDAO = agenticProjectDAO;
+        this.projectDAO = projectDAO;
         this.agentWorkspaceService = agentWorkspaceService;
         this.systemLogger = systemLogger;
     }
 
-    public String containerNameFor(Long agenticProjectId)
+    public String containerNameFor(Long projectId)
     {
-        return "ksfx-agentic-" + agenticProjectId;
+        return "ksfx-agentic-" + projectId;
     }
 
     /** The unprivileged OS user inside the container the claude process is exec'd as - see {@link #CONTAINER_USER}. */
@@ -114,15 +114,15 @@ public class AgenticDockerService
     /**
      * Container-port -&gt; host-port for every port published on this project's container - see the
      * {@link #FIRST_AGENT_PORT}/{@link #HOST_PORT_BASE} field comments for the derivation. Pure
-     * arithmetic on {@code agenticProjectId}, no Docker call involved, so this is safe to show on a
+     * arithmetic on {@code projectId}, no Docker call involved, so this is safe to show on a
      * project's page (e.g. as a preview/status table) even while its container isn't running, and is
      * exactly what {@link #buildRunCommand} publishes - the single source of truth for both, so a UI
      * display of this can never drift from what's actually running.
      */
-    public Map<Integer, Integer> portMappingsFor(Long agenticProjectId)
+    public Map<Integer, Integer> portMappingsFor(Long projectId)
     {
         Map<Integer, Integer> mappings = new LinkedHashMap<>();
-        int hostBase = HOST_PORT_BASE + (int) (agenticProjectId * HOST_PORT_STRIDE_PER_PROJECT);
+        int hostBase = HOST_PORT_BASE + (int) (projectId * HOST_PORT_STRIDE_PER_PROJECT);
 
         for (int containerPort = FIRST_AGENT_PORT; containerPort <= LAST_AGENT_PORT; containerPort++) {
             mappings.put(containerPort, hostBase + (containerPort - FIRST_AGENT_PORT));
@@ -137,7 +137,7 @@ public class AgenticDockerService
      * only if the marker file is missing, e.g. a crash mid-bootstrap), or no-ops if already running.
      * Also serves as the "Start" action from the UI - the three cases collapse to the same call.
      */
-    public void ensureContainer(AgenticProject project, AgenticConfig config) throws IOException
+    public void ensureContainer(Project project, AgenticConfig config) throws IOException
     {
         String name = containerNameFor(project.getId());
 
@@ -167,7 +167,7 @@ public class AgenticDockerService
             // Non-zero inspect covers both "no such object" (expected - not created yet) and a
             // genuinely unreachable daemon; either way the right next step is the same "try to
             // create" attempt below, which will itself fail clearly if Docker isn't actually up.
-            Path hostWorkspace = agentWorkspaceService.resolveAgenticProjectWorkspace(project, config).toAbsolutePath();
+            Path hostWorkspace = agentWorkspaceService.resolveProjectWorkspace(project, config).toAbsolutePath();
             Files.createDirectories(hostWorkspace);
 
             requireSuccess(runProcess(120, buildRunCommand(name, hostWorkspace.toString(), config, project.getId()).toArray(new String[0])));
@@ -193,11 +193,11 @@ public class AgenticDockerService
     }
 
     /**
-     * {@code agenticProjectId} may be null only for {@link #describeSetup}'s unsaved-new-project
+     * {@code projectId} may be null only for {@link #describeSetup}'s unsaved-new-project
      * preview (no id yet to derive host ports from) - every real invocation (from {@link
      * #ensureContainer}) always has one, so port publishing there is unconditional.
      */
-    private List<String> buildRunCommand(String containerName, String hostWorkspaceMount, AgenticConfig config, Long agenticProjectId)
+    private List<String> buildRunCommand(String containerName, String hostWorkspaceMount, AgenticConfig config, Long projectId)
     {
         List<String> runCommand = new ArrayList<>(Arrays.asList("docker", "run", "-d", "--name", containerName,
                 "--add-host=host.docker.internal:host-gateway",
@@ -205,8 +205,8 @@ public class AgenticDockerService
                 "-w", "/workspace",
                 "--memory=2g", "--cpus=2"));
 
-        if (agenticProjectId != null) {
-            for (Map.Entry<Integer, Integer> mapping : portMappingsFor(agenticProjectId).entrySet()) {
+        if (projectId != null) {
+            for (Map.Entry<Integer, Integer> mapping : portMappingsFor(projectId).entrySet()) {
                 runCommand.add("-p");
                 runCommand.add(mapping.getValue() + ":" + mapping.getKey());
             }
@@ -288,16 +288,16 @@ public class AgenticDockerService
      * {@link #bootstrapScript}, so this can never drift from what {@link #ensureContainer} really
      * runs), plus a short note on how each chat turn then execs into it. Pure/side-effect-free (like
      * ClaudeCliSessionService.buildAutoAppendedSystemPrompt) so it doubles as a read-only preview on
-     * the project edit page - see AgenticProjectController.edit()/submit(). Works for an unsaved new
+     * the project edit page - see ProjectController.edit()/submit(). Works for an unsaved new
      * project too (id == null), using a placeholder container name/workspace path in that case.
      */
-    public String describeSetup(AgenticProject project, AgenticConfig config)
+    public String describeSetup(Project project, AgenticConfig config)
     {
         String containerName = project.getId() != null ? containerNameFor(project.getId()) : "ksfx-agentic-<project-id>";
         // Windows rejects '<'/'>' at Path-construction time (not just on real I/O), so the
         // placeholder for an unsaved project is built as a plain string, not via Paths.get.
         String hostWorkspaceMount = project.getId() != null
-                ? agentWorkspaceService.resolveAgenticProjectWorkspace(project, config).toAbsolutePath().toString()
+                ? agentWorkspaceService.resolveProjectWorkspace(project, config).toAbsolutePath().toString()
                 : Paths.get(config.getWorkspaceRoot()).toAbsolutePath() + java.io.File.separator + "project-<project-id>";
 
         String runCommand = String.join(" ", quoteIfNeeded(buildRunCommand(containerName, hostWorkspaceMount, config, project.getId())));
@@ -359,7 +359,7 @@ public class AgenticDockerService
      * Docker itself is unreachable) and never throws - a failed refresh just leaves the previous
      * persisted status on screen.
      */
-    public void refreshStatus(AgenticProject project)
+    public void refreshStatus(Project project)
     {
         String name = containerNameFor(project.getId());
 
@@ -394,7 +394,7 @@ public class AgenticDockerService
         requireSuccess(runProcess(480, "docker", "exec", containerName, "bash", "-lc", bootstrapScript()));
     }
 
-    public void stop(AgenticProject project) throws IOException
+    public void stop(Project project) throws IOException
     {
         String name = containerNameFor(project.getId());
 
@@ -430,7 +430,7 @@ public class AgenticDockerService
      * shared across every Agent assigned to it (see the class javadoc), so a `docker kill` here
      * ends their in-flight work too, not only the turn this call is cleaning up after.
      */
-    public boolean recoverStuckContainer(AgenticProject project)
+    public boolean recoverStuckContainer(Project project)
     {
         String name = containerNameFor(project.getId());
 
@@ -467,7 +467,7 @@ public class AgenticDockerService
      * toolchain" action. The project's workspace is bind-mounted, not part of the container's own
      * filesystem, so uploads/downloads/code/shared are untouched by this.
      */
-    public void throwAway(AgenticProject project, AgenticConfig config) throws IOException
+    public void throwAway(Project project, AgenticConfig config) throws IOException
     {
         try {
             runProcess(30, "docker", "rm", "-f", containerNameFor(project.getId()));
@@ -479,19 +479,19 @@ public class AgenticDockerService
     }
 
     /**
-     * Best-effort container teardown for AgenticProjectController's delete cascade - deliberately
+     * Best-effort container teardown for ProjectController's delete cascade - deliberately
      * never throws, so a broken/unreachable Docker install can never block deleting an
-     * AgenticProject (matching that cascade's existing "never block on cleanup" behavior for the
+     * Project (matching that cascade's existing "never block on cleanup" behavior for the
      * agent-workspace side). A leftover container in that edge case needs manual `docker rm`.
      */
-    public void deleteContainer(AgenticProject project)
+    public void deleteContainer(Project project)
     {
         String name = containerNameFor(project.getId());
 
         try {
             runProcess(30, "docker", "rm", "-f", name);
         } catch (Exception e) {
-            systemLogger.logMessage("AGENTIC", "Could not remove Docker container '" + name + "' for deleted AgenticProject "
+            systemLogger.logMessage("AGENTIC", "Could not remove Docker container '" + name + "' for deleted Project "
                     + project.getId() + " - may need manual cleanup.", e);
         }
     }
@@ -504,7 +504,7 @@ public class AgenticDockerService
      */
     public boolean isTrustedDockerAddress(String remoteAddr)
     {
-        if (agenticProjectDAO.getAllAgenticProjects().stream().noneMatch(AgenticProject::getDockerIsolationEnabled)) {
+        if (projectDAO.getAllProjects().stream().noneMatch(Project::getDockerIsolationEnabled)) {
             return false;
         }
 
@@ -552,15 +552,15 @@ public class AgenticDockerService
         }
     }
 
-    private void persistStatus(AgenticProject project, DockerContainerStatus status, String containerName)
+    private void persistStatus(Project project, DockerContainerStatus status, String containerName)
     {
         project.setDockerContainerName(containerName);
         project.setDockerContainerStatus(status);
         project.setDockerContainerLastCheckedAt(new Date());
-        agenticProjectDAO.saveOrUpdateAgenticProject(project);
+        projectDAO.saveOrUpdateProject(project);
     }
 
-    private void persistStatusBestEffort(AgenticProject project, DockerContainerStatus status, String containerName)
+    private void persistStatusBestEffort(Project project, DockerContainerStatus status, String containerName)
     {
         try {
             persistStatus(project, status, containerName);

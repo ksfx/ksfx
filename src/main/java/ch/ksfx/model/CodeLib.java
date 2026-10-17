@@ -34,6 +34,7 @@ import javax.validation.constraints.Size;
 public class CodeLib
 {
     private Long id;
+    private Project project;
 
     @NotNull
     @Size(min = 2, max = 200)
@@ -94,5 +95,17 @@ public class CodeLib
     public void setGitPath(String gitPath)
     {
         this.gitPath = gitPath;
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    public Project getProject()
+    {
+        return project;
+    }
+
+    public void setProject(Project project)
+    {
+        this.project = project;
     }
 }

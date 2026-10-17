@@ -8,13 +8,16 @@ import java.util.Date;
 
 /**
  * Groups {@link Agent}s that share a workspace root folder (and optionally shared resources
- * within it). An Agent's assignment to an AgenticProject is optional.
+ * within it). An Agent's assignment to an Project is optional.
  */
 @Entity
-@Table(name = "agentic_project")
-public class AgenticProject
+@Table(name = "project")
+public class Project
 {
     private Long id;
+    private boolean defaultProject = false;
+    private boolean adminProject = false;
+    private String dashboardContent;
 
     @NotNull
     @Size(min = 2, max = 200)
@@ -127,5 +130,50 @@ public class AgenticProject
     public void setDockerContainerLastCheckedAt(Date dockerContainerLastCheckedAt)
     {
         this.dockerContainerLastCheckedAt = dockerContainerLastCheckedAt;
+    }
+
+    /**
+     * The project the migration created and attached all pre-existing, project-less content to;
+     * the fallback for everything created without an explicit project and the one project that can
+     * never be deleted (see ProjectController#delete). Exactly one row has this set.
+     */
+    @Column(name = "is_default")
+    public boolean getDefaultProject()
+    {
+        return defaultProject;
+    }
+
+    public void setDefaultProject(boolean defaultProject)
+    {
+        this.defaultProject = defaultProject;
+    }
+
+    /**
+     * Agents of an admin project may read and write every project's wikis and trackers and may
+     * message every agent; agents of ordinary projects are confined to their own project (see
+     * AgentScope). Decided 2026-10-10 (concept, Q6).
+     */
+    @Column(name = "is_admin")
+    public boolean getAdminProject()
+    {
+        return adminProject;
+    }
+
+    public void setAdminProject(boolean adminProject)
+    {
+        this.adminProject = adminProject;
+    }
+
+    /** The project's dashboard (HTML), shown at /dashboard/ while this is the current project; edited via Admin > Dashboard Manager. Was one global Generic Data Store entry before phase 3. */
+    @Lob
+    @Column(name = "dashboard_content")
+    public String getDashboardContent()
+    {
+        return dashboardContent;
+    }
+
+    public void setDashboardContent(String dashboardContent)
+    {
+        this.dashboardContent = dashboardContent;
     }
 }

@@ -8,6 +8,7 @@
 <div th:if="${publishingConfiguration}">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
+            <li th:replace="layout :: project-crumb"></li>
             <li class="breadcrumb-item"><a th:href="@{/publishing/}">Publishing</a></li>
             <li class="breadcrumb-item"><a th:href="@{/publishing/publishingconfigurationedit/{id}(id=${publishingConfiguration.id})}" th:inline="text">Publishing Configuration [[${publishingConfiguration.name}]]</a></li>
             <li class="breadcrumb-item active" aria-current="page"><span th:inline="text">Publishing Resource [[${publishingResource.title}]]</span></li>

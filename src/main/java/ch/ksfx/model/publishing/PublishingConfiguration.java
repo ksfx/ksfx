@@ -17,6 +17,7 @@
 
 package ch.ksfx.model.publishing;
 
+import ch.ksfx.model.Project;
 import javax.persistence.*;
 import java.util.List;
 
@@ -26,6 +27,7 @@ import java.util.List;
 public class PublishingConfiguration
 {
     private Long id;
+    private Project project;
     private String name;
 	private String uri;
     private PublishingCategory publishingCategory;
@@ -238,5 +240,16 @@ public class PublishingConfiguration
 		
 		return null;
 	}
-}
 
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    public Project getProject()
+    {
+        return project;
+    }
+
+    public void setProject(Project project)
+    {
+        this.project = project;
+    }
+}

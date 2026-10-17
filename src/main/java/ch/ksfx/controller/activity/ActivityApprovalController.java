@@ -1,5 +1,6 @@
 package ch.ksfx.controller.activity;
 
+import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.model.activity.Activity;
@@ -23,12 +24,14 @@ import java.util.List;
 public class ActivityApprovalController
 {
     private ActivityInstanceDAO activityInstanceDAO;
+    private final ProjectContextService projectContextService;
     private ActivityDAO activityDAO;
     private ActivityInstanceRunner activityInstanceRunner;
 
-    public ActivityApprovalController(ActivityInstanceDAO activityInstanceDAO, ActivityDAO activityDAO, ActivityInstanceRunner activityInstanceRunner)
+    public ActivityApprovalController(ActivityInstanceDAO activityInstanceDAO, ActivityDAO activityDAO, ActivityInstanceRunner activityInstanceRunner, ProjectContextService projectContextService)
     {
         this.activityInstanceDAO = activityInstanceDAO;
+        this.projectContextService = projectContextService;
         this.activityDAO = activityDAO;
         this.activityInstanceRunner = activityInstanceRunner;
     }
@@ -36,7 +39,7 @@ public class ActivityApprovalController
     @GetMapping("/")
     public String activityApprovalIndex(Pageable pageable, Model model)
     {
-        model.addAttribute("unapprovedActivityInstancesPage", activityInstanceDAO.getActivityInstancesForPageableAndActivity(pageable,null, true));
+        model.addAttribute("unapprovedActivityInstancesPage", activityInstanceDAO.getUnapprovedActivityInstancesForPageableAndProject(pageable, projectContextService.current().getId()));
 
         return "activity/unapproved_activity_instances";
     }

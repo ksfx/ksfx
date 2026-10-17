@@ -17,6 +17,7 @@ import java.util.Date;
 public class ApiClient
 {
     private Long id;
+    private Project project;
 
     @NotNull
     @Size(min = 2, max = 200)
@@ -80,5 +81,22 @@ public class ApiClient
     public void setCreatedAt(Date createdAt)
     {
         this.createdAt = createdAt;
+    }
+
+    /**
+     * Optional: the project this client works in by default - the scope of its list calls and
+     * the home of what it creates when a request names no projectId (phase 3, 2026-10-12).
+     * Unbound clients see everything and create in the default project.
+     */
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    public Project getProject()
+    {
+        return project;
+    }
+
+    public void setProject(Project project)
+    {
+        this.project = project;
     }
 }

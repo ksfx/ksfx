@@ -1,5 +1,7 @@
 package ch.ksfx.controller.api;
 
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.model.activity.Activity;
@@ -17,6 +19,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import groovy.lang.GroovyClassLoader;
 import org.quartz.CronExpression;
 import org.quartz.SchedulerException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,6 +66,8 @@ import java.util.stream.Collectors;
 public class ActivityApiController
 {
     private final ActivityDAO activityDAO;
+    private final ProjectDAO projectDAO;
+    private final ApiProjectScope apiProjectScope;
     private final ActivityInstanceDAO activityInstanceDAO;
     private final ActivityInstanceRunner activityInstanceRunner;
     private final SchedulerService schedulerService;
@@ -73,9 +81,11 @@ public class ActivityApiController
                                   SchedulerService schedulerService,
                                   ServiceProvider serviceProvider,
                                   ActivityGitRepositoryService activityGitRepositoryService,
-                                  SystemLogger systemLogger)
+                                  SystemLogger systemLogger, ProjectDAO projectDAO, ApiProjectScope apiProjectScope)
     {
         this.activityDAO = activityDAO;
+        this.projectDAO = projectDAO;
+        this.apiProjectScope = apiProjectScope;
         this.activityInstanceDAO = activityInstanceDAO;
         this.activityInstanceRunner = activityInstanceRunner;
         this.schedulerService = schedulerService;
@@ -85,9 +95,16 @@ public class ActivityApiController
     }
 
     @GetMapping
-    public ResponseEntity<?> list(@RequestParam(required = false) Long activityCategoryId)
+    public ResponseEntity<?> list(@RequestParam(required = false) Long activityCategoryId, @RequestParam(required = false) Long projectId)
     {
         List<Activity> activities;
+        Long scopeProjectId;
+
+        try {
+            scopeProjectId = apiProjectScope.forList(projectId);
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
 
         if (activityCategoryId != null) {
             ActivityCategory category = activityDAO.getActivityCategoryForId(activityCategoryId);
@@ -98,7 +115,11 @@ public class ActivityApiController
 
             activities = activityDAO.getAllActivitiesForActivityCategory(category);
         } else {
-            activities = activityDAO.getAllActivities();
+            activities = scopeProjectId != null ? activityDAO.getAllActivitiesForProject(scopeProjectId) : activityDAO.getAllActivities();
+        }
+
+        if (scopeProjectId != null) {
+            activities = activities.stream().filter(a -> a.getProject() != null && scopeProjectId.equals(a.getProject().getId())).collect(Collectors.toList());
         }
 
         return ResponseEntity.ok(activities.stream().map(ActivityApiDto::from).collect(Collectors.toList()));
@@ -113,7 +134,7 @@ public class ActivityApiController
             return notFound();
         }
 
-        return ResponseEntity.ok(ActivityApiDto.fromDetailed(activity, resolveGroovyCode(activity.getGitPath(), activity.getGroovyCode())));
+        return ResponseEntity.ok(ActivityApiDto.fromDetailed(activity, resolveGroovyCode(activity.getProject(), activity.getGitPath(), activity.getGroovyCode())));
     }
 
     @PostMapping
@@ -129,6 +150,12 @@ public class ActivityApiController
         }
 
         Activity activity = new Activity();
+
+        try {
+            activity.setProject(apiProjectScope.forWrite(body.projectId)); // explicit projectId > client's bound project > default project
+        } catch (ApiProjectScope.UnknownProjectException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
         activity.setName(body.name);
         activity.setCronSchedule(body.cronSchedule);
         activity.setCronScheduleEnabled(body.cronScheduleEnabled);
@@ -154,13 +181,13 @@ public class ActivityApiController
             activity.setActivityApprovalStrategy(strategy);
         }
 
-        if (activityGitRepositoryService.isActive() && activity.getGroovyCode() != null) {
+        if (activityGitRepositoryService.isActive(activity.getProject()) && activity.getGroovyCode() != null) {
             try {
-                String slug = activityGitRepositoryService.uniqueSlug(
+                String slug = activityGitRepositoryService.uniqueSlug(activity.getProject(), 
                         activityGitRepositoryService.slugify(activity.getName()),
                         ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
                 activity.setGitPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY + "/" + slug + ".groovy");
-                activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
+                activityGitRepositoryService.writeActivitySource(activity.getProject(), activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
             } catch (Exception e) {
                 return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorBody("Could not write to Git repository: " + e.getMessage()));
             }
@@ -233,18 +260,18 @@ public class ActivityApiController
         activity.setCronSchedule(body.cronSchedule);
         activity.setCronScheduleEnabled(body.cronScheduleEnabled);
 
-        if (activityGitRepositoryService.isActive() && activity.getGroovyCode() != null) {
+        if (activityGitRepositoryService.isActive(activity.getProject()) && activity.getGroovyCode() != null) {
             try {
-                if (activity.getGitPath() == null) {
-                    String slug = activityGitRepositoryService.uniqueSlug(
+                if (!ActivityGitRepositoryService.hasGitPath(activity.getGitPath())) {
+                    String slug = activityGitRepositoryService.uniqueSlug(activity.getProject(), 
                             activityGitRepositoryService.slugify(activity.getName()),
                             ActivityGitRepositoryService.ACTIVITIES_DIRECTORY);
                     activity.setGitPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY + "/" + slug + ".groovy");
-                    activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
+                    activityGitRepositoryService.writeActivitySource(activity.getProject(), activity.getGitPath(), activity.getGroovyCode(), "Create activity: " + activity.getName());
                 } else {
                     Set<String> siblingPaths = new HashSet<>();
                     for (Activity other : activityDAO.getAllActivities()) {
-                        if (!other.getId().equals(activity.getId()) && other.getGitPath() != null) {
+                        if (!other.getId().equals(activity.getId()) && ActivityGitRepositoryService.hasGitPath(other.getGitPath())) {
                             siblingPaths.add(other.getGitPath());
                         }
                     }
@@ -252,10 +279,10 @@ public class ActivityApiController
                     String desiredPath = activityGitRepositoryService.desiredPath(ActivityGitRepositoryService.ACTIVITIES_DIRECTORY, activity.getName(), activity.getGitPath(), siblingPaths);
 
                     if (!desiredPath.equals(activity.getGitPath())) {
-                        activityGitRepositoryService.renameAndWriteActivitySource(activity.getGitPath(), desiredPath, activity.getGroovyCode(), "Rename activity: " + activity.getName());
+                        activityGitRepositoryService.renameAndWriteActivitySource(activity.getProject(), activity.getGitPath(), desiredPath, activity.getGroovyCode(), "Rename activity: " + activity.getName());
                         activity.setGitPath(desiredPath);
                     } else {
-                        activityGitRepositoryService.writeActivitySource(activity.getGitPath(), activity.getGroovyCode(), "Update activity: " + activity.getName());
+                        activityGitRepositoryService.writeActivitySource(activity.getProject(), activity.getGitPath(), activity.getGroovyCode(), "Update activity: " + activity.getName());
                     }
                 }
             } catch (Exception e) {
@@ -285,9 +312,9 @@ public class ActivityApiController
         // Mirrors ActivityController.delete: a Git failure is logged but never blocks deleting the
         // DB row - an orphaned file in Git is recoverable, an Activity the API refuses to delete
         // because Git is unreachable is a worse failure mode for the caller.
-        if (activity.getGitPath() != null && activityGitRepositoryService.isActive()) {
+        if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive(activity.getProject())) {
             try {
-                activityGitRepositoryService.deleteAndPush(activity.getGitPath(), "Delete activity: " + activity.getName());
+                activityGitRepositoryService.deleteAndPush(activity.getProject(), activity.getGitPath(), "Delete activity: " + activity.getName());
             } catch (Exception e) {
                 systemLogger.logMessage("WARN", "Could not delete Activity '" + activity.getName() + "' from Git", e);
             }
@@ -375,6 +402,67 @@ public class ActivityApiController
     }
 
     /**
+     * "Is this Activity running right now?" without needing an instanceId in hand - the answer the
+     * GUI has always had via {@link ActivityInstanceRunner}'s in-memory RunningActivitiesCache but
+     * the API never exposed. Deliberately in-memory, not derived from the DB's started/finished
+     * columns: after a server crash/restart those can read as started-but-never-finished, which
+     * this endpoint correctly reports as not running.
+     */
+    @GetMapping("/{id}/running")
+    public ResponseEntity<?> running(@PathVariable Long id)
+    {
+        Activity activity = activityDAO.getActivityForId(id);
+
+        if (activity == null) {
+            return notFound();
+        }
+
+        List<Long> instanceIds = activityInstanceRunner.getRunningInstancesForActivityId(id).stream()
+                .map(ActivityInstance::getId)
+                .collect(Collectors.toList());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("running", !instanceIds.isEmpty());
+        body.put("instanceIds", instanceIds);
+
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * All runs of one Activity, newest first, paged - closes the gap where instance ids were only
+     * knowable from one's own {@link #run} responses. Same status logic as {@link #getInstance} but
+     * without {@code console}: a run's log can be arbitrarily large, so it stays on the
+     * single-instance endpoint. {@code size} is capped defensively - unattended crawlers produce
+     * tens of thousands of instances per Activity.
+     */
+    @GetMapping("/{id}/instances")
+    public ResponseEntity<?> listInstances(@PathVariable Long id,
+                                           @RequestParam(defaultValue = "0") Integer page,
+                                           @RequestParam(defaultValue = "50") Integer size)
+    {
+        Activity activity = activityDAO.getActivityForId(id);
+
+        if (activity == null) {
+            return notFound();
+        }
+
+        Page<ActivityInstance> instancePage = activityInstanceDAO.getActivityInstancesForPageableAndActivity(
+                PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 200), Sort.by(Sort.Direction.DESC, "id")),
+                activity, false);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("activityId", id);
+        body.put("page", instancePage.getNumber());
+        body.put("size", instancePage.getSize());
+        body.put("totalElements", instancePage.getTotalElements());
+        body.put("instances", instancePage.getContent().stream()
+                .map(instance -> ActivityInstanceSummaryDto.from(instance, activityInstanceRunner.isActivityInstanceRunning(instance)))
+                .collect(Collectors.toList()));
+
+        return ResponseEntity.ok(body);
+    }
+
+    /**
      * Shared not-found/ownership check for the two endpoints above - null if the instance doesn't
      * exist or belongs to a different Activity than the {id} in the URL, same defensive pattern as
      * every other nested-resource check in this controller/CodeLibApiController (an instance can't
@@ -427,15 +515,15 @@ public class ActivityApiController
      * whole request - a caller reading via the API should see the same "what's actually in Git
      * right now" answer a human editing the same Activity in the GUI would.
      */
-    private String resolveGroovyCode(String gitPath, String cachedGroovyCode)
+    private String resolveGroovyCode(Project project, String gitPath, String cachedGroovyCode)
     {
-        if (gitPath == null || !activityGitRepositoryService.isActive()) {
+        if (gitPath == null || !activityGitRepositoryService.isActive(project)) {
             return cachedGroovyCode;
         }
 
         try {
-            activityGitRepositoryService.sync();
-            return activityGitRepositoryService.readActivitySource(gitPath);
+            activityGitRepositoryService.sync(project);
+            return activityGitRepositoryService.readActivitySource(project, gitPath);
         } catch (Exception e) {
             systemLogger.logMessage("WARN", "Could not read Git source for gitPath '" + gitPath + "', falling back to cached groovyCode", e);
             return cachedGroovyCode;
@@ -460,6 +548,8 @@ public class ActivityApiController
         public String groovyCode;
         public Long activityCategoryId;
         public Long activityApprovalStrategyId;
+        /** Create only: the project to create in (default: the client's bound project, else the default project). Ignored on update - projects change in Admin > Projects > Assignments. */
+        public Long projectId;
     }
 
     /**
@@ -473,6 +563,8 @@ public class ActivityApiController
     {
         public Long id;
         public String name;
+        public Long projectId;
+        public String projectName;
         public String cronSchedule;
         public boolean cronScheduleEnabled;
         public Long activityCategoryId;
@@ -491,6 +583,8 @@ public class ActivityApiController
             dto.cronSchedule = activity.getCronSchedule();
             dto.cronScheduleEnabled = activity.getCronScheduleEnabled();
             dto.gitPath = activity.getGitPath();
+            dto.projectId = activity.getProject() != null ? activity.getProject().getId() : null;
+            dto.projectName = activity.getProject() != null ? activity.getProject().getName() : null;
 
             if (activity.getActivityCategory() != null) {
                 dto.activityCategoryId = activity.getActivityCategory().getId();
@@ -561,6 +655,33 @@ public class ActivityApiController
             dto.finished = instance.getFinished();
             dto.approved = instance.getApproved();
             dto.console = instance.getConsole();
+
+            return dto;
+        }
+    }
+
+    /**
+     * Per-row shape for {@link #listInstances} - {@link ActivityInstanceApiDto} minus
+     * {@code console} (and minus {@code activityId}, which the list response carries once at the
+     * top level). Separate class rather than a nulled-out console so the list rows never grow the
+     * field back accidentally.
+     */
+    private static class ActivityInstanceSummaryDto
+    {
+        public Long instanceId;
+        public String status;
+        public Date started;
+        public Date finished;
+        public boolean approved;
+
+        static ActivityInstanceSummaryDto from(ActivityInstance instance, boolean running)
+        {
+            ActivityInstanceSummaryDto dto = new ActivityInstanceSummaryDto();
+            dto.instanceId = instance.getId();
+            dto.status = running ? "RUNNING" : (instance.getFinished() != null ? "FINISHED" : "PENDING_APPROVAL");
+            dto.started = instance.getStarted();
+            dto.finished = instance.getFinished();
+            dto.approved = instance.getApproved();
 
             return dto;
         }

@@ -43,4 +43,11 @@
     <include file="20260915090000_agent_message_internal.sql" relativeToChangelogFile="true"/>
     <include file="20260915100000_agent_message_voice_input.sql" relativeToChangelogFile="true"/>
     <include file="20260915110000_agent_message_completion_source.sql" relativeToChangelogFile="true"/>
+    <include file="20260918070000_wiki.sql" relativeToChangelogFile="true"/>
+    <include file="20260919090000_issues.sql" relativeToChangelogFile="true"/>
+    <include file="20260921120000_issue_numbers.sql" relativeToChangelogFile="true"/>
+    <include file="20260925214616_wiki_page_parent.sql" relativeToChangelogFile="true"/>
+    <include file="20261010090000_project_context.sql" relativeToChangelogFile="true"/>
+    <include file="20261011090000_project_admin_flag.sql" relativeToChangelogFile="true"/>
+    <include file="20261012090000_project_dashboard_apiclient.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

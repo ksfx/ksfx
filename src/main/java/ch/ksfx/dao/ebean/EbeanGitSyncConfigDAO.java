@@ -24,19 +24,20 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-/**
- * There is exactly one {@link GitSyncConfig} row per KSFX instance, describing which private Git
- * repository this instance's Activity/CodeLib code is stored in.
- */
 @Repository
 public class EbeanGitSyncConfigDAO implements GitSyncConfigDAO
 {
+    /** One row per project since the project migration (2026-10-10); null = the project is not Git-backed. */
     @Override
-    public GitSyncConfig getGitSyncConfig()
+    public GitSyncConfig getGitSyncConfigForProject(Long projectId)
     {
-        List<GitSyncConfig> configs = Ebean.find(GitSyncConfig.class).setMaxRows(1).findList();
+        return Ebean.find(GitSyncConfig.class).where().eq("project.id", projectId).setMaxRows(1).findOne();
+    }
 
-        return configs.isEmpty() ? null : configs.get(0);
+    @Override
+    public List<GitSyncConfig> getAllGitSyncConfigs()
+    {
+        return Ebean.find(GitSyncConfig.class).findList();
     }
 
     @Override

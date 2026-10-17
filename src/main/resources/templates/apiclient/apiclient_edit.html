@@ -7,6 +7,7 @@
 <header th:replace="layout :: site-header"/>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
         <li class="breadcrumb-item"><a th:href="@{/apiclients/}">API Clients</a></li>
         <li class="breadcrumb-item active">Edit API Client</li>
     </ol>
@@ -24,6 +25,14 @@
                 <label for="name">Name</label>
                 <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name not valid</div>
                 <input type="text" class="form-control" id="name" th:field="*{name}" />
+            </div>
+            <div class="form-group">
+                <label for="project">Project</label>
+                <select class="form-control" id="project" th:field="*{project.id}">
+                    <option value="">(no project - sees everything, creates in the default project)</option>
+                    <option th:each="p : ${allProjects}" th:value="${p.id}" th:text="${p.name}"></option>
+                </select>
+                <small class="form-text text-muted">Default scope of this client's API calls: lists are limited to this project and new entries land in it unless a request names a projectId.</small>
             </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />

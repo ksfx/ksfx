@@ -32,6 +32,10 @@ public interface PublishingConfigurationDAO
     public List<PublishingConfiguration> getAllPublishingConfigurations();
     public List<PublishingConfiguration> getPublishingConfigurationsForPublishingCategory(PublishingCategory publishingCategory);
     public Page<PublishingConfiguration> getPublishingConfigutationsForPageableAndPublishingCategory(Pageable pageable, PublishingCategory publishingCategory);
+    /** Project-scoped variants (phase 3 of the project concept): null projectId = all projects. */
+    public Page<PublishingConfiguration> getPublishingConfigurationsForPageableAndPublishingCategoryAndProject(Pageable pageable, PublishingCategory publishingCategory, Long projectId);
+    public List<PublishingConfiguration> getAllPublishingConfigurationsForProject(Long projectId);
+    public List<PublishingCategory> getAllPublishingCategoriesForProject(Long projectId);
     public void saveOrUpdatePublishingConfiguration(PublishingConfiguration publishingConfiguration);
     public void deletePublishingConfiguration(PublishingConfiguration publishingConfiguration);
     public PublishingCategory getPublishingCategoryForId(Long publishingCategoryId);

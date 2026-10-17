@@ -1,5 +1,6 @@
 package ch.ksfx.services.agentic;
 
+import ch.ksfx.services.project.AgentScope;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.AgentMessageDAO;
 import ch.ksfx.dao.AgenticConfigDAO;
@@ -8,7 +9,7 @@ import ch.ksfx.model.AgentMessage;
 import ch.ksfx.model.AgentMessageRole;
 import ch.ksfx.model.AgenticAuthMode;
 import ch.ksfx.model.AgenticConfig;
-import ch.ksfx.model.AgenticProject;
+import ch.ksfx.model.Project;
 import ch.ksfx.services.systemlogger.SystemLogger;
 import ch.ksfx.util.StacktraceUtil;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -224,7 +225,7 @@ public class ClaudeCliSessionService
         process.destroyForcibly();
 
         Agent agent = agentDAO.getAgentForId(agentId);
-        AgenticProject project = agent != null ? agent.getAgenticProject() : null;
+        Project project = agent != null ? agent.getProject() : null;
 
         if (project != null && project.getDockerIsolationEnabled()) {
             killDockerClaudeProcess(project);
@@ -662,7 +663,7 @@ public class ClaudeCliSessionService
         Path systemPromptFile = null;
         String turnError = null;
 
-        AgenticProject project = agent.getAgenticProject();
+        Project project = agent.getProject();
         boolean useDocker = project != null && project.getDockerIsolationEnabled();
 
         try {
@@ -930,7 +931,7 @@ public class ClaudeCliSessionService
      * one - posts a SYSTEM notice to each of them so that isn't silently discovered later the way
      * #52 was, only found by noticing the container's stats looked wrong.
      */
-    private void killDockerClaudeProcess(AgenticProject project)
+    private void killDockerClaudeProcess(Project project)
     {
         boolean escalatedToContainerRestart = agenticDockerService.recoverStuckContainer(project);
 
@@ -947,7 +948,7 @@ public class ClaudeCliSessionService
                 + "weiterhin vorhanden - das geht nur bei einem expliziten Throw Away verloren, nicht bei diesem "
                 + "automatischen Restart.";
 
-        for (Agent affected : agentDAO.getAgentsForAgenticProject(project.getId())) {
+        for (Agent affected : agentDAO.getAgentsForProject(project.getId())) {
             AgentMessage noticeMessage = new AgentMessage();
             noticeMessage.setAgent(affected);
             noticeMessage.setRole(AgentMessageRole.SYSTEM);
@@ -1014,7 +1015,7 @@ public class ClaudeCliSessionService
      */
     private List<String> buildCommand(Agent agent, AgenticConfig config, String userMessage, Path systemPromptFile)
     {
-        AgenticProject project = agent.getAgenticProject();
+        Project project = agent.getProject();
         boolean useDocker = project != null && project.getDockerIsolationEnabled();
 
         List<String> claudeArgs = new ArrayList<>();
@@ -1104,9 +1105,9 @@ public class ClaudeCliSessionService
      *     convention for coding-task work, purely a tidiness convention with no functional effect
      *     since the downloads/ change below; the downloads/ convention - see
      *     {@link #DOWNLOADS_DIRECTORY_NAME} - which is what actually determines what surfaces as a
-     *     download suggestion; and, if the agent has an AgenticProject, notes about its shared/
+     *     download suggestion; and, if the agent has an Project, notes about its shared/
      *     folder and Docker isolation/sudo)</li>
-     *     <li>{@link AgenticProject#getSystemPrompt()}, if the agent has a project and it's set</li>
+     *     <li>{@link Project#getSystemPrompt()}, if the agent has a project and it's set</li>
      *     <li>{@link Agent#getSystemPrompt()}, if set</li>
      * </ol>
      * All three are joined the same bare way - see the comment on the final concatenation below for
@@ -1125,7 +1126,7 @@ public class ClaudeCliSessionService
         // AgenticDockerService.ensureContainer sets on `docker run`). Non-isolated agents keep
         // calling plain localhost exactly as before. Shared by both the scheduling and the
         // agent-messaging sections below - both are /agentic/api/** self-service calls.
-        String agentApiBaseUrl = (agent.getAgenticProject() != null && agent.getAgenticProject().getDockerIsolationEnabled())
+        String agentApiBaseUrl = (agent.getProject() != null && agent.getProject().getDockerIsolationEnabled())
                 ? "http://host.docker.internal:" + serverPort
                 : "http://localhost:" + serverPort;
 
@@ -1146,8 +1147,9 @@ public class ClaudeCliSessionService
                 + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
                 + "-d '{\"name\":\"Tägliche Erinnerung\",\"taskPrompt\":\"Prüfe X\",\"cronSchedule\":\"0 0 9 * * ?\",\"cronScheduleEnabled\":true}'\n";
 
+        // Only agents this agent may message (its project's, or all for an admin project) - see AgentScope.
         List<Agent> otherAgents = agentDAO.getAllAgents().stream()
-                .filter(a -> a.getEnabled() && !a.getId().equals(agent.getId()))
+                .filter(a -> a.getEnabled() && !a.getId().equals(agent.getId()) && AgentScope.canAccess(agent, a.getProject()))
                 .sorted(Comparator.comparing(Agent::getName))
                 .collect(Collectors.toList());
 
@@ -1175,6 +1177,71 @@ public class ClaudeCliSessionService
             schedulingPrompt += directory;
         }
 
+        schedulingPrompt += "\nDu kannst außerdem die KSFX-Wikis lesen und beschreiben (Markdown-Seiten, organisiert "
+                + "in Ordnern) - ebenfalls per curl mit $KSFX_AGENT_TOKEN. Deine Schreibzugriffe werden automatisch "
+                + "dir als Agent zugeordnet und versioniert.\n"
+                + "Endpunkte:\n"
+                + "- GET  /agentic/api/wiki/wikis                  -> alle Wikis (id + name)\n"
+                + "- GET  /agentic/api/wiki/{wikiId}/pages         -> alle Seiten eines Wikis (pageId, folderPath, title)\n"
+                + "- GET  /agentic/api/wiki/{wikiId}/page/{pageId} -> eine Seite inkl. Markdown-Content und Anhängen "
+                + "(Feld \"attachments\": assetId, fileName, fileSize, apiUrl)\n"
+                + "- GET  /agentic/api/wiki/{wikiId}/page?folderPath=team/onboarding&title=Setup -> Seite per Ort statt id\n"
+                + "- POST /agentic/api/wiki/{wikiId}/page          -> Seite anlegen/aktualisieren (Upsert), JSON-Body: "
+                + "{\"folderPath\":\"team/onboarding\",\"title\":\"Setup\",\"content\":\"# Markdown...\"} - "
+                + "folderPath ist optional (weglassen = oberste Ebene), fehlende Ordner werden automatisch angelegt; "
+                + "alternativ {\"pageId\":<id>,...} für gezieltes Aktualisieren. Optional \"parentTitle\": \"Andere Seite\" "
+                + "macht die Seite zur Unterseite einer anderen - die Parent-Seite muss im selben Ordner liegen (weggelassen "
+                + "= Parent bleibt unverändert, \"\" = Unterseite wieder lösen)\n"
+                + "- POST /agentic/api/wiki/asset                  -> Datei-Upload (multipart, Feld \"file\"; optional "
+                + "Feld \"pageId\" um die Datei als Anhang an eine Seite zu hängen; ohne pageId bekommst du eine URL "
+                + "zum Einbetten in Markdown zurück)\n"
+                + "- GET  /agentic/api/wiki/asset/{assetId}        -> Datei-Download (Anhänge aus den Seiten-Details haben "
+                + "dafür ein \"apiUrl\"-Feld; das \"url\"-Feld ist nur für eingeloggte Menschen im Browser)\n"
+                + "Beispiel-Aufruf:\n"
+                + "curl -s -X POST " + agentApiBaseUrl + "/agentic/api/wiki/1/page "
+                + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
+                + "-d '{\"folderPath\":\"notizen\",\"title\":\"Mein Bericht\",\"content\":\"# Titel\\n\\nInhalt...\"}'\n"
+                + "WICHTIG: Ein POST auf eine bestehende Seite (gleicher folderPath + title, oder pageId) ersetzt "
+                + "deren Inhalt komplett (als neue Version, alte bleiben erhalten). Zum Ergänzen also erst die Seite "
+                + "lesen, dann den erweiterten Gesamtinhalt schreiben.\n"
+                + "Interne Links zwischen Wiki-Seiten schreibst du als Wikilinks: [[Seitentitel]], "
+                + "[[ordner/pfad/Seitentitel]] oder [[Ziel#angezeigter Text]] - sie werden beim Anzeigen automatisch "
+                + "aufgeloest (auch nach Umbenennungen) und Links auf noch fehlende Seiten erscheinen rot mit "
+                + "Direktlink zum Anlegen. Nutze Wikilinks statt harter URLs, wann immer du Wiki-Seiten verlinkst. "
+                + "Nutze fuer einen abweichenden Anzeigetext \"#\" als Trenner, nicht \"|\" - der WYSIWYG-Editor "
+                + "kann Zeilen mit einem \"|\" beim Speichern als Tabellen-Syntax fehlinterpretieren und verstuemmeln, "
+                + "auch wenn niemand die Seite dort inhaltlich bearbeitet hat. \"|\" wird weiterhin aufgeloest "
+                + "(bestehende Seiten, aus GitHub/Obsidian migrierte Links), ist fuer neue Links aber nicht mehr zu empfehlen.\n";
+
+        schedulingPrompt += "\nDu kannst außerdem die KSFX-Issue-Tracker vollständig nutzen (Issues lesen/anlegen/"
+                + "aktualisieren, kommentieren, Dateien anhängen) - ebenfalls per curl mit $KSFX_AGENT_TOKEN. Deine "
+                + "Issues und Kommentare werden automatisch dir als Agent zugeordnet.\n"
+                + "Endpunkte:\n"
+                + "- GET  /agentic/api/issues/trackers                     -> alle Tracker (id + name)\n"
+                + "- GET  /agentic/api/issues/assignees                    -> mögliche Assignees (Menschen und Agenten, als \"user:{id}\"/\"agent:{id}\")\n"
+                + "- GET  /agentic/api/issues/{trackerId}/issues?status=open|closed|all -> Issue-Liste (open = OPEN + IN_PROGRESS)\n"
+                + "- GET  /agentic/api/issues/{trackerId}/issue/{issueNumber}  -> ein Issue inkl. Beschreibung, Kommentaren und Anhängen\n"
+                + "- POST /agentic/api/issues/{trackerId}/issue            -> Issue anlegen, JSON-Body: "
+                + "{\"title\":\"...\",\"description\":\"Markdown...\",\"priority\":\"LOW|MEDIUM|HIGH|CRITICAL\","
+                + "\"labels\":[\"bug\",\"urgent\"],\"assignee\":\"agent:2\"} - nur title ist Pflicht; unbekannte "
+                + "Label-Namen werden automatisch angelegt\n"
+                + "- POST /agentic/api/issues/{trackerId}/issue/{issueNumber}  -> Issue aktualisieren (partiell: nur "
+                + "gesendete Felder ändern sich, z.B. nur {\"status\":\"CLOSED\"}; assignee \"\" = niemand)\n"
+                + "- POST /agentic/api/issues/{trackerId}/issue/{issueNumber}/comment -> Kommentar, JSON-Body: {\"content\":\"Markdown...\"}\n"
+                + "- POST /agentic/api/issues/asset                        -> Datei-Upload (multipart, Feld \"file\"; "
+                + "optional Felder \"trackerId\" + \"issueNumber\" um die Datei als Anhang an ein Issue zu hängen)\n"
+                + "- GET  /agentic/api/issues/asset/{assetId}              -> Datei-Download (Anhänge aus Issue-Details "
+                + "haben dafür ein \"apiUrl\"-Feld; das \"url\"-Feld ist nur für eingeloggte Menschen im Browser)\n"
+                + "issueNumber ist die pro Tracker zählende Issue-Nummer (\"#N\", Feld \"number\" in den Antworten), "
+                + "keine globale Id.\n"
+                + "Status-Werte: OPEN, IN_PROGRESS, CLOSED. Beispiel-Aufruf:\n"
+                + "curl -s -X POST " + agentApiBaseUrl + "/agentic/api/issues/1/issue "
+                + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
+                + "-d '{\"title\":\"Login schlägt fehl\",\"description\":\"## Details\\n...\",\"priority\":\"HIGH\",\"labels\":[\"bug\"]}'\n"
+                + "WICHTIG: Wenn dir ein Issue zugewiesen wird oder du eines bearbeitest, halte den Status aktuell "
+                + "(IN_PROGRESS beim Start, CLOSED wenn erledigt) und dokumentiere Ergebnisse als Kommentar statt "
+                + "die Beschreibung zu überschreiben.\n";
+
         schedulingPrompt += "\nFür Coding-Aufgaben (z.B. Git-Checkouts, größere Projektstrukturen) legst du diese, "
                 + "sofern nicht explizit anders gewünscht, unter einem Unterordner code/ in deinem Arbeitsverzeichnis "
                 + "an, nicht direkt im Hauptverzeichnis.\n";
@@ -1186,11 +1253,11 @@ public class ClaudeCliSessionService
                 + "Arbeitsverzeichnis (Zwischenstände, Abhängigkeiten, Logs, Caches etc.) bleibt unsichtbar für den "
                 + "Nutzer. Lege dort nichts ab, worum der Nutzer nicht explizit gebeten hat.\n";
 
-        if (agent.getAgenticProject() != null) {
-            schedulingPrompt += "\nGeteilte Ressourcen deines Agentic Projects findest du unter ../shared "
+        if (agent.getProject() != null) {
+            schedulingPrompt += "\nGeteilte Ressourcen deines Projects findest du unter ../shared "
                     + "(relativ zu deinem eigenen Arbeitsverzeichnis).\n";
 
-            if (agent.getAgenticProject().getDockerIsolationEnabled()) {
+            if (agent.getProject().getDockerIsolationEnabled()) {
                 schedulingPrompt += "\nDu läufst isoliert in einem eigenen Docker-Container (Ubuntu) als "
                         + "normaler Benutzer, nicht als root. Für System-Installationen (z.B. apt-get, "
                         + "Paketmanager) steht dir passwortloses sudo zur Verfügung - stelle Bash-Befehlen, "
@@ -1198,15 +1265,15 @@ public class ClaudeCliSessionService
             }
         }
 
-        // Middle tier of the hardcoded-boilerplate -> AgenticProject.systemPrompt -> Agent.systemPrompt
+        // Middle tier of the hardcoded-boilerplate -> Project.systemPrompt -> Agent.systemPrompt
         // hierarchy - only present for an agent actually assigned to a project, same gating as the
         // structural notes just above. Joined the same bare, seamless way as agent.systemPrompt
         // below (see that comment) - a blank-line paragraph break, no "---"/label/attribution, since
         // that's what was found to actually work rather than trigger prompt-injection suspicion.
-        String agenticProjectSystemPrompt = agent.getAgenticProject() != null ? agent.getAgenticProject().getSystemPrompt() : null;
+        String projectSystemPrompt = agent.getProject() != null ? agent.getProject().getSystemPrompt() : null;
 
-        if (!isBlank(agenticProjectSystemPrompt)) {
-            schedulingPrompt += "\n\n" + agenticProjectSystemPrompt;
+        if (!isBlank(projectSystemPrompt)) {
+            schedulingPrompt += "\n\n" + projectSystemPrompt;
         }
 
         if (isBlank(agent.getSystemPrompt())) {
