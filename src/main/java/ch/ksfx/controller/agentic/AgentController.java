@@ -115,8 +115,10 @@ public class AgentController
     {
         Agent agent = agentId != null ? agentDAO.getAgentForId(agentId) : new Agent();
 
-        if (agentId == null && projectId != null) {
-            agent.setProject(projectDAO.getProjectForId(projectId));
+        // A new agent belongs to the current project (same rule as every other create), unless the
+        // caller names one explicitly (the sidebar's "New Agent" passes the project it shows).
+        if (agentId == null) {
+            agent.setProject(projectId != null ? projectDAO.getProjectForId(projectId) : projectContextService.current());
         }
 
         model.addAttribute("agent", agent);
@@ -276,21 +278,6 @@ public class AgentController
 
         return "agentic/agent/agent_chat";
     }
-
-    /**
-     * Target of the sidebar's project switcher: opens the project's first agent, or - for a
-     * project without agents yet - the new-agent form with that project pre-selected, so switching
-     * to an empty project leads straight to populating it. {@code ungrouped} is the pseudo-project
-     * of agents without a project (see {@link #chat}).
-     */
-    @GetMapping("/project/{id}")
-    public String openProject(@PathVariable(value = "id") String id)
-    {
-        if ("ungrouped".equals(id)) {
-            List<Agent> unassigned = agentDAO.getAgentsWithoutProject();
-
-            return unassigned.isEmpty() ? "redirect:/agentic/edit" : "redirect:/agentic/chat/" + unassigned.get(0).getId();
-        }
 
         Long projectId;
 
