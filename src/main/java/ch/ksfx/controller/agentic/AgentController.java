@@ -279,25 +279,6 @@ public class AgentController
         return "agentic/agent/agent_chat";
     }
 
-        Long projectId;
-
-        try {
-            projectId = Long.valueOf(id);
-        } catch (NumberFormatException e) {
-            return "redirect:/agentic/";
-        }
-
-        if (projectDAO.getProjectForId(projectId) == null) {
-            return "redirect:/agentic/";
-        }
-
-        projectContextService.follow(projectDAO.getProjectForId(projectId));
-
-        List<Agent> agents = agentDAO.getAgentsForProject(projectId);
-
-        return agents.isEmpty() ? "redirect:/agentic/edit?projectId=" + projectId : "redirect:/agentic/chat/" + agents.get(0).getId();
-    }
-
     /**
      * AJAX "load older messages" page, triggered from the top of the transcript - see
      * agentic-chat.js, which infers whether to offer another page from the count of messages
