@@ -202,10 +202,13 @@
                 <!-- One logo for both display modes - the badge mark carries its own navy
                      background (see the SVG), so the old light/dark PNG switching (and its
                      invalid nested <a> markup) is gone. -->
-                <a th:href="@{/}" class="pull-left" style="margin-right:10px">
-                    <img th:src="@{/images/ksfx-logo.svg}" alt="KSFX" style="height:42px;width:42px" />
+                <!-- Header lockup from the CI page (mark + wordmark + slogan, slogan enlarged for
+                     this height), the cutout for light backgrounds - the navbar stays light grey in
+                     dark mode too (bootstrap-dark only darkens the page body), so one variant serves
+                     both themes. Replaces the badge mark + "KSFX" text. -->
+                <a th:href="@{/}" class="navbar-brand ksfx-brand-logo" style="margin-right:14px">
+                    <img th:src="@{/images/ksfx-logo-header.svg}" alt="KSFX - Humans · Agents · One Platform" style="height:56px" />
                 </a>
-                <a class="navbar-brand" th:href="@{/}">KSFX</a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample03" aria-controls="navbarsExample03" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
