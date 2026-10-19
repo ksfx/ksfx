@@ -1,5 +1,7 @@
 package ch.ksfx.controller.publishing;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
@@ -42,6 +44,9 @@ import java.util.stream.Collectors;
 @RequestMapping("/publishing")
 public class PublishingController
 {
+    @Autowired
+    private UserScope userScope;
+
     private PublishingConfigurationDAO publishingConfigurationDAO;
     private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
@@ -88,7 +93,7 @@ public class PublishingController
     public String publishingConfigurationGeneratePublication(@PathVariable(value = "id", required = true) Long publishingConfigurationId)
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
-
+        userScope.requireWrite(publishingConfiguration.getProject());
         publicationLoaderRunner.loadPublication(publishingConfiguration);
 
         return "redirect:/publishing/";
@@ -167,6 +172,7 @@ public class PublishingController
         // No project on the form (see ActivityController.activitySubmit) - keep the stored one on edit, default on create.
         PublishingConfiguration previousConfiguration = publishingConfiguration.getId() != null ? publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfiguration.getId()) : null;
         publishingConfiguration.setProject(previousConfiguration != null && previousConfiguration.getProject() != null ? previousConfiguration.getProject() : projectContextService.current());
+        userScope.requireWrite(publishingConfiguration.getProject());
 
         if (activityGitRepositoryService.isActive(publishingConfiguration.getProject())) {
             try {
@@ -247,7 +253,7 @@ public class PublishingController
     public String publishingConfigurationDelete(@PathVariable(value = "id", required = false) Long publishingConfigurationId, RedirectAttributes redirectAttributes)
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
-
+        userScope.requireWrite(publishingConfiguration.getProject());
         // deleting the configuration cascades (DB foreign key) to its resources without going
         // through publishingResourceDAO, so their git files have to be cleaned up here too
         if (activityGitRepositoryService.isActive(publishingConfiguration.getProject())) {
@@ -320,7 +326,7 @@ public class PublishingController
 
 
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
-
+        userScope.requireRead(publishingConfiguration.getProject());
         model.addAttribute("publishingConfiguration", publishingConfiguration);
         model.addAttribute("publishingResource", publishingResource);
 
@@ -337,11 +343,12 @@ public class PublishingController
         publishingResource.setPublishingConfiguration(publishingConfigurationDAO.getPublishingConfigurationForId(
                 publishingResource.getPublishingConfiguration() != null && publishingResource.getPublishingConfiguration().getId() != null
                         ? publishingResource.getPublishingConfiguration().getId() : publishingConfigurationId));
-
+        userScope.requireWrite(publishingResource.getPublishingConfiguration().getProject());
         validatePublishingResource(publishingResource, bindingResult);
 
         if (bindingResult.hasErrors()) {
             PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+        userScope.requireWrite(publishingConfiguration.getProject());
             model.addAttribute("publishingConfiguration", publishingConfiguration);
 
             return "publishing/publishing_resource_edit";
@@ -410,7 +417,7 @@ public class PublishingController
     public String publishingResourceDelete(@PathVariable(value = "publishingResourceId", required = false) Long publishingResourceId, RedirectAttributes redirectAttributes)
     {
         PublishingResource publishingResource = publishingResourceDAO.getPublishingResourceForId(publishingResourceId);
-
+        userScope.requireWrite(publishingResource.getPublishingConfiguration().getProject());
         if (ActivityGitRepositoryService.hasGitPath(publishingResource.getGitPath()) && activityGitRepositoryService.isActive(publishingResource.getPublishingConfiguration().getProject())) {
             try {
                 activityGitRepositoryService.deleteAndPush(publishingResource.getPublishingConfiguration().getProject(), publishingResource.getGitPath(), "Delete report resource: " + publishingResource.getTitle());
@@ -428,6 +435,7 @@ public class PublishingController
     public String publishingConfigurationSchedule(@PathVariable(value = "id", required = true) Long publishingConfigurationId)
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+        userScope.requireWrite(publishingConfiguration.getProject());
         publishingConfiguration.setCronScheduleEnabled(true);
 
         publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
@@ -441,6 +449,7 @@ public class PublishingController
     public String publishingConfigurationDeleteSchedule(@PathVariable(value = "id", required = true) Long publishingConfigurationId) throws SchedulerException
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
+        userScope.requireWrite(publishingConfiguration.getProject());
         publishingConfiguration.setCronScheduleEnabled(false);
 
         schedulerService.deleteJob("PublishingConfiguration" + publishingConfiguration.getId().toString(),"Publications");
@@ -454,7 +463,7 @@ public class PublishingController
     public String publishingConfigurationPurgeCaches(@PathVariable(value = "id", required = true) Long publishingConfigurationId)
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
-
+        userScope.requireWrite(publishingConfiguration.getProject());
         if (!publishingConfiguration.getLockedForCacheUpdate()) {
             publishingConfiguration.setConsole("");
             publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(publishingConfiguration);
@@ -477,7 +486,7 @@ public class PublishingController
     public String publishingSharedDataDelete(@PathVariable(value = "id", required = true) Long publishingSharedDataId)
     {
         PublishingSharedData publishingSharedData = publishingSharedDataDAO.getPublishingSharedDataForId(publishingSharedDataId);
-
+        userScope.requireWrite(publishingSharedData.getPublishingConfiguration().getProject());
         publishingSharedDataDAO.deletePublishingSharedData(publishingSharedData);
 
         return "redirect:/publishing/publishingconfigurationedit/" + publishingSharedData.getPublishingConfiguration().getId();
@@ -487,7 +496,7 @@ public class PublishingController
     public String publishingSharedDataDeleteAll(@PathVariable(value = "id", required = true) Long publishingConfigurationId)
     {
         PublishingConfiguration publishingConfiguration = publishingConfigurationDAO.getPublishingConfigurationForId(publishingConfigurationId);
-
+        userScope.requireWrite(publishingConfiguration.getProject());
         List<PublishingSharedData> publishingSharedDatas = publishingSharedDataDAO.getAllPublishingSharedDatasForPublishingConfiguration(publishingConfiguration);
 
         for (PublishingSharedData publishingSharedData : publishingSharedDatas) {

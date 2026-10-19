@@ -18,7 +18,7 @@
 <div th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' wiki-dark' : ''">
     <div class="wiki-empty">
         <p>There are no wikis yet.</p>
-        <form th:action="@{/wiki/create}" method="post" class="wiki-create-first-form">
+        <form th:if="${@projectContextService.canManage()}" th:action="@{/wiki/create}" method="post" class="wiki-create-first-form">
             <input type="text" name="name" placeholder="e.g. Project Phoenix" required="required" class="wiki-create-first-input" />
             <button type="submit" class="wiki-btn wiki-btn-primary">Create wiki</button>
         </form>

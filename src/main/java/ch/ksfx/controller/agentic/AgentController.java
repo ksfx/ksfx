@@ -1,5 +1,7 @@
 package ch.ksfx.controller.agentic;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.AgentMessageDAO;
@@ -48,6 +50,9 @@ import java.util.Map;
 @RequestMapping("/agentic")
 public class AgentController
 {
+    @Autowired
+    private UserScope userScope;
+
     private final AgentDAO agentDAO;
     private final ProjectContextService projectContextService;
     private final AgentMessageDAO agentMessageDAO;
@@ -121,8 +126,10 @@ public class AgentController
             agent.setProject(projectId != null ? projectDAO.getProjectForId(projectId) : projectContextService.current());
         }
 
+        userScope.requireManage(agent.getProject()); // agents are project configuration (OWNER)
+
         model.addAttribute("agent", agent);
-        model.addAttribute("allProjects", projectDAO.getAllProjects());
+        model.addAttribute("allProjects", userScope.accessibleProjects(userScope.currentUser()));
         model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
 
         return "agentic/agent/agent_edit";
@@ -132,7 +139,7 @@ public class AgentController
     public String submit(@PathVariable(value = "id", required = false) Long agentId, @Valid @ModelAttribute Agent agent, BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes)
     {
         if (bindingResult.hasErrors()) {
-            model.addAttribute("allProjects", projectDAO.getAllProjects());
+            model.addAttribute("allProjects", userScope.accessibleProjects(userScope.currentUser()));
             model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
             return "agentic/agent/agent_edit";
         }
@@ -144,6 +151,13 @@ public class AgentController
         // they'd be silently wiped to null on every edit.
         Agent previousAgent = isNew ? null : agentDAO.getAgentForId(agent.getId());
 
+        if (previousAgent != null) {
+            userScope.requireManage(previousAgent.getProject());
+        }
+
+        if (agent.getProject() != null && agent.getProject().getId() != null) {
+            userScope.requireManage(projectDAO.getProjectForId(agent.getProject().getId())); // moving an agent needs OWNER on the target too
+        }
         if (previousAgent != null) {
             agent.setWorkspacePath(previousAgent.getWorkspacePath());
             agent.setClaudeSessionId(previousAgent.getClaudeSessionId());
@@ -202,7 +216,7 @@ public class AgentController
     public String delete(@PathVariable(value = "id") Long agentId, RedirectAttributes redirectAttributes) throws SchedulerException
     {
         Agent agent = agentDAO.getAgentForId(agentId);
-
+        userScope.requireManage(agent.getProject());
         // Remove any live Quartz jobs for this agent's schedules before the cascade delete removes
         // their rows, so nothing orphaned lingers in the in-memory scheduler until next restart.
         for (AgentSchedule schedule : agentScheduleDAO.getSchedulesForAgent(agentId)) {
@@ -222,7 +236,7 @@ public class AgentController
     public String resetSession(@PathVariable(value = "id") Long agentId, RedirectAttributes redirectAttributes)
     {
         Agent agent = agentDAO.getAgentForId(agentId);
-
+        userScope.requireManage(agent.getProject());
         if (claudeCliSessionService.isRunning(agentId)) {
             redirectAttributes.addFlashAttribute("resultError", true);
             redirectAttributes.addFlashAttribute("resultMessage", "Agent is currently busy with a turn - try again once it finishes.");
@@ -292,6 +306,7 @@ public class AgentController
     public String olderMessages(@PathVariable(value = "id") Long agentId, @RequestParam Long beforeId, Model model)
     {
         Agent agent = agentDAO.getAgentForId(agentId);
+        userScope.requireRead(agent.getProject());
         List<AgentMessage> messages = agentMessageDAO.getMessagesForAgentBefore(agentId, beforeId, MESSAGE_PAGE_SIZE);
 
         model.addAttribute("agent", agent);
@@ -313,6 +328,8 @@ public class AgentController
     @ResponseBody
     public SseEmitter attach(@PathVariable(value = "id") Long agentId)
     {
+        userScope.requireRead(agentDAO.getAgentForId(agentId).getProject());
+
         SseEmitter emitter = new SseEmitter(0L);
 
         if (!claudeCliSessionService.attachToRunningTurn(agentId, emitter)) {
@@ -329,6 +346,8 @@ public class AgentController
                                    @RequestParam(value = "files", required = false) MultipartFile[] files,
                                    @RequestParam(value = "voiceInput", defaultValue = "false") boolean voiceInput)
     {
+        userScope.requireWrite(agentDAO.getAgentForId(agentId).getProject()); // a chat turn makes the agent act
+
         SseEmitter emitter = new SseEmitter(0L);
 
         claudeCliSessionService.runTurn(agentId, message, files, voiceInput, emitter);
@@ -355,6 +374,8 @@ public class AgentController
     @ResponseBody
     public Map<String, Boolean> stop(@PathVariable(value = "id") Long agentId)
     {
+        userScope.requireWrite(agentDAO.getAgentForId(agentId).getProject());
+
         return Collections.singletonMap("stopped", claudeCliSessionService.stopTurn(agentId));
     }
 
@@ -368,6 +389,8 @@ public class AgentController
     @ResponseBody
     public Map<String, Boolean> deleteMessage(@PathVariable(value = "id") Long agentId, @PathVariable Long messageId)
     {
+        userScope.requireWrite(agentDAO.getAgentForId(agentId).getProject());
+
         AgentMessage message = agentMessageDAO.getAgentMessageForId(messageId);
 
         if (message == null || message.getAgent() == null || !message.getAgent().getId().equals(agentId)) {
@@ -399,6 +422,7 @@ public class AgentController
         String fileName = new AntPathMatcher().extractPathWithinPattern(bestMatchingPattern, pathWithinHandlerMapping);
 
         Agent agent = agentDAO.getAgentForId(agentId);
+        userScope.requireRead(agent.getProject());
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
 
         if (agent == null || config == null) {

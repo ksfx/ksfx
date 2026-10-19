@@ -22,7 +22,7 @@
     <div class="issues-main">
         <h1 class="issues-view-title">Labels</h1>
 
-        <form th:action="@{/issues/{trackerId}/labels/create(trackerId=${currentTracker.id})}" method="post" class="issues-label-create-form">
+        <form th:if="${@projectContextService.canManage()}" th:action="@{/issues/{trackerId}/labels/create(trackerId=${currentTracker.id})}" method="post" class="issues-label-create-form">
             <input type="text" name="name" placeholder="Label name" required="required" class="issues-label-name-input" />
             <input type="color" name="color" value="#2e77d0" class="issues-label-color-input" title="Label color" />
             <button type="submit" class="issues-btn issues-btn-primary"><i class="fa fa-plus"></i> Add label</button>
@@ -31,13 +31,13 @@
         <p class="issues-empty" th:if="${#lists.isEmpty(trackerLabels)}">No labels yet.</p>
         <ul class="issues-labels-list" th:unless="${#lists.isEmpty(trackerLabels)}">
             <li th:each="l : ${trackerLabels}" class="issues-labels-list-item">
-                <form th:action="@{/issues/{trackerId}/labels/{labelId}/update(trackerId=${currentTracker.id},labelId=${l.id})}" method="post" class="issues-label-edit-form">
+                <form th:if="${@projectContextService.canManage()}" th:action="@{/issues/{trackerId}/labels/{labelId}/update(trackerId=${currentTracker.id},labelId=${l.id})}" method="post" class="issues-label-edit-form">
                     <span class="issues-label-chip" th:style="'background:' + ${l.color}" th:text="${l.name}"></span>
                     <input type="text" name="name" th:value="${l.name}" required="required" class="issues-label-name-input" />
                     <input type="color" name="color" th:value="${l.color}" class="issues-label-color-input" title="Label color" />
                     <button type="submit" class="issues-btn">Save</button>
                 </form>
-                <form th:action="@{/issues/{trackerId}/labels/{labelId}/delete(trackerId=${currentTracker.id},labelId=${l.id})}" method="post" class="issues-inline-form"
+                <form th:if="${@projectContextService.canManage()}" th:action="@{/issues/{trackerId}/labels/{labelId}/delete(trackerId=${currentTracker.id},labelId=${l.id})}" method="post" class="issues-inline-form"
                       onsubmit="return confirm('Delete this label? It will be removed from all issues.');">
                     <button type="submit" class="issues-icon-delete" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
                 </form>

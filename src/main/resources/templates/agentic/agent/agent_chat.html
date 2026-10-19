@@ -33,7 +33,7 @@
             <span>Agents</span>
             <span class="agentic-sidebar-header-actions">
                 <button type="button" id="agenticSearchBtn" class="agentic-sidebar-search" title="Search chats" aria-label="Search chats"><i class="fa fa-search"></i></button>
-                <a th:href="${currentProject != null} ? @{/agentic/edit(projectId=${currentProject.id})} : @{/agentic/edit}" class="agentic-sidebar-new" title="New Agent" aria-label="New Agent"><i class="fa fa-plus"></i></a>
+                <a th:if="${@projectContextService.canManage()}" th:href="${currentProject != null} ? @{/agentic/edit(projectId=${currentProject.id})} : @{/agentic/edit}" class="agentic-sidebar-new" title="New Agent" aria-label="New Agent"><i class="fa fa-plus"></i></a>
             </span>
         </div>
         <div class="agentic-sidebar-list">
@@ -51,14 +51,14 @@
                     </a>
                     <button type="button" class="agentic-sidebar-item-icon agentic-sidebar-item-stop" th:data-stop-endpoint="@{/agentic/chat/{id}/stop(id=${a.id})}" title="Stop" aria-label="Stop"><i class="fa fa-stop"></i></button>
                     <span class="agentic-sidebar-item-actions">
-                        <a th:href="@{/agentic/edit/{id}(id=${a.id})}" class="agentic-sidebar-item-icon" title="Edit Agent" aria-label="Edit Agent"><i class="fa fa-pencil"></i></a>
+                        <a th:if="${@projectContextService.canManage()}" th:href="@{/agentic/edit/{id}(id=${a.id})}" class="agentic-sidebar-item-icon" title="Edit Agent" aria-label="Edit Agent"><i class="fa fa-pencil"></i></a>
                     </span>
                 </div>
             </div>
         </div>
         <div class="agentic-sidebar-footer">
             <a th:href="@{/agentic/projects/}" title="Projects"><i class="fa fa-folder"></i> Projects</a>
-            <a th:href="@{/agentic/config/}" title="Agentic Settings"><i class="fa fa-cog"></i> Settings</a>
+            <a th:if="${isInstanceAdmin}" th:href="@{/agentic/config/}" title="Agentic Settings"><i class="fa fa-cog"></i> Settings</a>
         </div>
     </aside>
 
@@ -140,15 +140,15 @@
 
             <div id="agenticPendingFiles" class="agentic-pending-files"></div>
             <div class="agentic-composer">
-                <button id="agenticAttachBtn" type="button" class="agentic-attach-btn" title="Attach file" aria-label="Attach file">
+                <button id="agenticAttachBtn" type="button" class="agentic-attach-btn" th:disabled="${!@projectContextService.canWrite()}" title="Attach file" aria-label="Attach file">
                     <i class="fa fa-paperclip"></i>
                 </button>
                 <input id="agenticFileInput" type="file" multiple hidden="hidden" />
-                <textarea id="agenticInput" rows="1" placeholder="Message to the agent... (Enter to send, Shift+Enter for new line)"></textarea>
+                <textarea id="agenticInput" rows="1" th:disabled="${!@projectContextService.canWrite()}" th:placeholder="${@projectContextService.canWrite()} ? 'Message to the agent... (Enter to send, Shift+Enter for new line)' : 'Read-only: you may follow this chat but not steer the agent.'"></textarea>
                 <button id="agenticMicBtn" type="button" class="agentic-mic-btn" title="Voice input" aria-label="Voice input" hidden="hidden">
                     <i class="fa fa-microphone"></i>
                 </button>
-                <button id="agenticSendBtn" type="button" class="agentic-send-btn" title="Send" aria-label="Send">
+                <button id="agenticSendBtn" type="button" class="agentic-send-btn" th:disabled="${!@projectContextService.canWrite()}" title="Send" aria-label="Send">
                     <i class="fa fa-paper-plane"></i>
                 </button>
             </div>

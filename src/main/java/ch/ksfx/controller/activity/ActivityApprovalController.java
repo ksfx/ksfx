@@ -1,5 +1,7 @@
 package ch.ksfx.controller.activity;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
@@ -23,6 +25,9 @@ import java.util.List;
 @RequestMapping("/activity/approval")
 public class ActivityApprovalController
 {
+    @Autowired
+    private UserScope userScope;
+
     private ActivityInstanceDAO activityInstanceDAO;
     private final ProjectContextService projectContextService;
     private ActivityDAO activityDAO;
@@ -48,7 +53,7 @@ public class ActivityApprovalController
     public String activityInstanceApprove(@PathVariable(value = "activityinstanceid", required = true) Long activityInstanceId, Model model)
     {
         ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
-
+        userScope.requireWrite(activityInstance.getActivity().getProject()); // approving is a write
         //String approval
         if (activityInstance.getActivity().getActivityApprovalStrategy() != null && activityInstance.getActivity().getActivityApprovalStrategy().getId() == 4l) {
             boolean hasApprovalString = false;
@@ -117,6 +122,8 @@ public class ActivityApprovalController
     @PostMapping("/submitapproval/")
     public String submitApprovalSubmit(@Valid @ModelAttribute ActivityInstance activityInstance, BindingResult bindingResult, Model model, HttpServletRequest request)
     {
+        userScope.requireWrite(activityInstanceDAO.getActivityInstanceForId(activityInstance.getId()).getActivity().getProject());
+
         for (ActivityInstanceParameter approvalActivityInstanceParameter : activityInstance.getActivityInstanceParameters()) {
 
             System.out.println("Activity instance parameter " + approvalActivityInstanceParameter.getDataKey() + " / " + approvalActivityInstanceParameter.getDataValue());
@@ -140,7 +147,7 @@ public class ActivityApprovalController
     public String activityInstanceParameterAdd(@PathVariable(value = "activityinstanceid", required = true) Long activityInstanceId)
     {
         ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
-
+        userScope.requireWrite(activityInstance.getActivity().getProject()); // approving is a write
         ActivityInstanceParameter activityInstanceParameter = new ActivityInstanceParameter("","");
         activityInstanceParameter.setActivityInstance(activityInstance);
 
@@ -153,6 +160,7 @@ public class ActivityApprovalController
     public String activityInstanceParameterDelete(@PathVariable(value = "activityinstanceparameterid", required = true) Long activityInstanceParameterId)
     {
         ActivityInstanceParameter activityInstanceParameter = activityInstanceDAO.getActivityInstanceParameterForId(activityInstanceParameterId);
+        userScope.requireWrite(activityInstanceParameter.getActivityInstance().getActivity().getProject());
         activityInstanceDAO.deleteActivityInstanceParameter(activityInstanceParameter);
 
         return "redirect:/activity/approval/activityinstanceapprove/" + activityInstanceParameter.getActivityInstance().getId();
@@ -161,6 +169,7 @@ public class ActivityApprovalController
     private void saveParameterAndStartJob(ActivityInstanceParameter activityInstanceParameter, Long activityInstanceId)
     {
         ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
+        userScope.requireWrite(activityInstance.getActivity().getProject()); // approving is a write
         activityInstance.setApproved(true);
 
         activityInstanceParameter.setActivityInstance(activityInstance);
@@ -229,6 +238,7 @@ public class ActivityApprovalController
     private void saveParameterAndStartJob(ActivityInstanceParameter activityInstanceParameter, Long activityInstanceId)
     {
         ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
+        userScope.requireWrite(activityInstance.getActivity().getProject()); // approving is a write
         activityInstance.setApproved(true);
 
         activityInstanceParameter.setActivityInstance(activityInstance);
@@ -245,7 +255,7 @@ public class ActivityApprovalController
     public void onSuccessFromApproveActivityInstanceForm(Long activityInstanceId)
     {
         ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
-
+        userScope.requireWrite(activityInstance.getActivity().getProject()); // approving is a write
         if (approvalString != null) {
             ActivityInstanceParameter approvalStringInstanceParameter = new ActivityInstanceParameter("approvalString", approvalString);
             approvalStringInstanceParameter.setActivityInstance(activityInstance);

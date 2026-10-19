@@ -1,5 +1,10 @@
 package ch.ksfx.controller.agentic;
 
+import java.util.List;
+import ch.ksfx.model.user.User;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import org.springframework.web.bind.annotation.RequestParam;
 import ch.ksfx.services.project.ProjectDeletionService;
 import ch.ksfx.dao.AgentDAO;
@@ -27,6 +32,9 @@ import java.util.Date;
 @RequestMapping("/agentic/projects")
 public class ProjectController
 {
+    @Autowired
+    private UserScope userScope;
+
     private final ProjectDAO projectDAO;
     private final AgentDAO agentDAO;
     private final AgenticConfigDAO agenticConfigDAO;
@@ -52,7 +60,9 @@ public class ProjectController
     @GetMapping("/")
     public String index(Pageable pageable, Model model)
     {
-        Page<Project> projectsPage = projectDAO.getProjectsForPageable(pageable);
+        User user = userScope.currentUser();
+        List<Project> accessible = userScope.accessibleProjects(user);
+        Page<Project> projectsPage = userScope.isAdmin(user) ? projectDAO.getProjectsForPageable(pageable) : new PageImpl<>(accessible, pageable, accessible.size());
 
         model.addAttribute("projectsPage", projectsPage);
 
@@ -64,6 +74,11 @@ public class ProjectController
     {
         Project project = id != null ? projectDAO.getProjectForId(id) : new Project();
 
+        if (id != null) {
+            userScope.requireRead(project); // the form is the member's way to Code Libs; saving needs OWNER
+        } else {
+            userScope.requireAdmin(); // new projects start with no members - an instance act
+        }
         // Refresh the displayed container status rather than showing a possibly-stale DB snapshot - a
         // plain read-only inspect (never ensureContainer, which would resurrect a container the user
         // just explicitly Stopped just because this page happened to reload).
@@ -90,6 +105,11 @@ public class ProjectController
         // their Java defaults (same class of bug already fixed for AgentController/AgenticConfigController).
         Project previous = project.getId() != null ? projectDAO.getProjectForId(project.getId()) : null;
 
+        if (previous != null) {
+            userScope.requireManage(previous);
+        } else {
+            userScope.requireAdmin();
+        }
         if (previous != null) {
             project.setDockerContainerName(previous.getDockerContainerName());
             project.setDockerContainerStatus(previous.getDockerContainerStatus());
@@ -142,6 +162,7 @@ public class ProjectController
     public String dockerStart(@PathVariable(value = "id") Long id, RedirectAttributes redirectAttributes)
     {
         Project project = projectDAO.getProjectForId(id);
+        userScope.requireManage(project);
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
 
         try {
@@ -159,7 +180,7 @@ public class ProjectController
     public String dockerStop(@PathVariable(value = "id") Long id, RedirectAttributes redirectAttributes)
     {
         Project project = projectDAO.getProjectForId(id);
-
+        userScope.requireManage(project);
         try {
             agenticDockerService.stop(project);
             redirectAttributes.addFlashAttribute("resultMessage", "Container stopped.");
@@ -175,6 +196,7 @@ public class ProjectController
     public String dockerThrowAway(@PathVariable(value = "id") Long id, RedirectAttributes redirectAttributes)
     {
         Project project = projectDAO.getProjectForId(id);
+        userScope.requireManage(project);
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
 
         try {
@@ -196,6 +218,8 @@ public class ProjectController
     @GetMapping("/delete/{id}")
     public String deleteConfirm(@PathVariable(value = "id") Long id, Model model, RedirectAttributes redirectAttributes)
     {
+        userScope.requireAdmin();
+
         Project project = projectDAO.getProjectForId(id);
 
         if (project == null) {
@@ -221,6 +245,8 @@ public class ProjectController
     public String delete(@PathVariable(value = "id") Long id, @RequestParam(value = "confirmName", required = false) String confirmName,
                          RedirectAttributes redirectAttributes)
     {
+        userScope.requireAdmin();
+
         Project project = projectDAO.getProjectForId(id);
 
         if (project == null) {

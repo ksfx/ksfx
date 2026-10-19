@@ -1,5 +1,7 @@
 package ch.ksfx.controller.agentic;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.AgenticConfigDAO;
 import ch.ksfx.model.Agent;
@@ -50,6 +52,9 @@ import java.util.stream.Stream;
 @RequestMapping("/agentic/files")
 public class AgenticFileBrowserController
 {
+    @Autowired
+    private UserScope userScope;
+
     private static final String ROOT_WORKSPACE = "workspace";
     private static final String ROOT_SHARED = "shared";
 
@@ -199,6 +204,8 @@ public class AgenticFileBrowserController
                                              @RequestParam(defaultValue = ROOT_WORKSPACE) String root,
                                              @RequestParam String path)
     {
+        userScope.requireRead(agentDAO.getAgentForId(agentId).getProject());
+
         Path base;
 
         try {
@@ -317,6 +324,8 @@ public class AgenticFileBrowserController
         if (agent == null) {
             throw new IllegalArgumentException("Unknown agent " + agentId);
         }
+
+        userScope.requireAccess(agent.getProject()); // every handler resolves its root here: read for GET, write for POST
 
         // Primary source is workspaceRoot-derived resolution (canonical, follows the config), but
         // an instance whose /agentic/config/ was never saved still has each agent's absolute path

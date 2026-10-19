@@ -1,5 +1,8 @@
 package ch.ksfx.controller.agentic;
 
+import ch.ksfx.model.user.User;
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.dao.AgentMessageDAO;
 import ch.ksfx.model.Agent;
 import ch.ksfx.model.AgentMessage;
@@ -29,6 +32,9 @@ import java.util.List;
 @RequestMapping("/agentic/search")
 public class AgenticSearchController
 {
+    @Autowired
+    private UserScope userScope;
+
     private static final int RESULT_LIMIT = 30;
     private static final int CONTEXT_WINDOW = 10;
     private static final int SNIPPET_RADIUS = 60;
@@ -44,8 +50,9 @@ public class AgenticSearchController
     public String query(@RequestParam(defaultValue = "") String q, Model model)
     {
         String term = q.trim();
-        List<AgentMessage> matches = term.isEmpty() ? new ArrayList<>() : agentMessageDAO.searchMessages(term, RESULT_LIMIT);
-
+        List<AgentMessage> matches = new ArrayList<>(term.isEmpty() ? new ArrayList<>() : agentMessageDAO.searchMessages(term, RESULT_LIMIT));
+        User user = userScope.currentUser();
+        matches.removeIf(message -> message.getAgent() == null || !userScope.canRead(user, message.getAgent().getProject())); // search is cross-agent, the user's projects only
         List<SearchResult> results = new ArrayList<>();
 
         for (AgentMessage message : matches) {
@@ -75,6 +82,7 @@ public class AgenticSearchController
         }
 
         Agent agent = matched.getAgent();
+        userScope.requireRead(agent.getProject());
         Long agentId = agent.getId();
 
         List<AgentMessage> before = agentMessageDAO.getMessagesForAgentBefore(agentId, messageId, CONTEXT_WINDOW);

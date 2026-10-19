@@ -61,22 +61,23 @@
                     Last checked: <span th:text="${project.dockerContainerLastCheckedAt}"></span>
                 </small>
                 <div style="margin-top:0.5rem">
-                    <a th:href="@{/agentic/projects/{id}/docker/start(id=${project.id})}" class="btn btn-secondary">Start</a>
-                    <a th:href="@{/agentic/projects/{id}/docker/stop(id=${project.id})}" class="btn btn-secondary">Stop</a>
-                    <a th:attr="data-href=@{/agentic/projects/{id}/docker/throwaway(id=${project.id})}" data-toggle="modal" data-target="#standard-confirm" class="btn btn-danger">Throw Away</a>
+                    <a th:if="${@projectContextService.canManage()}" th:href="@{/agentic/projects/{id}/docker/start(id=${project.id})}" class="btn btn-secondary">Start</a>
+                    <a th:if="${@projectContextService.canManage()}" th:href="@{/agentic/projects/{id}/docker/stop(id=${project.id})}" class="btn btn-secondary">Stop</a>
+                    <a th:if="${@projectContextService.canManage()}" th:attr="data-href=@{/agentic/projects/{id}/docker/throwaway(id=${project.id})}" data-toggle="modal" data-target="#standard-confirm" class="btn btn-danger">Throw Away</a>
                 </div>
             </div>
 
             <div class="form-group" th:if="${project.id != null}">
                 <label>Project pages</label>
                 <p class="form-control-plaintext">
-                    <a th:href="@{/agentic/projects/{id}/git/(id=${project.id})}" class="btn btn-secondary btn-sm"><i class="fa fa-git"></i> Git Sync settings</a>
+                    <a th:if="${@projectContextService.canManage()}" th:href="@{/agentic/projects/{id}/git/(id=${project.id})}" class="btn btn-secondary btn-sm"><i class="fa fa-git"></i> Git Sync settings</a>
                     <a th:href="@{/projects/switch/{id}(id=${project.id},returnTo='/admin/codelib/')}" class="btn btn-secondary btn-sm"><i class="fa fa-code"></i> Code Libs</a>
-                    <a th:href="@{/projects/switch/{id}(id=${project.id},returnTo='/admin/dashboardmanager/')}" class="btn btn-secondary btn-sm"><i class="fa fa-tachometer"></i> Dashboard</a>
+                    <a th:if="${@projectContextService.canManage()}" th:href="@{/projects/switch/{id}(id=${project.id},returnTo='/admin/dashboardmanager/')}" class="btn btn-secondary btn-sm"><i class="fa fa-tachometer"></i> Dashboard</a>
+                    <a th:if="${isInstanceAdmin}" th:href="@{/admin/memberships/project/{id}(id=${project.id})}" class="btn btn-secondary btn-sm"><i class="fa fa-users"></i> Members</a>
                     <small class="form-text text-muted">Git: one repository per project holds this project's Activities, Code Libs and Reports (without an enabled repository the code lives in the database only). Code Libs and Dashboard open in this project's context.</small>
                 </p>
             </div>
-            <button type="submit" class="btn btn-primary">Submit</button>
+            <button th:if="${@projectContextService.canManage()}" type="submit" class="btn btn-primary">Submit</button>
             <a th:href="@{/agentic/projects/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
         </form>
 </div>

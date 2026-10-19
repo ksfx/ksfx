@@ -1,5 +1,7 @@
 package ch.ksfx.controller.issues;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import java.util.ArrayList;
 import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
@@ -43,6 +45,9 @@ import java.util.*;
 @RequestMapping("/issues")
 public class IssueController
 {
+    @Autowired
+    private UserScope userScope;
+
     private final IssueTrackerDAO issueTrackerDAO;
     private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
@@ -108,6 +113,7 @@ public class IssueController
             return "redirect:/issues/none";
         }
 
+        userScope.requireManage(projectContextService.current()); // a whole tracker is an OWNER thing
         IssueTracker tracker = new IssueTracker();
         tracker.setProject(projectContextService.current()); // created inside the current project
         tracker.setName(name.trim());
@@ -121,7 +127,9 @@ public class IssueController
     @PostMapping("/{trackerId}/delete")
     public String deleteTracker(@PathVariable Long trackerId)
     {
-        issueTrackerDAO.deleteIssueTracker(requireTracker(trackerId));
+        IssueTracker tracker = requireTracker(trackerId);
+        userScope.requireManage(tracker.getProject());
+        issueTrackerDAO.deleteIssueTracker(tracker);
 
         return "redirect:/issues/";
     }
@@ -301,6 +309,7 @@ public class IssueController
                                @RequestParam(defaultValue = IssueService.DEFAULT_LABEL_COLOR) String color,
                                RedirectAttributes redirectAttributes)
     {
+        userScope.requireManage(requireTracker(trackerId).getProject()); // labels are tracker configuration
         IssueTracker tracker = requireTracker(trackerId);
 
         if (name == null || name.trim().isEmpty()) {
@@ -325,6 +334,7 @@ public class IssueController
     public String updateLabel(@PathVariable Long trackerId, @PathVariable Long labelId,
                                @RequestParam String name, @RequestParam String color, RedirectAttributes redirectAttributes)
     {
+        userScope.requireManage(requireTracker(trackerId).getProject()); // labels are tracker configuration
         IssueLabel label = requireLabel(trackerId, labelId);
 
         if (name != null && !name.trim().isEmpty()) {
@@ -339,6 +349,7 @@ public class IssueController
     @PostMapping("/{trackerId}/labels/{labelId}/delete")
     public String deleteLabel(@PathVariable Long trackerId, @PathVariable Long labelId)
     {
+        userScope.requireManage(requireTracker(trackerId).getProject()); // labels are tracker configuration
         issueLabelDAO.deleteIssueLabel(requireLabel(trackerId, labelId));
 
         return "redirect:/issues/" + trackerId + "/labels";
@@ -349,6 +360,7 @@ public class IssueController
     @ResponseBody
     public Map<String, Object> uploadAsset(@RequestParam("file") MultipartFile file) throws IOException
     {
+        userScope.requireWrite(projectContextService.current());
         IssueAsset asset = buildAsset(file, null);
         issueAssetDAO.saveIssueAsset(asset);
 
@@ -394,6 +406,10 @@ public class IssueController
 
         if (asset == null || asset.getContent() == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        if (asset.getIssue() != null) { // inline images carry no issue and so no project
+            userScope.requireRead(asset.getIssue().getIssueTracker().getProject());
         }
 
         MediaType mediaType = asset.getContentType() != null
@@ -472,6 +488,8 @@ public class IssueController
             throw new IllegalArgumentException("Tracker not found");
         }
 
+        userScope.requireAccess(tracker.getProject()); // read for GET, write for POST (step 2)
+
         return tracker;
     }
 
@@ -483,6 +501,8 @@ public class IssueController
             throw new IllegalArgumentException("Issue not found");
         }
 
+        userScope.requireAccess(issue.getIssueTracker().getProject());
+
         return issue;
     }
 
@@ -493,6 +513,8 @@ public class IssueController
         if (label == null || !label.getIssueTracker().getId().equals(trackerId)) {
             throw new IllegalArgumentException("Label not found");
         }
+
+        userScope.requireAccess(label.getIssueTracker().getProject());
 
         return label;
     }

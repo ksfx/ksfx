@@ -242,7 +242,7 @@
                                 <a class="dropdown-item" href="#">Report Categories</a>
                             </div>
                         </li>
-                        <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'admin') or #strings.contains(#httpServletRequest.requestURI, 'dataexplorer') or #strings.contains(#httpServletRequest.requestURI, 'informationretrieval')} ? 'nav-item dropdown active' : 'nav-item dropdown'">
+                        <li sec:authorize="hasAuthority('ADMIN')" th:class="${#strings.contains(#httpServletRequest.requestURI, 'admin') or #strings.contains(#httpServletRequest.requestURI, 'dataexplorer') or #strings.contains(#httpServletRequest.requestURI, 'informationretrieval')} ? 'nav-item dropdown active' : 'nav-item dropdown'">
                             <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Admin</a>
                             <div class="dropdown-menu" aria-labelledby="dropdown04">
                                 <a class="dropdown-item" href="#">Admin</a>
@@ -293,7 +293,7 @@
                     </form>
 
                     <form class="navbar-nav ml-auto" th:action="@{/logout}" method="post" sec:authorize="isAuthenticated()">
-                        <span th:inline="text" style="margin:auto">Logged in as [[${#httpServletRequest.remoteUser}]] &nbsp;</span><input style="float:right" type="submit" value="Sign Out" class="btn btn-primary"/>
+                        <span th:inline="text" style="margin:auto">Logged in as [[${#httpServletRequest.remoteUser}]] &nbsp;<a th:href="@{/admin/user/changepassword}" title="Change password" style="margin-right:8px"><i class="fa fa-key"></i></a></span><input style="float:right" type="submit" value="Sign Out" class="btn btn-primary"/>
                     </form>
                     <!-- </div> -->
                 </div>

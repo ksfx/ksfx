@@ -17,6 +17,8 @@
 
 package ch.ksfx.controller.admin.gitsync;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.dao.GitSyncConfigDAO;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.model.GitSyncConfig;
@@ -48,6 +50,9 @@ import javax.validation.Valid;
 @RequestMapping("/agentic/projects/{projectId}/git")
 public class GitSyncConfigController
 {
+    @Autowired
+    private UserScope userScope;
+
     private final GitSyncConfigDAO gitSyncConfigDAO;
     private final ProjectDAO projectDAO;
     private final ActivityGitRepositoryService activityGitRepositoryService;
@@ -195,6 +200,8 @@ public class GitSyncConfigController
         if (project == null) {
             throw new IllegalArgumentException("No project with id " + projectId);
         }
+
+        userScope.requireManage(project); // Git settings are project configuration (OWNER)
 
         return project;
     }

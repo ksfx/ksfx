@@ -1,5 +1,11 @@
 package ch.ksfx.controller.admin.user;
 
+import java.util.ArrayList;
+import ch.ksfx.model.ProjectMembershipLevel;
+import ch.ksfx.model.ProjectMembership;
+import ch.ksfx.model.Project;
+import ch.ksfx.dao.ProjectDAO;
+import ch.ksfx.dao.ProjectMembershipDAO;
 import ch.ksfx.dao.user.RoleDAO;
 import ch.ksfx.dao.user.UserDAO;
 import ch.ksfx.model.user.Role;
@@ -34,11 +40,15 @@ import java.util.Set;
 public class UserManagementController
 {
     private final UserDAO userDAO;
+    private final ProjectMembershipDAO membershipDAO;
+    private final ProjectDAO projectDAO;
     private final RoleDAO roleDAO;
 
-    public UserManagementController(UserDAO userDAO, RoleDAO roleDAO)
+    public UserManagementController(UserDAO userDAO, RoleDAO roleDAO, ProjectMembershipDAO membershipDAO, ProjectDAO projectDAO)
     {
         this.userDAO = userDAO;
+        this.membershipDAO = membershipDAO;
+        this.projectDAO = projectDAO;
         this.roleDAO = roleDAO;
     }
 
@@ -71,6 +81,31 @@ public class UserManagementController
         model.addAttribute("user", user);
         model.addAttribute("isNew", user == null);
         model.addAttribute("allRoles", roleDAO.getAllRoles());
+
+        // Project memberships (step 1 of the membership concept): shown and edited here from the
+        // user's side, the same rows as the project form's Members page.
+        if (user != null && user.getId() != null) {
+            List<ProjectMembership> memberships = membershipDAO.getMembershipsForUser(user.getId());
+            List<Project> otherProjects = new ArrayList<>();
+
+            for (Project project : projectDAO.getAllProjects()) {
+                boolean member = false;
+
+                for (ProjectMembership membership : memberships) {
+                    if (membership.getProject().getId().equals(project.getId())) {
+                        member = true;
+                    }
+                }
+
+                if (!member) {
+                    otherProjects.add(project);
+                }
+            }
+
+            model.addAttribute("memberships", memberships);
+            model.addAttribute("otherProjects", otherProjects);
+            model.addAttribute("levels", ProjectMembershipLevel.values());
+        }
         model.addAttribute("assignedRoleIds", assignedRoleIds);
 
         return "admin/user/user_edit";

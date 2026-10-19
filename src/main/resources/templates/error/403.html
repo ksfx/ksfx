@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Not allowed</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<div class="container" style="margin-top:60px;max-width:640px">
+    <h3>Not allowed</h3>
+    <p th:text="${message != null and !#strings.isEmpty(message)} ? ${message} : 'You do not have the rights for this page in this project.'">You do not have the rights for this page in this project.</p>
+    <p class="text-muted">Your membership level in a project decides what you may do there (read, write or configure). Ask an administrator if you need more.</p>
+    <a th:href="@{/dashboard/}" class="btn btn-secondary">Back to the dashboard</a>
+</div>
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

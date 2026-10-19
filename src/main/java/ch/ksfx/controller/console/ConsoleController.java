@@ -1,5 +1,7 @@
 package ch.ksfx.controller.console;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.dao.PublishingConfigurationDAO;
 import ch.ksfx.dao.activity.ActivityInstanceDAO;
 import ch.ksfx.model.activity.ActivityInstance;
@@ -15,6 +17,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/console")
 public class ConsoleController
 {
+    @Autowired
+    private UserScope userScope;
+
     private PublishingConfigurationDAO publishingConfigurationDAO;
     private ActivityInstanceDAO activityInstanceDAO;
 
@@ -30,8 +35,10 @@ public class ConsoleController
         String console = "";
 
         if (entityType.equals("activityInstance")) {
+            userScope.requireRead(activityInstanceDAO.getActivityInstanceForId(entityId).getActivity().getProject());
             console = StringEscapeUtils.escapeHtml(activityInstanceDAO.getActivityInstanceForId(entityId).getConsole());
         } else if (entityType.equals("publishingConfiguration")) {
+            userScope.requireRead(publishingConfigurationDAO.getPublishingConfigurationForId(entityId).getProject());
             console = StringEscapeUtils.escapeHtml(publishingConfigurationDAO.getPublishingConfigurationForId(entityId).getConsole());
         }
 
@@ -47,10 +54,12 @@ public class ConsoleController
     {
         if (entityType.equals("activityInstance")) {
             ActivityInstance ai = activityInstanceDAO.getActivityInstanceForId(entityId);
+            userScope.requireWrite(ai.getActivity().getProject());
             ai.setConsole("");
             activityInstanceDAO.saveOrUpdateActivityInstance(ai);
         } else if (entityType.equals("publishingConfiguration")) {
             PublishingConfiguration pc = publishingConfigurationDAO.getPublishingConfigurationForId(entityId);
+            userScope.requireWrite(pc.getProject());
             pc.setConsole("");
             publishingConfigurationDAO.saveOrUpdatePublishingConfiguration(pc);
         }

@@ -36,7 +36,7 @@
                     <summary>Preview</summary>
                     <pre th:text="${v.content}"></pre>
                 </details>
-                <form th:unless="${iter.first}" th:action="@{/wiki/{wikiId}/page/{pageId}/restore(wikiId=${currentWiki.id},pageId=${page.id})}" method="post" class="wiki-inline-form"
+                <form th:if="${@projectContextService.canWrite()}" th:unless="${iter.first}" th:action="@{/wiki/{wikiId}/page/{pageId}/restore(wikiId=${currentWiki.id},pageId=${page.id})}" method="post" class="wiki-inline-form"
                       onsubmit="return confirm('Restore this version? This adds a new version on top of the current one.');">
                     <input type="hidden" name="versionId" th:value="${v.id}" />
                     <button type="submit" class="wiki-btn"><i class="fa fa-undo"></i> Restore</button>

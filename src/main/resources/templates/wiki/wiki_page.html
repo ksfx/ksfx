@@ -41,13 +41,13 @@
                      target="_blank" is all that's needed, no JS. That view auto-triggers the print
                      dialog itself once its content has rendered. -->
                 <a th:href="@{/wiki/{wikiId}/page/{pageId}/print(wikiId=${currentWiki.id},pageId=${page.id})}" target="_blank" class="wiki-btn"><i class="fa fa-print"></i> Print</a>
-                <a th:href="@{/wiki/{wikiId}/page/{pageId}/edit(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-pencil"></i> Edit</a>
+                <a th:if="${@projectContextService.canWrite()}" th:href="@{/wiki/{wikiId}/page/{pageId}/edit(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-pencil"></i> Edit</a>
                 <a th:href="@{/wiki/{wikiId}/page/{pageId}/history(wikiId=${currentWiki.id},pageId=${page.id})}" class="wiki-btn"><i class="fa fa-history"></i> History</a>
                 <!-- parent_page_id is ON DELETE CASCADE (same as folder deletes already cascade to
                      everything underneath) - deleting a page takes its WHOLE subtree (children,
                      grandchildren, ...) with it, so the confirm() says so with the real recursive
                      count whenever there's actually something to lose. -->
-                <form th:action="@{/wiki/{wikiId}/page/{pageId}/delete(wikiId=${currentWiki.id},pageId=${page.id})}" method="post" class="wiki-inline-form"
+                <form th:if="${@projectContextService.canWrite()}" th:action="@{/wiki/{wikiId}/page/{pageId}/delete(wikiId=${currentWiki.id},pageId=${page.id})}" method="post" class="wiki-inline-form"
                       th:attr="onsubmit=${descendantCount == 0} ? 'return confirm(\'Delete this page and its whole history?\');' : 'return confirm(\'Delete this page, its whole history, AND all ' + ${descendantCount} + ' of its subpages (and theirs)? This cannot be undone.\');'">
                     <button type="submit" class="wiki-btn wiki-btn-danger"><i class="fa fa-trash-o"></i> Delete</button>
                 </form>
@@ -71,7 +71,7 @@
         <div class="wiki-subpages" th:if="${not #lists.isEmpty(childPages)}">
             <div class="wiki-subpages-header">
                 <span class="wiki-subpages-title"><i class="fa fa-sitemap"></i> Subpages</span>
-                <a th:href="@{/wiki/{wikiId}/page/new(wikiId=${currentWiki.id},parentPageId=${page.id})}" class="wiki-btn"><i class="fa fa-plus"></i> New subpage</a>
+                <a th:if="${@projectContextService.canWrite()}" th:href="@{/wiki/{wikiId}/page/new(wikiId=${currentWiki.id},parentPageId=${page.id})}" class="wiki-btn"><i class="fa fa-plus"></i> New subpage</a>
             </div>
             <ul class="wiki-subpages-list">
                 <li th:each="child : ${childPages}">
@@ -85,7 +85,7 @@
                 <span class="wiki-attachments-title"><i class="fa fa-paperclip"></i> Attachments</span>
                 <!-- No separate upload button: picking files IS the upload (wiki.js submits this
                      form on the input's change event), one click less for the common case. -->
-                <form th:action="@{/wiki/{wikiId}/page/{pageId}/attachment/upload(wikiId=${currentWiki.id},pageId=${page.id})}"
+                <form th:if="${@projectContextService.canWrite()}" th:action="@{/wiki/{wikiId}/page/{pageId}/attachment/upload(wikiId=${currentWiki.id},pageId=${page.id})}"
                       method="post" enctype="multipart/form-data" class="wiki-inline-form">
                     <label class="wiki-btn wiki-attachments-upload-label">
                         <i class="fa fa-upload"></i> Upload
@@ -109,7 +109,7 @@
                     <!-- confirm() lives in wiki.js (delegated submit listener keyed on the class +
                          data-filename) rather than an inline onsubmit - a filename containing
                          quotes would break inline-generated JS. -->
-                    <form th:action="@{/wiki/{wikiId}/page/{pageId}/attachment/{assetId}/delete(wikiId=${currentWiki.id},pageId=${page.id},assetId=${a.id})}"
+                    <form th:if="${@projectContextService.canWrite()}" th:action="@{/wiki/{wikiId}/page/{pageId}/attachment/{assetId}/delete(wikiId=${currentWiki.id},pageId=${page.id},assetId=${a.id})}"
                           method="post" class="wiki-inline-form wiki-attachment-delete-form" th:data-filename="${a.fileName}">
                         <button type="submit" class="wiki-attachment-delete" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
                     </form>

@@ -50,4 +50,5 @@
     <include file="20261010090000_project_context.sql" relativeToChangelogFile="true"/>
     <include file="20261011090000_project_admin_flag.sql" relativeToChangelogFile="true"/>
     <include file="20261012090000_project_dashboard_apiclient.sql" relativeToChangelogFile="true"/>
+    <include file="20261018090000_project_membership.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

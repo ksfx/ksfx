@@ -1,5 +1,7 @@
 package ch.ksfx.controller.wiki;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import java.util.ArrayList;
 import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
@@ -59,6 +61,9 @@ import java.util.*;
 @RequestMapping("/wiki")
 public class WikiController
 {
+    @Autowired
+    private UserScope userScope;
+
     private final WikiDAO wikiDAO;
     private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
@@ -120,6 +125,7 @@ public class WikiController
             return "redirect:/wiki/none";
         }
 
+        userScope.requireManage(projectContextService.current()); // a whole wiki is an OWNER thing
         Wiki wiki = new Wiki();
         wiki.setProject(projectContextService.current()); // created inside the current project
         wiki.setName(name.trim());
@@ -139,7 +145,9 @@ public class WikiController
     @PostMapping("/{wikiId}/delete")
     public String deleteWiki(@PathVariable Long wikiId)
     {
-        wikiDAO.deleteWiki(requireWiki(wikiId));
+        Wiki wiki = requireWiki(wikiId);
+        userScope.requireManage(wiki.getProject());
+        wikiDAO.deleteWiki(wiki);
 
         return "redirect:/wiki/";
     }
@@ -432,6 +440,7 @@ public class WikiController
     @ResponseBody
     public Map<String, Object> uploadAsset(@RequestParam("file") MultipartFile file) throws IOException
     {
+        userScope.requireWrite(projectContextService.current());
         WikiAsset asset = buildAsset(file, null);
         wikiAssetDAO.saveWikiAsset(asset);
 
@@ -497,6 +506,10 @@ public class WikiController
             return ResponseEntity.notFound().build();
         }
 
+        if (asset.getWikiPage() != null) { // inline images carry no page and so no project
+            userScope.requireRead(asset.getWikiPage().getWiki().getProject());
+        }
+
         MediaType mediaType = asset.getContentType() != null
                 ? MediaType.parseMediaType(asset.getContentType())
                 : MediaType.APPLICATION_OCTET_STREAM;
@@ -541,6 +554,8 @@ public class WikiController
             throw new IllegalArgumentException("Wiki not found");
         }
 
+        userScope.requireAccess(wiki.getProject()); // read for GET, write for POST (step 2)
+
         return wiki;
     }
 
@@ -566,6 +581,8 @@ public class WikiController
             throw new IllegalArgumentException("Folder not found");
         }
 
+        userScope.requireAccess(folder.getWiki().getProject());
+
         return folder;
     }
 
@@ -576,6 +593,8 @@ public class WikiController
         if (page == null || !page.getWiki().getId().equals(wikiId)) {
             throw new IllegalArgumentException("Page not found");
         }
+
+        userScope.requireAccess(page.getWiki().getProject());
 
         return page;
     }

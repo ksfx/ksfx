@@ -16,10 +16,10 @@
         <div class="agentic-filebrowser-header">
             <span class="agentic-filebrowser-title"><i class="fa fa-folder-open-o"></i> Files</span>
             <span class="agentic-filebrowser-actions">
-                <button type="button" id="agenticFbUploadBtn" class="agentic-filebrowser-btn" title="Upload files"><i class="fa fa-upload"></i> Upload</button>
+                <button th:disabled="${!@projectContextService.canWrite()}" type="button" id="agenticFbUploadBtn" class="agentic-filebrowser-btn" title="Upload files"><i class="fa fa-upload"></i> Upload</button>
                 <input id="agenticFbUploadInput" type="file" multiple hidden="hidden" />
-                <button type="button" id="agenticFbMkdirBtn" class="agentic-filebrowser-btn" title="New folder"><i class="fa fa-folder"></i> New folder</button>
-                <button type="button" id="agenticFbNewMdBtn" class="agentic-filebrowser-btn" title="New markdown file"><i class="fa fa-plus"></i> New .md</button>
+                <button th:disabled="${!@projectContextService.canWrite()}" type="button" id="agenticFbMkdirBtn" class="agentic-filebrowser-btn" title="New folder"><i class="fa fa-folder"></i> New folder</button>
+                <button th:disabled="${!@projectContextService.canWrite()}" type="button" id="agenticFbNewMdBtn" class="agentic-filebrowser-btn" title="New markdown file"><i class="fa fa-plus"></i> New .md</button>
                 <button type="button" id="agenticFbCloseBtn" class="agentic-filebrowser-btn" title="Close" aria-label="Close"><i class="fa fa-times"></i></button>
             </span>
         </div>
@@ -70,10 +70,10 @@
             <td class="agentic-filebrowser-cell-date" th:text="${e.modified}"></td>
             <td class="agentic-filebrowser-cell-actions">
                 <button type="button" class="agentic-filebrowser-iconbtn"
-                        th:if="${!e.directory and #strings.endsWith(#strings.toLowerCase(e.name), '.md')}"
+                        th:if="${!e.directory and #strings.endsWith(#strings.toLowerCase(e.name), '.md') and @projectContextService.canWrite()}"
                         th:data-fb-edit="${e.name}" title="Edit" aria-label="Edit"><i class="fa fa-pencil-square-o"></i></button>
-                <button type="button" class="agentic-filebrowser-iconbtn" th:data-fb-rename="${e.name}" title="Rename" aria-label="Rename"><i class="fa fa-pencil"></i></button>
-                <button type="button" class="agentic-filebrowser-iconbtn" th:data-fb-delete="${e.name}" th:data-fb-delete-dir="${e.directory}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
+                <button th:if="${@projectContextService.canWrite()}" type="button" class="agentic-filebrowser-iconbtn" th:data-fb-rename="${e.name}" title="Rename" aria-label="Rename"><i class="fa fa-pencil"></i></button>
+                <button th:if="${@projectContextService.canWrite()}" type="button" class="agentic-filebrowser-iconbtn" th:data-fb-delete="${e.name}" th:data-fb-delete-dir="${e.directory}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
             </td>
         </tr>
         </tbody>

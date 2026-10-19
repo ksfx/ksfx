@@ -17,6 +17,8 @@
 
 package ch.ksfx.controller;
 
+import ch.ksfx.model.user.User;
+import ch.ksfx.services.project.UserScope;
 import java.util.List;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
@@ -46,10 +48,22 @@ public class GlobalModelAttributesControllerAdvice
     @Autowired
     private ProjectDAO projectDAO;
 
+    @Autowired
+    private UserScope userScope;
+
+    /** The projects the logged-in user may see (all for administrators) - the switcher's list and every project select. */
     @ModelAttribute("allProjects")
     public List<Project> allProjects()
     {
-        return projectDAO.getAllProjects();
+        User user = userScope.currentUser();
+
+        return user != null ? userScope.accessibleProjects(user) : projectDAO.getAllProjects();
+    }
+
+    @ModelAttribute("isInstanceAdmin")
+    public boolean isInstanceAdmin()
+    {
+        return userScope.isAdmin(userScope.currentUser());
     }
 
     @ModelAttribute("isProductionInstance")
