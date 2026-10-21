@@ -200,6 +200,8 @@ public class AgentController
                     Path newWorkspace = agentWorkspaceService.resolveWorkspace(agent, config);
 
                     agentWorkspaceService.moveWorkspaceIfNeeded(oldWorkspace, newWorkspace);
+                    // The CLI state (transcripts, memory) travels with the agent, same rule as the workspace.
+                    agentWorkspaceService.moveWorkspaceIfNeeded(agentWorkspaceService.resolveProviderDir(previousAgent, config), agentWorkspaceService.resolveProviderDir(agent, config));
                     agent.setWorkspacePath(newWorkspace.toString());
                     agentDAO.saveOrUpdateAgent(agent);
                 } catch (IOException e) {

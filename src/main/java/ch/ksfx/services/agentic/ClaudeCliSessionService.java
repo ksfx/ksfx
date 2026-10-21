@@ -1,5 +1,8 @@
 package ch.ksfx.services.agentic;
 
+import ch.ksfx.model.AgenticAuthMode;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.StandardCopyOption;
 import ch.ksfx.services.project.AgentScope;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.AgentMessageDAO;
@@ -670,6 +673,10 @@ public class ClaudeCliSessionService
             runningStatus.put(agent.getId(), "Thinking…");
 
             Path workspace = agentWorkspaceService.ensureWorkspace(agent, config);
+            // The CLI's own state (transcripts, memory, settings) goes to the agent's provider
+            // directory instead of ~/.claude - see AgentWorkspaceService.resolveProviderDir.
+            Path providerDir = agentWorkspaceService.ensureProviderDir(agent, config);
+            syncOAuthCredentialsInto(providerDir, config);
             Map<String, FileTime> filesBefore;
 
             try {
@@ -731,6 +738,7 @@ public class ClaudeCliSessionService
                 // transcript - see buildAppendedSystemPrompt, which tells the agent to reference
                 // $KSFX_AGENT_TOKEN rather than write the value itself.
                 processBuilder.environment().put("KSFX_AGENT_TOKEN", agent.getApiToken());
+                processBuilder.environment().put("CLAUDE_CONFIG_DIR", providerDir.toAbsolutePath().toString());
             }
             // useDocker: the same two values are passed as `-e` args to `docker exec` in
             // buildCommand instead - `docker exec` doesn't forward this (host) process's env to the
@@ -1072,10 +1080,53 @@ public class ClaudeCliSessionService
 
         command.add("-e");
         command.add("KSFX_AGENT_TOKEN=" + agent.getApiToken());
+        // The project's provider subtree is bind-mounted at /provider/claude (AgenticDockerService.
+        // buildRunCommand), so this is the container-side view of the same host directory the
+        // non-Docker branch passes in executeTurn.
+        command.add("-e");
+        command.add("CLAUDE_CONFIG_DIR=" + agentWorkspaceService.containerProviderDir(agent));
         command.add(agenticDockerService.containerNameFor(project.getId()));
         command.addAll(claudeArgs);
 
         return command;
+    }
+
+    /**
+     * OAUTH mode keeps its token in a credentials file, which the CLI now looks for in the agent's
+     * provider directory (CLAUDE_CONFIG_DIR) rather than in ~/.claude. So before every turn the
+     * host's live ~/.claude/.credentials.json (refreshed by the host's own interactive login) is
+     * copied there - for Docker and non-Docker agents alike, since the provider directory is a host
+     * path either way (bind-mounted into the container). Copied fresh each turn, never mounted or
+     * symlinked: the CLI refreshes the file by atomic rename, which would sever a symlink and
+     * freeze a stale token (see AgenticDockerService.buildRunCommand's comment, ksfx/ksfx#41).
+     * Best-effort - a failure here surfaces as the CLI's own "Not logged in" downstream.
+     * No-op for API_KEY/SETUP_TOKEN, where the token travels as an environment variable.
+     */
+    private void syncOAuthCredentialsInto(Path providerDir, AgenticConfig config)
+    {
+        if (config.getAuthMode() != AgenticAuthMode.OAUTH) {
+            return;
+        }
+
+        Path hostCredentials = Paths.get(System.getProperty("user.home"), ".claude", ".credentials.json");
+
+        if (!Files.isRegularFile(hostCredentials)) {
+            return;
+        }
+
+        try {
+            Path target = providerDir.resolve(".credentials.json");
+            Files.copy(hostCredentials, target, StandardCopyOption.REPLACE_EXISTING);
+
+            try {
+                Files.setPosixFilePermissions(target, PosixFilePermissions.fromString("rw-------"));
+            } catch (UnsupportedOperationException e) {
+                // Windows - no POSIX permissions, the directory ACL has to do.
+            }
+        } catch (IOException e) {
+            systemLogger.logMessage("AGENTIC", "Could not copy the OAuth credentials into '" + providerDir + "' - "
+                    + "the next turn will likely fail with 'Not logged in' if this doesn't clear up on retry.", e);
+        }
     }
 
     /**

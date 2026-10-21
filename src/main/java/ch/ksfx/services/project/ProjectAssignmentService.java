@@ -257,9 +257,11 @@ public class ProjectAssignmentService
         if (execute) {
             if (config != null) {
                 Path oldWorkspace = agentWorkspaceService.resolveWorkspace(agent, config);
+                Path oldProviderDir = agentWorkspaceService.resolveProviderDir(agent, config);
                 agent.setProject(target);
                 Path newWorkspace = agentWorkspaceService.resolveWorkspace(agent, config);
                 agentWorkspaceService.moveWorkspaceIfNeeded(oldWorkspace, newWorkspace);
+                agentWorkspaceService.moveWorkspaceIfNeeded(oldProviderDir, agentWorkspaceService.resolveProviderDir(agent, config)); // CLI state travels with the agent
                 agent.setWorkspacePath(newWorkspace.toString());
             } else {
                 agent.setProject(target);
