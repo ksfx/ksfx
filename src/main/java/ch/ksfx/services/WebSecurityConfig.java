@@ -33,10 +33,11 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
         http
                 .authorizeRequests()
                 .antMatchers("/", "/home","/toggledisplaymode", "/images/**", "/styles/**", "/script/**", "/publishing/publicationviewer/**", "/agentic/api/**").permitAll()
-                // Project-level admin pages (code libs, dashboard, own password) stay open to every
-                // member - the controllers apply the membership level. Everything else under the
+                // Project-level admin pages (code libs, dashboard) stay open to every
+                // member - the controllers apply the membership level; the personal pages (profile,
+                // password) live under /user/** outside /admin. Everything else under the
                 // Admin menu is an instance concern: role ADMIN only (membership concept, step 2).
-                .antMatchers("/admin/codelib/**", "/admin/dashboardmanager/**", "/admin/user/**").authenticated()
+                .antMatchers("/admin/codelib/**", "/admin/dashboardmanager/**").authenticated()
                 .antMatchers("/admin/**", "/dataexplorer/**", "/informationretrieval/**", "/apiclients/**", "/agentic/config/**", "/noteviewer/**").hasAuthority("ADMIN")
                 .anyRequest().authenticated()
                 .and()
