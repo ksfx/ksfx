@@ -460,7 +460,7 @@ public class ClaudeCliSessionService
         }
 
         if (config == null || !config.getEnabled() || isBlank(config.getClaudeCliPath()) || isBlank(config.getWorkspaceRoot())) {
-            return "Agentic is not fully configured. Please set and enable the CLI path and workspace root under /agentic/config/.";
+            return "Agentic is not fully configured. Please set and enable the CLI path and workspace root under Admin -> Agentic (/admin/agentic/).";
         }
 
         ProjectAgenticSettings settings = settingsFor(agent);

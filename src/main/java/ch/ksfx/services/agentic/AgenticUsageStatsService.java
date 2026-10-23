@@ -31,7 +31,7 @@ public class AgenticUsageStatsService
         this.agentMessageDAO = agentMessageDAO;
     }
 
-    /** projectId null = instance-wide (the /agentic/config view), otherwise that project's agents only. */
+    /** projectId null = instance-wide (the Admin -> Agentic view), otherwise that project's agents only. */
     public void addUsageStats(Model model, LocalDate statsDate, Long projectId)
     {
         List<AgentMessage> messages = projectId == null

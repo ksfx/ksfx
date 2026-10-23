@@ -328,7 +328,7 @@ public class AgenticFileBrowserController
         userScope.requireAccess(agent.getProject()); // every handler resolves its root here: read for GET, write for POST
 
         // Primary source is workspaceRoot-derived resolution (canonical, follows the config), but
-        // an instance whose /agentic/config/ was never saved still has each agent's absolute path
+        // an instance whose /admin/agentic/ was never saved still has each agent's absolute path
         // persisted on the row itself (set at creation, see AgentController) - browsing should
         // keep working there, the chat page renders without a config too.
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
@@ -350,7 +350,7 @@ public class AgenticFileBrowserController
                 return java.nio.file.Paths.get(agent.getWorkspacePath()).normalize().getParent().resolve("shared").normalize();
             }
 
-            throw new IllegalArgumentException("Agentic is not configured on this instance - save /agentic/config/ once");
+            throw new IllegalArgumentException("Agentic is not configured on this instance - save /admin/agentic/ once");
         }
 
         if (!ROOT_WORKSPACE.equals(root)) {
@@ -365,7 +365,7 @@ public class AgenticFileBrowserController
             return java.nio.file.Paths.get(agent.getWorkspacePath()).normalize();
         }
 
-        throw new IllegalArgumentException("Agentic is not configured on this instance - save /agentic/config/ once");
+        throw new IllegalArgumentException("Agentic is not configured on this instance - save /admin/agentic/ once");
     }
 
     /**

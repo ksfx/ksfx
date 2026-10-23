@@ -16,7 +16,7 @@
 <div class="container">
     <div class="list-group">
         <div class="list-group-item">
-            <form id="agenticConfigForm" action="#" th:action="@{/agentic/config/}" th:object="${agenticConfig}" method="post">
+            <form id="agenticConfigForm" action="#" th:action="@{/admin/agentic/}" th:object="${agenticConfig}" method="post">
                 <input type="hidden" th:field="*{id}" />
                                                 <div class="form-group">
                     <label for="claudeCliPath">Claude CLI Path</label>
@@ -72,7 +72,7 @@
 
         <div class="list-group-item">
             <h5>Usage Statistics (By Day)</h5>
-            <form action="#" th:action="@{/agentic/config/}" method="get" class="form-inline">
+            <form action="#" th:action="@{/admin/agentic/}" method="get" class="form-inline">
                 <label for="statsDate" style="margin-right:8px">Day:</label>
                 <input type="date" id="statsDate" name="statsDate" class="form-control form-control-sm"
                        th:value="${statsDate}" onchange="this.form.submit()" style="margin-right:8px" />

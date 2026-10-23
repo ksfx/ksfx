@@ -38,7 +38,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
                 // password) live under /user/** outside /admin. Everything else under the
                 // Admin menu is an instance concern: role ADMIN only (membership concept, step 2).
                 .antMatchers("/admin/codelib/**", "/admin/dashboardmanager/**").authenticated()
-                .antMatchers("/admin/**", "/dataexplorer/**", "/informationretrieval/**", "/apiclients/**", "/agentic/config/**", "/noteviewer/**").hasAuthority("ADMIN")
+                .antMatchers("/admin/**", "/dataexplorer/**", "/informationretrieval/**", "/apiclients/**", "/noteviewer/**").hasAuthority("ADMIN")
                 .anyRequest().authenticated()
                 .and()
                 .formLogin()

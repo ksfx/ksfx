@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
-@RequestMapping("/agentic/config")
+@RequestMapping("/admin/agentic")
 public class AgenticConfigController
 {
     private final AgenticConfigDAO agenticConfigDAO;
@@ -68,7 +68,7 @@ public class AgenticConfigController
 
         agenticConfigDAO.saveOrUpdateAgenticConfig(agenticConfig);
 
-        return "redirect:/agentic/config/";
+        return "redirect:/admin/agentic/";
     }
 
 }
