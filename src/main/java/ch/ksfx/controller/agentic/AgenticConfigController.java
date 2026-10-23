@@ -1,5 +1,6 @@
 package ch.ksfx.controller.agentic;
 
+import ch.ksfx.services.agentic.AgenticUsageStatsService;
 import ch.ksfx.dao.AgentMessageDAO;
 import ch.ksfx.dao.AgenticConfigDAO;
 import ch.ksfx.model.AgentMessage;
@@ -28,13 +29,13 @@ import java.util.stream.Collectors;
 public class AgenticConfigController
 {
     private final AgenticConfigDAO agenticConfigDAO;
-    private final AgentMessageDAO agentMessageDAO;
+    private final AgenticUsageStatsService usageStatsService;
     private final SystemEnvironment systemEnvironment;
 
-    public AgenticConfigController(AgenticConfigDAO agenticConfigDAO, AgentMessageDAO agentMessageDAO, SystemEnvironment systemEnvironment)
+    public AgenticConfigController(AgenticConfigDAO agenticConfigDAO, AgenticUsageStatsService usageStatsService, SystemEnvironment systemEnvironment)
     {
         this.agenticConfigDAO = agenticConfigDAO;
-        this.agentMessageDAO = agentMessageDAO;
+        this.usageStatsService = usageStatsService;
         this.systemEnvironment = systemEnvironment;
     }
 
@@ -53,7 +54,7 @@ public class AgenticConfigController
 
         model.addAttribute("agenticConfig", agenticConfig);
 
-        addUsageStats(model, statsDate != null ? statsDate : LocalDate.now());
+        usageStatsService.addUsageStats(model, statsDate != null ? statsDate : LocalDate.now(), null);
 
         return "agentic/config/agentic_config";
     }
@@ -65,160 +66,9 @@ public class AgenticConfigController
             return "agentic/config/agentic_config";
         }
 
-        // agenticConfig is a fresh object built only from submitted form fields - the
-        // claudeRateLimit* snapshot fields are read-only/system-captured, never form inputs, so
-        // without this they'd be silently wiped to null on every settings save.
-        AgenticConfig previous = agenticConfigDAO.getAgenticConfig();
-
-        if (previous != null) {
-            agenticConfig.setClaudeRateLimitStatus(previous.getClaudeRateLimitStatus());
-            agenticConfig.setClaudeRateLimitType(previous.getClaudeRateLimitType());
-            agenticConfig.setClaudeRateLimitResetsAt(previous.getClaudeRateLimitResetsAt());
-            agenticConfig.setClaudeRateLimitOverageStatus(previous.getClaudeRateLimitOverageStatus());
-            agenticConfig.setClaudeRateLimitOverageResetsAt(previous.getClaudeRateLimitOverageResetsAt());
-            agenticConfig.setClaudeRateLimitUsingOverage(previous.getClaudeRateLimitUsingOverage());
-            agenticConfig.setClaudeRateLimitUpdatedAt(previous.getClaudeRateLimitUpdatedAt());
-        }
-
         agenticConfigDAO.saveOrUpdateAgenticConfig(agenticConfig);
 
         return "redirect:/agentic/config/";
     }
 
-    /**
-     * Aggregates per-turn usage (see ClaudeCliSessionService/AgentMessage) into per-agent and
-     * grand totals for display, twice: once all-time, once scoped to statsDate (defaults to today,
-     * see index()) so you can see "what did today/this day actually cost" separately from the
-     * running total. Computed in Java rather than a DB-level aggregate query - the dataset is small
-     * for a personal tool, and this avoids Ebean aggregate-query syntax for a one-off report; both
-     * aggregations reuse the same single DB fetch rather than querying twice.
-     */
-    private void addUsageStats(Model model, LocalDate statsDate)
-    {
-        List<AgentMessage> messages = agentMessageDAO.getAssistantMessagesWithUsage();
-
-        UsageAggregate allTime = aggregate(messages);
-
-        model.addAttribute("usageByAgent", allTime.usageByAgent.values());
-        model.addAttribute("totalInputTokens", allTime.totalInputTokens);
-        model.addAttribute("totalOutputTokens", allTime.totalOutputTokens);
-        model.addAttribute("totalCacheCreationTokens", allTime.totalCacheCreationTokens);
-        model.addAttribute("totalCacheReadTokens", allTime.totalCacheReadTokens);
-        model.addAttribute("totalTurns", allTime.totalTurns);
-        model.addAttribute("totalVoiceCleanupInputTokens", allTime.totalVoiceCleanupInputTokens);
-        model.addAttribute("totalVoiceCleanupOutputTokens", allTime.totalVoiceCleanupOutputTokens);
-
-        List<AgentMessage> dayMessages = messages.stream()
-                .filter(m -> toLocalDate(m.getCreatedAt()).equals(statsDate))
-                .collect(Collectors.toList());
-
-        UsageAggregate day = aggregate(dayMessages);
-
-        model.addAttribute("statsDate", statsDate);
-        model.addAttribute("usageByAgentForDay", day.usageByAgent.values());
-        model.addAttribute("totalInputTokensForDay", day.totalInputTokens);
-        model.addAttribute("totalOutputTokensForDay", day.totalOutputTokens);
-        model.addAttribute("totalCacheCreationTokensForDay", day.totalCacheCreationTokens);
-        model.addAttribute("totalCacheReadTokensForDay", day.totalCacheReadTokens);
-        model.addAttribute("totalTurnsForDay", day.totalTurns);
-        model.addAttribute("totalVoiceCleanupInputTokensForDay", day.totalVoiceCleanupInputTokens);
-        model.addAttribute("totalVoiceCleanupOutputTokensForDay", day.totalVoiceCleanupOutputTokens);
-    }
-
-    private LocalDate toLocalDate(java.util.Date date)
-    {
-        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-    }
-
-    private UsageAggregate aggregate(List<AgentMessage> messages)
-    {
-        UsageAggregate result = new UsageAggregate();
-
-        for (AgentMessage message : messages) {
-            Long agentId = message.getAgent().getId();
-            UsageSummary summary = result.usageByAgent.get(agentId);
-
-            if (summary == null) {
-                summary = new UsageSummary();
-                summary.agentName = message.getAgent().getName();
-                result.usageByAgent.put(agentId, summary);
-            }
-
-            // Integer fields can in principle be null (result event omitted a usage sub-field) even
-            // though inputTokens - the field getAssistantMessagesWithUsage() filters on - isn't.
-            // Both cache figures are sub-categories of the *input* side of the request (prompt
-            // caching), never the output - cacheCreationTokens is prompt content newly written to
-            // the cache this turn, cacheReadTokens is prompt content served back out of an existing
-            // cache entry instead of being reprocessed. Naming them "in"/"out" would misleadingly
-            // pair them with the Input/Output columns, as if output could be cached - it can't.
-            int inputTokens = message.getInputTokens() != null ? message.getInputTokens() : 0;
-            int outputTokens = message.getOutputTokens() != null ? message.getOutputTokens() : 0;
-            int cacheCreationTokens = message.getCacheCreationInputTokens() != null ? message.getCacheCreationInputTokens() : 0;
-            int cacheReadTokens = message.getCacheReadInputTokens() != null ? message.getCacheReadInputTokens() : 0;
-
-            // Voice-cleanup calls (see ClaudeCliSessionService.persistVoiceCleanupUsage) are
-            // persisted as internal=true ASSISTANT messages purely to get their tokens counted here
-            // - folded into the same totals as regular conversation usage (so the grand total is
-            // accurate) but also broken out separately (so it's visible, not just silently merged
-            // in) rather than counted as a "turn" of its own.
-            boolean isVoiceCleanup = message.getInternal();
-
-            if (!isVoiceCleanup) {
-                summary.turnCount++;
-                result.totalTurns++;
-            } else {
-                summary.voiceCleanupInputTokens += inputTokens;
-                summary.voiceCleanupOutputTokens += outputTokens;
-                result.totalVoiceCleanupInputTokens += inputTokens;
-                result.totalVoiceCleanupOutputTokens += outputTokens;
-
-                // completionSource is only ever "cli"/"api" (see VoiceCompletionResult.getSource())
-                // but a message from before that field existed would have it null - counted as
-                // neither rather than guessed, so historical rows don't silently skew this.
-                if ("api".equals(message.getCompletionSource())) {
-                    summary.voiceCleanupApiCount++;
-                } else if ("cli".equals(message.getCompletionSource())) {
-                    summary.voiceCleanupCliCount++;
-                }
-            }
-
-            summary.inputTokens += inputTokens;
-            summary.outputTokens += outputTokens;
-            summary.cacheCreationTokens += cacheCreationTokens;
-            summary.cacheReadTokens += cacheReadTokens;
-
-            result.totalInputTokens += inputTokens;
-            result.totalOutputTokens += outputTokens;
-            result.totalCacheCreationTokens += cacheCreationTokens;
-            result.totalCacheReadTokens += cacheReadTokens;
-        }
-
-        return result;
-    }
-
-    private static class UsageAggregate
-    {
-        Map<Long, UsageSummary> usageByAgent = new LinkedHashMap<>();
-        long totalInputTokens;
-        long totalOutputTokens;
-        long totalCacheCreationTokens;
-        long totalCacheReadTokens;
-        long totalVoiceCleanupInputTokens;
-        long totalVoiceCleanupOutputTokens;
-        int totalTurns;
-    }
-
-    public static class UsageSummary
-    {
-        public String agentName;
-        public int turnCount;
-        public long inputTokens;
-        public long outputTokens;
-        public long cacheCreationTokens;
-        public long cacheReadTokens;
-        public long voiceCleanupInputTokens;
-        public long voiceCleanupOutputTokens;
-        public int voiceCleanupCliCount;
-        public int voiceCleanupApiCount;
-    }
 }

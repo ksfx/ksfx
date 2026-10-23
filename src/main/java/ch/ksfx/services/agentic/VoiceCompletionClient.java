@@ -1,5 +1,6 @@
 package ch.ksfx.services.agentic;
 
+import ch.ksfx.model.ProjectAgenticSettings;
 import ch.ksfx.model.Agent;
 import ch.ksfx.model.AgenticConfig;
 
@@ -17,5 +18,5 @@ public interface VoiceCompletionClient
      * non-2xx/non-zero exit, empty reply, unsupported auth mode, ...) - callers fall back to the
      * original dictated text rather than treating this as fatal.
      */
-    VoiceCompletionResult complete(String prompt, Agent agent, AgenticConfig config);
+    VoiceCompletionResult complete(String prompt, Agent agent, AgenticConfig config, ProjectAgenticSettings settings);
 }

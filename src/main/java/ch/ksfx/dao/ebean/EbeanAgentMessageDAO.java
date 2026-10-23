@@ -91,6 +91,12 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     }
 
     @Override
+    public List<AgentMessage> getAssistantMessagesWithUsageForProject(Long projectId)
+    {
+        return Ebean.find(AgentMessage.class).where().eq("role", AgentMessageRole.ASSISTANT).isNotNull("inputTokens").eq("agent.project.id", projectId).order().desc("createdAt").findList();
+    }
+
+    @Override
     public List<AgentMessage> searchMessages(String term, int limit)
     {
         return Ebean.find(AgentMessage.class).fetch("agent").fetch("fromAgent")

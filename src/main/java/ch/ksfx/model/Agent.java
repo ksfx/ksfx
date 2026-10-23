@@ -108,7 +108,7 @@ public class Agent
     }
 
     /**
-     * Overrides {@link AgenticConfig#getDefaultPermissionMode()} for this agent when set; blank/null
+     * Overrides {@link ProjectAgenticSettings#getDefaultPermissionMode()} for this agent when set; blank/null
      * means "use the global default".
      */
     public String getPermissionMode()
@@ -122,7 +122,7 @@ public class Agent
     }
 
     /**
-     * Overrides {@link AgenticConfig#getDefaultModel()} for this agent when set; blank/null means
+     * Overrides {@link ProjectAgenticSettings#getDefaultModel()} for this agent when set; blank/null means
      * "use the global default" (which itself may be blank, meaning "use the CLI's own default").
      */
     public String getModel()

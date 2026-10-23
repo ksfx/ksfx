@@ -31,6 +31,8 @@ public interface AgentMessageDAO
 
     public List<AgentMessage> getAssistantMessagesWithUsage();
 
+    public List<AgentMessage> getAssistantMessagesWithUsageForProject(Long projectId);
+
     /**
      * Up to {@code limit} messages (across every agent, not just one) whose content contains
      * {@code term}, most recent first. Backs the cross-agent search overlay - see

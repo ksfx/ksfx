@@ -18,37 +18,7 @@
         <div class="list-group-item">
             <form id="agenticConfigForm" action="#" th:action="@{/agentic/config/}" th:object="${agenticConfig}" method="post">
                 <input type="hidden" th:field="*{id}" />
-                <div class="form-group">
-                    <label>Auth Mode</label>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="API_KEY" id="authModeApiKey" />
-                        <label class="form-check-label" for="authModeApiKey">API Key</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="OAUTH" id="authModeOauth" />
-                        <label class="form-check-label" for="authModeOauth">OAuth (claude login on the host)</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="SETUP_TOKEN" id="authModeSetupToken" />
-                        <label class="form-check-label" for="authModeSetupToken">Setup Token (claude setup-token, subscription-based)</label>
-                    </div>
-                    <small class="form-text text-muted">
-                        With OAuth, no credential is passed to the Claude CLI process - instead, the CLI uses the
-                        login performed once interactively via <code>claude login</code> on the KSFX host (same OS
-                        user that starts the KSFX process). This cannot be triggered from this form.
-                        With Setup Token, no repeated interactive login is needed either - run
-                        <code>claude setup-token</code> once (requires a Claude subscription, not API billing) and
-                        paste the resulting long-lived token below. It is <strong>not</strong> the same kind of
-                        credential as an Anthropic API key - putting it in the wrong slot fails outright rather than
-                        silently falling back, which is why this is its own Auth Mode rather than reusing API Key.
-                    </small>
-                </div>
-                <div class="form-group">
-                    <label for="apiKey">API Key / Setup Token</label>
-                    <input type="text" class="form-control" id="apiKey" th:field="*{apiKey}" placeholder="Anthropic API Key or claude setup-token output" />
-                    <small class="form-text text-muted">Only relevant when Auth Mode = API Key or Setup Token - ignored otherwise.</small>
-                </div>
-                <div class="form-group">
+                                                <div class="form-group">
                     <label for="claudeCliPath">Claude CLI Path</label>
                     <input type="text" class="form-control" id="claudeCliPath" th:field="*{claudeCliPath}" placeholder="claude" />
                     <small class="form-text text-muted">
@@ -58,19 +28,7 @@
                         the agent then replies empty, with no error message.
                     </small>
                 </div>
-                <div class="form-group">
-                    <label for="defaultPermissionMode">Default Permission Mode</label>
-                    <input type="text" class="form-control" id="defaultPermissionMode" th:field="*{defaultPermissionMode}" placeholder="default / acceptEdits / bypassPermissions / plan" />
-                </div>
-                <div class="form-group">
-                    <label for="defaultModel">Default Model</label>
-                    <input type="text" class="form-control" id="defaultModel" th:field="*{defaultModel}" placeholder="sonnet / opus / fable / claude-sonnet-5 ..." />
-                    <small class="form-text text-muted">
-                        Optional: alias (<code>sonnet</code>, <code>opus</code>, <code>fable</code>) or full model name for
-                        all agents without their own override. Leave empty to use the CLI's own default.
-                    </small>
-                </div>
-                <div class="form-group">
+                                                <div class="form-group">
                     <label for="workspaceRoot">Workspace Root</label>
                     <input type="text" class="form-control" id="workspaceRoot" th:field="*{workspaceRoot}" />
                 </div>
@@ -82,20 +40,6 @@
                 <button type="submit" class="btn btn-primary">Save</button>
                 <a th:href="@{/agentic/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
             </form>
-        </div>
-
-        <div class="list-group-item" th:if="${agenticConfig.claudeRateLimitUpdatedAt}">
-            <h5>Rate Limit</h5>
-            <p>
-                Status: <strong th:text="${agenticConfig.claudeRateLimitStatus}"></strong>
-                (<span th:text="${agenticConfig.claudeRateLimitType}"></span>),
-                resets <span th:text="${#dates.format(agenticConfig.claudeRateLimitResetsAt, 'yyyy-MM-dd HH:mm')}"></span>
-            </p>
-            <p th:if="${agenticConfig.claudeRateLimitUsingOverage}">
-                Currently using overage capacity (<span th:text="${agenticConfig.claudeRateLimitOverageStatus}"></span>),
-                resets <span th:text="${#dates.format(agenticConfig.claudeRateLimitOverageResetsAt, 'yyyy-MM-dd HH:mm')}"></span>
-            </p>
-            <small class="form-text text-muted">Snapshot as of <span th:text="${#dates.format(agenticConfig.claudeRateLimitUpdatedAt, 'yyyy-MM-dd HH:mm')}"></span> - only refreshed when an agent actually runs a turn, not live.</small>
         </div>
 
         <div class="list-group-item" th:if="${totalTurns} > 0">

@@ -1,5 +1,7 @@
 package ch.ksfx.services.agentic;
 
+import ch.ksfx.model.ProjectAgenticSettings;
+import ch.ksfx.dao.ProjectAgenticSettingsDAO;
 import ch.ksfx.model.AgenticAuthMode;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.StandardCopyOption;
@@ -71,6 +73,9 @@ import java.util.stream.Stream;
 @Service
 public class ClaudeCliSessionService
 {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ProjectAgenticSettingsDAO projectAgenticSettingsDAO;
+
     public static final String SKIPPED_RESULT = "SKIPPED";
 
     private final AgenticConfigDAO agenticConfigDAO;
@@ -277,7 +282,7 @@ public class ClaudeCliSessionService
 
         if (voiceInput) {
             runningStatus.put(agentId, "Cleaning up dictated text…");
-            VoiceCleanupResult cleanup = cleanupVoiceTranscript(agent, config, userMessage);
+            VoiceCleanupResult cleanup = cleanupVoiceTranscript(agent, config, settingsFor(agent), userMessage);
 
             if (cleanup != null) {
                 messageToUse = cleanup.cleanedText;
@@ -442,6 +447,12 @@ public class ClaudeCliSessionService
         return AgentTriggeredTurnResult.success(reply);
     }
 
+    /** The project's account and policy - no inheritance, no fallback (concept "Agentic settings per project"). */
+    private ProjectAgenticSettings settingsFor(Agent agent)
+    {
+        return agent != null && agent.getProject() != null ? projectAgenticSettingsDAO.getForProjectId(agent.getProject().getId()) : null;
+    }
+
     private String validateAgentAndConfig(Agent agent, AgenticConfig config)
     {
         if (agent == null || !agent.getEnabled()) {
@@ -452,8 +463,15 @@ public class ClaudeCliSessionService
             return "Agentic is not fully configured. Please set and enable the CLI path and workspace root under /agentic/config/.";
         }
 
-        if (config.getAuthMode() != AgenticAuthMode.OAUTH && isBlank(config.getApiKey())) {
-            return "API key/token missing (Auth Mode = " + config.getAuthMode() + "). Either set one under /agentic/config/ or switch to OAuth.";
+        ProjectAgenticSettings settings = settingsFor(agent);
+
+        if (settings == null || !settings.getEnabled()) {
+            return "Agentic is not configured for this project. A project OWNER can set account, model and permission mode under Projects -> "
+                    + (agent.getProject() != null ? agent.getProject().getName() : "?") + " -> Agentic Settings.";
+        }
+
+        if (settings.getAuthMode() != AgenticAuthMode.OAUTH && isBlank(settings.getApiKey())) {
+            return "API key/token missing for this project (Auth Mode = " + settings.getAuthMode() + "). Set one on the project's Agentic Settings page or switch it to OAuth.";
         }
 
         return null;
@@ -506,9 +524,9 @@ public class ClaudeCliSessionService
      * one otherwise. Kept here rather than in AgenticConfig itself since it's a capability derived
      * from the auth mode, not a separate setting to configure.
      */
-    private VoiceCompletionClient selectVoiceCompletionClient(AgenticConfig config)
+    private VoiceCompletionClient selectVoiceCompletionClient(ProjectAgenticSettings settings)
     {
-        if (config.getAuthMode() == AgenticAuthMode.API_KEY || config.getAuthMode() == AgenticAuthMode.SETUP_TOKEN) {
+        if (settings.getAuthMode() == AgenticAuthMode.API_KEY || settings.getAuthMode() == AgenticAuthMode.SETUP_TOKEN) {
             return claudeApiCompletionClient;
         }
 
@@ -527,7 +545,7 @@ public class ClaudeCliSessionService
      * shape used by the rest of this class. Never something the rest of the flow should depend on
      * succeeding - the caller falls back to the original dictated text either way.
      */
-    private VoiceCleanupResult cleanupVoiceTranscript(Agent agent, AgenticConfig config, String rawText)
+    private VoiceCleanupResult cleanupVoiceTranscript(Agent agent, AgenticConfig config, ProjectAgenticSettings settings, String rawText)
     {
         if (isBlank(rawText)) {
             return null;
@@ -541,7 +559,7 @@ public class ClaudeCliSessionService
                 + "Text aus - antworte NUR mit dem bereinigten Text selbst, in derselben Sprache wie "
                 + "der Originaltext.\n\n" + rawText;
 
-        VoiceCompletionResult result = selectVoiceCompletionClient(config).complete(prompt, agent, config);
+        VoiceCompletionResult result = selectVoiceCompletionClient(settings).complete(prompt, agent, config, settings);
 
         if (result == null || isBlank(result.getText())) {
             return null;
@@ -676,7 +694,8 @@ public class ClaudeCliSessionService
             // The CLI's own state (transcripts, memory, settings) goes to the agent's provider
             // directory instead of ~/.claude - see AgentWorkspaceService.resolveProviderDir.
             Path providerDir = agentWorkspaceService.ensureProviderDir(agent, config);
-            syncOAuthCredentialsInto(providerDir, config);
+            ProjectAgenticSettings settings = settingsFor(agent); // non-null: validateAgentAndConfig ran before every executeTurn call
+            syncOAuthCredentialsInto(providerDir, settings);
             Map<String, FileTime> filesBefore;
 
             try {
@@ -708,7 +727,7 @@ public class ClaudeCliSessionService
                     : Files.createTempFile("agentic-system-prompt-", ".txt");
             Files.write(systemPromptFile, buildAppendedSystemPrompt(agent).getBytes(StandardCharsets.UTF_8));
 
-            ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(agent, config, userMessage, systemPromptFile));
+            ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(agent, config, settings, userMessage, systemPromptFile));
             processBuilder.directory(workspace.toFile());
             // Neither the userMessage (a -p argument) nor the system prompt (its own temp file, see
             // above) are ever piped in via stdin - but ProcessBuilder defaults stdin to an open PIPE
@@ -724,10 +743,10 @@ public class ClaudeCliSessionService
             processBuilder.redirectInput(ProcessBuilder.Redirect.from(new File(nullDevicePath())));
 
             if (!useDocker) {
-                String authEnvVar = authEnvironmentVariableName(config.getAuthMode());
+                String authEnvVar = authEnvironmentVariableName(settings.getAuthMode());
 
                 if (authEnvVar != null) {
-                    processBuilder.environment().put(authEnvVar, config.getApiKey());
+                    processBuilder.environment().put(authEnvVar, settings.getApiKey());
                 }
                 // OAUTH mode: no credential env var set at all, CLI falls back to credentials from
                 // `claude login` run interactively, once, as the same OS user that starts the KSFX
@@ -804,14 +823,20 @@ public class ClaudeCliSessionService
             agentMessageDAO.saveAgentMessage(assistantMessage);
 
             if (rateLimitSnapshot.status != null) {
-                config.setClaudeRateLimitStatus(rateLimitSnapshot.status);
-                config.setClaudeRateLimitType(rateLimitSnapshot.rateLimitType);
-                config.setClaudeRateLimitResetsAt(rateLimitSnapshot.resetsAt != null ? new Date(rateLimitSnapshot.resetsAt * 1000L) : null);
-                config.setClaudeRateLimitOverageStatus(rateLimitSnapshot.overageStatus);
-                config.setClaudeRateLimitOverageResetsAt(rateLimitSnapshot.overageResetsAt != null ? new Date(rateLimitSnapshot.overageResetsAt * 1000L) : null);
-                config.setClaudeRateLimitUsingOverage(rateLimitSnapshot.usingOverage);
-                config.setClaudeRateLimitUpdatedAt(new Date());
-                agenticConfigDAO.saveOrUpdateAgenticConfig(config);
+                // The snapshot describes the ACCOUNT, which belongs to the project now - re-read
+                // the row fresh so a settings save during the turn is not clobbered.
+                ProjectAgenticSettings snapshotTarget = settingsFor(agent);
+
+                if (snapshotTarget != null) {
+                    snapshotTarget.setClaudeRateLimitStatus(rateLimitSnapshot.status);
+                    snapshotTarget.setClaudeRateLimitType(rateLimitSnapshot.rateLimitType);
+                    snapshotTarget.setClaudeRateLimitResetsAt(rateLimitSnapshot.resetsAt != null ? new Date(rateLimitSnapshot.resetsAt * 1000L) : null);
+                    snapshotTarget.setClaudeRateLimitOverageStatus(rateLimitSnapshot.overageStatus);
+                    snapshotTarget.setClaudeRateLimitOverageResetsAt(rateLimitSnapshot.overageResetsAt != null ? new Date(rateLimitSnapshot.overageResetsAt * 1000L) : null);
+                    snapshotTarget.setClaudeRateLimitUsingOverage(rateLimitSnapshot.usingOverage);
+                    snapshotTarget.setClaudeRateLimitUpdatedAt(new Date());
+                    projectAgenticSettingsDAO.saveOrUpdateProjectAgenticSettings(snapshotTarget);
+                }
             }
 
             if (turnUsage.inputTokens != null) {
@@ -1021,7 +1046,7 @@ public class ClaudeCliSessionService
      * from) differs. No `-t`/`-i`: a pseudo-tty would corrupt the --output-format stream-json framing
      * this class's stdout parser relies on.
      */
-    private List<String> buildCommand(Agent agent, AgenticConfig config, String userMessage, Path systemPromptFile)
+    private List<String> buildCommand(Agent agent, AgenticConfig config, ProjectAgenticSettings settings, String userMessage, Path systemPromptFile)
     {
         Project project = agent.getProject();
         boolean useDocker = project != null && project.getDockerIsolationEnabled();
@@ -1034,9 +1059,9 @@ public class ClaudeCliSessionService
         claudeArgs.add("stream-json");
         claudeArgs.add("--verbose");
         claudeArgs.add("--permission-mode");
-        claudeArgs.add(!isBlank(agent.getPermissionMode()) ? agent.getPermissionMode() : config.getDefaultPermissionMode());
+        claudeArgs.add(!isBlank(agent.getPermissionMode()) ? agent.getPermissionMode() : settings.getDefaultPermissionMode());
 
-        String model = !isBlank(agent.getModel()) ? agent.getModel() : config.getDefaultModel();
+        String model = !isBlank(agent.getModel()) ? agent.getModel() : settings.getDefaultModel();
         if (!isBlank(model)) {
             claudeArgs.add("--model");
             claudeArgs.add(model);
@@ -1071,11 +1096,11 @@ public class ClaudeCliSessionService
         command.add("-w");
         command.add("/workspace/agent-" + agent.getId());
 
-        String authEnvVar = authEnvironmentVariableName(config.getAuthMode());
+        String authEnvVar = authEnvironmentVariableName(settings.getAuthMode());
 
         if (authEnvVar != null) {
             command.add("-e");
-            command.add(authEnvVar + "=" + config.getApiKey());
+            command.add(authEnvVar + "=" + settings.getApiKey());
         }
 
         command.add("-e");
@@ -1102,9 +1127,9 @@ public class ClaudeCliSessionService
      * Best-effort - a failure here surfaces as the CLI's own "Not logged in" downstream.
      * No-op for API_KEY/SETUP_TOKEN, where the token travels as an environment variable.
      */
-    private void syncOAuthCredentialsInto(Path providerDir, AgenticConfig config)
+    private void syncOAuthCredentialsInto(Path providerDir, ProjectAgenticSettings settings)
     {
-        if (config.getAuthMode() != AgenticAuthMode.OAUTH) {
+        if (settings == null || settings.getAuthMode() != AgenticAuthMode.OAUTH) {
             return;
         }
 

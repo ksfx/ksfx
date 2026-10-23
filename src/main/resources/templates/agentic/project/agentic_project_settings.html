@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Project Agentic Settings</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/}">Projects</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/edit/{id}(id=${project.id})}" th:text="${project.name}">Project</a></li>
+        <li class="breadcrumb-item active">Agentic Settings</li>
+    </ol>
+</nav>
+<message th:replace="layout :: message"/>
+
+<div class="container">
+    <p class="text-muted">The account and policy of <strong th:text="${project.name}"></strong> - nothing is inherited: what this page shows is exactly what this project's agents use. A project without enabled settings has no working agents.</p>
+
+    <div class="list-group">
+        <div class="list-group-item">
+            <form id="projectAgenticSettingsForm" action="#" th:action="@{/agentic/projects/{id}/settings/(id=${project.id})}" th:object="${settings}" method="post">
+                <div class="form-group">
+                    <label>Auth Mode</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="API_KEY" id="authModeApiKey" />
+                        <label class="form-check-label" for="authModeApiKey">API Key (Anthropic Console, pay per token)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="SETUP_TOKEN" id="authModeSetupToken" />
+                        <label class="form-check-label" for="authModeSetupToken">Setup Token (output of `claude setup-token`, subscription-based)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="OAUTH" id="authModeOauth" />
+                        <label class="form-check-label" for="authModeOauth">OAuth (host login)</label>
+                    </div>
+                    <small class="form-text text-muted">OAuth uses the credentials of the host's one interactive `claude login` - every project choosing OAuth shares that same account. A key or setup token is genuinely this project's own.</small>
+                </div>
+                <div class="form-group">
+                    <label for="apiKey">API Key / Setup Token</label>
+                    <input type="text" class="form-control" id="apiKey" th:field="*{apiKey}" placeholder="Anthropic API Key or claude setup-token output" />
+                </div>
+                <div class="form-group">
+                    <label for="defaultPermissionMode">Default Permission Mode</label>
+                    <input type="text" class="form-control" id="defaultPermissionMode" th:field="*{defaultPermissionMode}" placeholder="default / acceptEdits / bypassPermissions / plan" />
+                    <small class="form-text text-muted">Used for every agent of this project that has no own permission mode set.</small>
+                </div>
+                <div class="form-group">
+                    <label for="defaultModel">Default Model</label>
+                    <input type="text" class="form-control" id="defaultModel" th:field="*{defaultModel}" placeholder="sonnet / opus / fable / claude-sonnet-5 - empty = provider's own default" />
+                    <small class="form-text text-muted">Used for every agent of this project that has no own model set; empty lets the provider pick.</small>
+                </div>
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
+                    <label class="form-check-label" for="enabled">Enabled - agents of this project may run</label>
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a th:href="@{/agentic/projects/edit/{id}(id=${project.id})}" class="btn btn-danger">Cancel</a>
+            </form>
+        </div>
+<div class="list-group-item" th:if="${settings.claudeRateLimitUpdatedAt}">
+            <h5>Rate Limit</h5>
+            <p>
+                Status: <strong th:text="${settings.claudeRateLimitStatus}"></strong>
+                (<span th:text="${settings.claudeRateLimitType}"></span>),
+                resets <span th:text="${#dates.format(settings.claudeRateLimitResetsAt, 'yyyy-MM-dd HH:mm')}"></span>
+            </p>
+            <p th:if="${settings.claudeRateLimitUsingOverage}">
+                Currently using overage capacity (<span th:text="${settings.claudeRateLimitOverageStatus}"></span>),
+                resets <span th:text="${#dates.format(settings.claudeRateLimitOverageResetsAt, 'yyyy-MM-dd HH:mm')}"></span>
+            </p>
+            <small class="form-text text-muted">Snapshot as of <span th:text="${#dates.format(settings.claudeRateLimitUpdatedAt, 'yyyy-MM-dd HH:mm')}"></span> - only refreshed when an agent actually runs a turn, not live.</small>
+        </div>
+
+        <div class="list-group-item" th:if="${totalTurns} > 0">
+            <h5>Usage Statistics (All-Time)</h5>
+            <p>
+                <strong th:text="${totalTurns}"></strong> turns,
+                <strong th:text="${totalInputTokens} + ' / ' + ${totalOutputTokens}"></strong> input/output tokens
+                (of which cache write: <span th:text="${totalCacheCreationTokens}"></span> / cache read: <span th:text="${totalCacheReadTokens}"></span>)
+            </p>
+            <small class="form-text text-muted" style="margin-top:-8px;margin-bottom:8px">Cache write/read are both part of the input side (Anthropic prompt caching) - writing to or reading from a cached prompt prefix - not a separate token category from Input, and unrelated to Output, which is never cached.</small>
+            <p th:if="${totalVoiceCleanupInputTokens} > 0 or ${totalVoiceCleanupOutputTokens} > 0">
+                Of which voice-input cleanup (see the mic button in chat): <strong th:text="${totalVoiceCleanupInputTokens} + ' / ' + ${totalVoiceCleanupOutputTokens}"></strong> input/output tokens - already included in the totals above, broken out here so it doesn't go unnoticed.
+            </p>
+            <table class="table table-sm" th:if="${usageByAgent.size()} > 1">
+                <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th><th>Voice Cleanup Source</th></tr></thead>
+                <tbody>
+                <tr th:each="u : ${usageByAgent}">
+                    <td th:text="${u.agentName}"></td>
+                    <td th:text="${u.turnCount}"></td>
+                    <td th:text="${u.inputTokens}"></td>
+                    <td th:text="${u.outputTokens}"></td>
+                    <td th:text="${u.cacheCreationTokens}"></td>
+                    <td th:text="${u.cacheReadTokens}"></td>
+                    <td th:text="${u.voiceCleanupInputTokens} + ' / ' + ${u.voiceCleanupOutputTokens}"></td>
+                    <td th:text="${u.voiceCleanupCliCount} + ' via CLI / ' + ${u.voiceCleanupApiCount} + ' via API'"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="list-group-item">
+            <h5>Usage Statistics (By Day)</h5>
+            <form action="#" th:action="@{/agentic/projects/{id}/settings/(id=${project.id})}" method="get" class="form-inline">
+                <label for="statsDate" style="margin-right:8px">Day:</label>
+                <input type="date" id="statsDate" name="statsDate" class="form-control form-control-sm"
+                       th:value="${statsDate}" onchange="this.form.submit()" style="margin-right:8px" />
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Show</button>
+            </form>
+            <p th:if="${totalTurnsForDay} == 0" class="text-muted" style="margin-top:10px">No turns on this day.</p>
+            <div th:if="${totalTurnsForDay} > 0" style="margin-top:10px">
+                <p>
+                    <strong th:text="${totalTurnsForDay}"></strong> turns,
+                    <strong th:text="${totalInputTokensForDay} + ' / ' + ${totalOutputTokensForDay}"></strong> input/output tokens
+                    (of which cache write: <span th:text="${totalCacheCreationTokensForDay}"></span> / cache read: <span th:text="${totalCacheReadTokensForDay}"></span>)
+                </p>
+                <p th:if="${totalVoiceCleanupInputTokensForDay} > 0 or ${totalVoiceCleanupOutputTokensForDay} > 0">
+                    Of which voice-input cleanup: <strong th:text="${totalVoiceCleanupInputTokensForDay} + ' / ' + ${totalVoiceCleanupOutputTokensForDay}"></strong> input/output tokens.
+                </p>
+                <table class="table table-sm">
+                    <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th><th>Voice Cleanup Source</th></tr></thead>
+                    <tbody>
+                    <tr th:each="u : ${usageByAgentForDay}">
+                        <td th:text="${u.agentName}"></td>
+                        <td th:text="${u.turnCount}"></td>
+                        <td th:text="${u.inputTokens}"></td>
+                        <td th:text="${u.outputTokens}"></td>
+                        <td th:text="${u.cacheCreationTokens}"></td>
+                        <td th:text="${u.cacheReadTokens}"></td>
+                        <td th:text="${u.voiceCleanupInputTokens} + ' / ' + ${u.voiceCleanupOutputTokens}"></td>
+                        <td th:text="${u.voiceCleanupCliCount} + ' via CLI / ' + ${u.voiceCleanupApiCount} + ' via API'"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

@@ -1,7 +1,7 @@
 package ch.ksfx.model;
 
 /**
- * API_KEY and SETUP_TOKEN both put {@link AgenticConfig#getApiKey()} into the CLI subprocess's
+ * API_KEY and SETUP_TOKEN both put {@link ProjectAgenticSettings#getApiKey()} into the CLI subprocess's
  * environment - just under different variable names, because the Claude CLI treats them as two
  * genuinely different, mutually exclusive credential kinds (confirmed against the installed CLI
  * binary: it has a dedicated error path for "an ANTHROPIC_API_KEY is set but you meant to use your

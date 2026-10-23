@@ -71,6 +71,7 @@
                 <label>Project pages</label>
                 <p class="form-control-plaintext">
                     <a th:if="${@projectContextService.canManage()}" th:href="@{/agentic/projects/{id}/git/(id=${project.id})}" class="btn btn-secondary btn-sm"><i class="fa fa-git"></i> Git Sync settings</a>
+                    <a th:if="${@projectContextService.canManage()}" th:href="@{/agentic/projects/{id}/settings/(id=${project.id})}" class="btn btn-secondary btn-sm"><i class="fa fa-sliders"></i> Agentic Settings</a>
                     <a th:href="@{/projects/switch/{id}(id=${project.id},returnTo='/admin/codelib/')}" class="btn btn-secondary btn-sm"><i class="fa fa-code"></i> Code Libs</a>
                     <a th:if="${@projectContextService.canManage()}" th:href="@{/projects/switch/{id}(id=${project.id},returnTo='/admin/dashboardmanager/')}" class="btn btn-secondary btn-sm"><i class="fa fa-tachometer"></i> Dashboard</a>
                     <a th:if="${isInstanceAdmin}" th:href="@{/admin/memberships/project/{id}(id=${project.id})}" class="btn btn-secondary btn-sm"><i class="fa fa-users"></i> Members</a>
