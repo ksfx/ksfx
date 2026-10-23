@@ -37,7 +37,7 @@ public class MvcConfig implements WebMvcConfigurer
         // both APIs (agents and API clients are not users).
         registry.addInterceptor(noProjectInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/noproject", "/user/**", "/login", "/logout", "/toggledisplaymode", "/images/**", "/styles/**", "/script/**", "/vendor/**",
+                .excludePathPatterns("/noproject", "/user/**", "/ports/ask", "/login", "/logout", "/toggledisplaymode", "/images/**", "/styles/**", "/script/**", "/vendor/**",
                         "/publishing/publicationviewer/**", "/agentic/api/**", "/api/**", "/error");
     }
 

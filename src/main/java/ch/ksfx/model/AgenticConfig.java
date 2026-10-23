@@ -18,6 +18,7 @@ public class AgenticConfig
     private String claudeCliPath = "claude";
     private String workspaceRoot;
     private boolean enabled = false;
+    private String portLinkTemplate;
 
 
     @Id
@@ -62,6 +63,17 @@ public class AgenticConfig
     public void setWorkspaceRoot(String workspaceRoot)
     {
         this.workspaceRoot = workspaceRoot;
+    }
+
+    /** Breadcrumb port links template, e.g. https://p{port}.apps.example.com - empty = plain http://host:port (see ProjectPortsService). */
+    public String getPortLinkTemplate()
+    {
+        return portLinkTemplate;
+    }
+
+    public void setPortLinkTemplate(String portLinkTemplate)
+    {
+        this.portLinkTemplate = portLinkTemplate;
     }
 
     public boolean getEnabled()

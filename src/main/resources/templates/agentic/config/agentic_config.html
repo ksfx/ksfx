@@ -32,6 +32,11 @@
                     <label for="workspaceRoot">Workspace Root</label>
                     <input type="text" class="form-control" id="workspaceRoot" th:field="*{workspaceRoot}" />
                 </div>
+                <div class="form-group">
+                    <label for="portLinkTemplate">Port Link Template</label>
+                    <input type="text" class="form-control" id="portLinkTemplate" th:field="*{portLinkTemplate}" placeholder="https://p{port}.apps.example.com - empty = http://<host>:<port>" />
+                    <small class="form-text text-muted">Where the breadcrumb port links of Docker-isolated projects point. {port} is the published host port. Route them through the reverse proxy (on-demand TLS, ask endpoint /ports/ask) when HSTS on this domain force-upgrades plain http links.</small>
+                </div>
                 <div class="form-group form-check">
                     <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
                     <label class="form-check-label" for="enabled">Enabled</label>

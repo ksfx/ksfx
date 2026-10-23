@@ -30,6 +30,24 @@ public class ProjectPortsController
         this.userScope = userScope;
     }
 
+    /**
+     * Caddy's on-demand-TLS "ask" endpoint (PUBLIC - permitAll in WebSecurityConfig): before
+     * issuing a certificate for a port-link subdomain, Caddy calls this with ?domain=...; 200
+     * allows, 404 refuses. Valid = the configured port link template matches and the embedded
+     * port is mapped by some Docker-isolated project - independent of whether anything runs on it
+     * (the cert should exist before the first dev server starts). Exposes nothing but a boolean
+     * over a self-chosen domain name.
+     */
+    @GetMapping("/ports/ask")
+    public org.springframework.http.ResponseEntity<String> ask(@org.springframework.web.bind.annotation.RequestParam(required = false) String domain)
+    {
+        if (projectPortsService.isValidPortLinkDomain(domain)) {
+            return org.springframework.http.ResponseEntity.ok("ok");
+        }
+
+        return org.springframework.http.ResponseEntity.status(404).body("unknown domain");
+    }
+
     @GetMapping("/agentic/projects/{projectId}/ports/status")
     public Map<Integer, Boolean> status(@PathVariable Long projectId)
     {
