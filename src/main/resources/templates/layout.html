@@ -81,7 +81,8 @@
              (ProjectContextService#follow) would otherwise still show the old project here.
              Switching returns to the current page, or to the area's root if the page belonged to
              a specific entity of the old project (ProjectSwitchController). -->
-        <li th:fragment="project-crumb" class="breadcrumb-item ksfx-project-crumb" th:with="currentProject=${@projectContextService.current()}" sec:authorize="isAuthenticated()">
+        <th:block th:fragment="project-crumb" th:with="currentProject=${@projectContextService.current()}">
+        <li class="breadcrumb-item ksfx-project-crumb" sec:authorize="isAuthenticated()">
             <th:block th:if="${currentProject != null}">
                 <div class="dropdown">
                     <!-- Initial badge instead of an icon (decided 2026-10-11): a project is a context,
@@ -101,8 +102,63 @@
                 </div>
             </th:block>
         </li>
+        <!-- The project's published ports (Docker-isolated projects only), right-aligned via CSS
+             order - emitted by the SAME fragment as the project badge, so every breadcrumb gets it
+             without touching the pages. DOM position stays next to the badge (keeps Bootstrap's
+             .breadcrumb-item + .breadcrumb-item::before separators intact for the items after it);
+             its own separator is suppressed in CSS. The listen dots are fetched ONLY when the
+             dropdown opens (see site-footer script + ProjectPortsController) - rendering never
+             knocks. -->
+        <li class="breadcrumb-item ksfx-ports-crumb" sec:authorize="isAuthenticated()"
+            th:if="${currentProject != null and currentProject.dockerIsolationEnabled}"
+            th:with="portMappings=${@projectPortsService.currentProjectPorts()}">
+            <div class="dropdown">
+                <a href="#" id="ksfxPortsToggle" class="ksfx-ports-toggle dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                   th:title="|Published ports of ${currentProject.name}|"
+                   th:data-status-url="@{/agentic/projects/{id}/ports/status(id=${currentProject.id})}">
+                    <i class="fa fa-rocket"></i><span class="ksfx-port-dot"
+                        th:classappend="${currentProject.dockerContainerStatus != null and currentProject.dockerContainerStatus.name() == 'RUNNING'} ? ' ksfx-port-dot-green' : ' ksfx-port-dot-grey'"
+                        th:title="|Container: ${currentProject.dockerContainerStatus}|"></span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="ksfxPortsToggle">
+                    <h6 class="dropdown-header" th:text="|Published ports - container ${currentProject.dockerContainerStatus}|">Published ports</h6>
+                    <a th:each="m : ${portMappings}" class="dropdown-item ksfx-port-link" target="_blank" rel="noopener"
+                       th:href="|http://${#httpServletRequest.serverName}:${m.value}|" th:data-host-port="${m.value}">
+                        <span class="ksfx-port-dot ksfx-port-dot-unknown" data-port-dot=""></span>
+                        <span th:text="|:${m.key}|">:8080</span> <i class="fa fa-long-arrow-right"></i>
+                        <span th:text="|${#httpServletRequest.serverName}:${m.value}|">host:18160</span>
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <small class="dropdown-header">Green = a process listens on the host port (checked when this menu opens).</small>
+                </div>
+            </div>
+        </li>
+        </th:block>
 
         <footer th:fragment="site-footer" th:remove="tag">
+            <script>
+                // Breadcrumb ports dropdown: knock only when it opens, asynchronously - the page
+                // never waits (see ProjectPortsService). Delegated so it works on every page.
+                $(function () {
+                    $(document).on('shown.bs.dropdown', '.ksfx-ports-crumb .dropdown', function () {
+                        var toggle = document.getElementById('ksfxPortsToggle');
+                        if (!toggle) return;
+                        fetch(toggle.dataset.statusUrl, { credentials: 'same-origin' })
+                            .then(function (r) { return r.ok ? r.json() : {}; })
+                            .then(function (status) {
+                                document.querySelectorAll('.ksfx-port-link').forEach(function (link) {
+                                    var dot = link.querySelector('[data-port-dot]');
+                                    if (!dot) return;
+                                    dot.classList.remove('ksfx-port-dot-unknown', 'ksfx-port-dot-green', 'ksfx-port-dot-grey');
+                                    var listening = status[link.dataset.hostPort];
+                                    dot.classList.add(listening ? 'ksfx-port-dot-green' : 'ksfx-port-dot-grey');
+                                    dot.title = listening ? 'A process listens on this port' : 'Nothing listens on this port';
+                                });
+                            })
+                            .catch(function () { /* dots stay unknown */ });
+                    });
+                });
+            </script>
             <br />
             <br />
             <br />

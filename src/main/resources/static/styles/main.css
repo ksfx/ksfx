@@ -125,3 +125,34 @@ th[data-grid-property="observationTime"]
     background: #2e77d0;
     color: #fff;
 }
+
+/* Breadcrumb ports dropdown (Docker-isolated projects): emitted next to the project badge by the
+   same fragment, moved to the right edge visually via flex order so the items between keep their
+   DOM-based "/" separators; its own separator is suppressed. */
+.ksfx-ports-crumb {
+    order: 99;
+    margin-left: auto;
+}
+
+.ksfx-ports-crumb::before {
+    display: none !important;
+}
+
+.ksfx-ports-toggle {
+    color: #0b2142;
+}
+
+.ksfx-port-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 4px;
+    margin-right: 4px;
+    vertical-align: 1px;
+    background: #adb5bd;
+}
+
+.ksfx-port-dot-green { background: #28a745; }
+.ksfx-port-dot-grey { background: #adb5bd; }
+.ksfx-port-dot-unknown { background: #dee2e6; }
