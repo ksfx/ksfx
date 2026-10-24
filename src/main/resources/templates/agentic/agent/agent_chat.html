@@ -33,7 +33,7 @@
             <span>Agents</span>
             <span class="agentic-sidebar-header-actions">
                 <button type="button" id="agenticSearchBtn" class="agentic-sidebar-search" title="Search chats" aria-label="Search chats"><i class="fa fa-search"></i></button>
-                <a th:if="${@projectContextService.canManage()}" th:href="${currentProject != null} ? @{/agentic/edit(projectId=${currentProject.id})} : @{/agentic/edit}" class="agentic-sidebar-new" title="New Agent" aria-label="New Agent"><i class="fa fa-plus"></i></a>
+                <a th:if="${@projectContextService.canManage()}" th:with="sidebarProject=${@projectContextService.current()}" th:href="${sidebarProject != null} ? @{/agentic/edit(projectId=${sidebarProject.id})} : @{/agentic/edit}" class="agentic-sidebar-new" title="New Agent" aria-label="New Agent"><i class="fa fa-plus"></i></a>
             </span>
         </div>
         <div class="agentic-sidebar-list">
@@ -57,7 +57,16 @@
             </div>
         </div>
         <div class="agentic-sidebar-footer">
-            <a th:href="@{/agentic/projects/}" title="Projects"><i class="fa fa-folder"></i> Projects</a>
+            <!-- OWNERs/admins jump straight to the current project's form (Git, Members, Agentic
+                 Settings, Docker live there); everyone else reaches the projects list via the
+                 breadcrumb switcher's "Manage projects" - the old "Projects" link here duplicated
+                 exactly that (decided 2026-10-24). -->
+            <!-- Render-time bean, NOT a model attribute: "currentProject" is not in this page's
+                 model (th:if would silently see null). Same pattern as the breadcrumb fragment. -->
+            <th:block th:with="footerProject=${@projectContextService.current()}">
+                <a th:if="${footerProject != null and @projectContextService.canManage()}"
+                   th:href="@{/agentic/projects/edit/{id}(id=${footerProject.id})}" title="Project Settings"><i class="fa fa-sliders"></i> Project Settings</a>
+            </th:block>
             
         </div>
     </aside>
