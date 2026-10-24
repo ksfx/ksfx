@@ -1,5 +1,8 @@
 package ch.ksfx.services;
 
+import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 
 import ch.ksfx.dao.ApiClientDAO;
 import ch.ksfx.services.security.ApiClientAuthenticationProvider;
@@ -60,6 +63,14 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
                 .csrf()
                 .ignoringAntMatchers("/agentic/api/**", "/api/**")
                 .and()
+                // Only real page navigations (GET with Accept: text/html) enter the saved-request
+                // cache. Background requests - the chat sidebar polls /agentic/status every 2.5s,
+                // plus ports status, SSE streams, favicon - used to overwrite the cache while the
+                // session was expired, so the post-login redirect landed on a raw JSON endpoint
+                // instead of the page the user actually wanted.
+                .requestCache()
+                .requestCache(htmlNavigationRequestCache())
+                .and()
                 .exceptionHandling()
                 // Explicit catch-all as well as the /api/** mapping - registering ANY mapping here
                 // replaces the implicit default (normally auto-derived from formLogin's login page)
@@ -69,6 +80,11 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
                 // /login. Order matters - DelegatingAuthenticationEntryPoint uses the first matching
                 // entry, so the specific /api/** mapping must come before this catch-all.
                 .defaultAuthenticationEntryPointFor(apiUnauthorizedEntryPoint(), new AntPathRequestMatcher("/api/**"))
+                // Non-navigation requests (no text/html in Accept - XHR polls, fetches, SSE) get a
+                // clean 401 instead of the redirect-to-login HTML, so client scripts can detect the
+                // expired session (agentic-chat.js stops its poll) rather than choking on a login
+                // page served as JSON.
+                .defaultAuthenticationEntryPointFor(apiUnauthorizedEntryPoint(), new NegatedRequestMatcher(HTML_NAVIGATION))
                 .defaultAuthenticationEntryPointFor(loginUrlAuthenticationEntryPoint(), new AntPathRequestMatcher("/**"))
                 .and()
                 .addFilterBefore(new ApiTokenAuthenticationFilter(authenticationManagerBean()), UsernamePasswordAuthenticationFilter.class);
@@ -108,6 +124,22 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
     public ApiClientAuthenticationProvider apiClientAuthenticationProvider(ApiClientDAO apiClientDAO)
     {
         return new ApiClientAuthenticationProvider(apiClientDAO);
+    }
+
+    /** A browser navigating to a page - as opposed to XHR/fetch/SSE/image requests. */
+    private static final RequestMatcher HTML_NAVIGATION = request -> {
+        String accept = request.getHeader("Accept");
+
+        return "GET".equalsIgnoreCase(request.getMethod()) && accept != null && accept.contains("text/html");
+    };
+
+    @Bean
+    public HttpSessionRequestCache htmlNavigationRequestCache()
+    {
+        HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
+        requestCache.setRequestMatcher(HTML_NAVIGATION);
+
+        return requestCache;
     }
 
     @Bean

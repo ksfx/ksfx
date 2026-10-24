@@ -966,7 +966,16 @@
 
     function poll() {
         fetch(statusEndpoint)
-            .then(function (response) { return response.ok ? response.json() : {}; })
+            .then(function (response) {
+                if (response.status === 401) {
+                    // Session expired: stop polling (the server answers background requests with a
+                    // clean 401 now, see WebSecurityConfig) - the next real navigation goes to the
+                    // login page anyway, and a dead poll must not keep overwriting anything.
+                    clearInterval(pollTimer);
+                    return {};
+                }
+                return response.ok ? response.json() : {};
+            })
             .then(applyStatuses)
             .catch(function () {
                 // transient polling error - just wait for the next tick
@@ -993,5 +1002,5 @@
     });
 
     poll();
-    setInterval(poll, POLL_INTERVAL_MS);
+    var pollTimer = setInterval(poll, POLL_INTERVAL_MS);
 })();
