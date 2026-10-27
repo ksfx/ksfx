@@ -814,6 +814,7 @@ public class ClaudeCliSessionService
             assistantMessage.setContent(turnState.snapshotText());
             assistantMessage.setToolActivity(turnState.snapshotToolActivityJson());
             assistantMessage.setGeneratedFiles(generatedFiles.size() > 0 ? objectMapper.writeValueAsString(generatedFiles) : null);
+            assistantMessage.setModel(turnUsage.model);
             assistantMessage.setInputTokens(turnUsage.inputTokens);
             assistantMessage.setOutputTokens(turnUsage.outputTokens);
             assistantMessage.setCacheCreationInputTokens(turnUsage.cacheCreationInputTokens);
@@ -1398,6 +1399,12 @@ public class ClaudeCliSessionService
     {
         String type = event.path("type").asText("");
 
+        if ("system".equals(type) && "init".equals(event.path("subtype").asText(""))) {
+            // The CLI announces the effective model here - the ground truth, independent of what
+            // the config chain asked for (or didn't). Persisted on the assistant message below.
+            turnUsage.model = event.hasNonNull("model") ? event.path("model").asText() : null;
+        }
+
         if ("assistant".equals(type)) {
             for (JsonNode contentBlock : event.path("message").path("content")) {
                 String blockType = contentBlock.path("type").asText("");
@@ -1520,6 +1527,7 @@ public class ClaudeCliSessionService
     /** Token/duration usage from a turn's final "result" event. */
     private static class TurnUsage
     {
+        String model; // from the init event - what actually runs this turn
         Integer inputTokens;
         Integer outputTokens;
         Integer cacheCreationInputTokens;

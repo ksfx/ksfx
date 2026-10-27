@@ -50,6 +50,8 @@ public class AgentMessage
     // Usage stats for this turn (ASSISTANT-role messages only) - captured from the CLI's
     // stream-json "result" event (see ClaudeCliSessionService). Generic/provider-neutral names,
     // unlike AgenticConfig's claudeRateLimit* fields - see plan discussion for the rationale.
+    /** The model that actually answered this turn - from the CLI's init event, null for non-assistant rows and pre-capture history. */
+    private String model;
     private Integer inputTokens;
     private Integer outputTokens;
     private Integer cacheCreationInputTokens;
@@ -169,6 +171,16 @@ public class AgentMessage
     public void setCreatedAt(Date createdAt)
     {
         this.createdAt = createdAt;
+    }
+
+    public String getModel()
+    {
+        return model;
+    }
+
+    public void setModel(String model)
+    {
+        this.model = model;
     }
 
     public Integer getInputTokens()

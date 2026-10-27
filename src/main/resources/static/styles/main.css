@@ -156,3 +156,9 @@ th[data-grid-property="observationTime"]
 .ksfx-port-dot-green { background: #28a745; }
 .ksfx-port-dot-grey { background: #adb5bd; }
 .ksfx-port-dot-unknown { background: #dee2e6; }
+
+.agentic-main-model {
+    font-size: 12px;
+    margin-left: 10px;
+    white-space: nowrap;
+}

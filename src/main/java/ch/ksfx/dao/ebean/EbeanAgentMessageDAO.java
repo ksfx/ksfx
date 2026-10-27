@@ -97,6 +97,14 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     }
 
     @Override
+    public String getLatestModelForAgent(Long agentId)
+    {
+        AgentMessage message = Ebean.find(AgentMessage.class).where().eq("agent.id", agentId).eq("role", AgentMessageRole.ASSISTANT).isNotNull("model").order().desc("id").setMaxRows(1).findOne();
+
+        return message != null ? message.getModel() : null;
+    }
+
+    @Override
     public List<AgentMessage> searchMessages(String term, int limit)
     {
         return Ebean.find(AgentMessage.class).fetch("agent").fetch("fromAgent")

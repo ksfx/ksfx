@@ -1,5 +1,6 @@
 package ch.ksfx.controller.agentic;
 
+import ch.ksfx.services.agentic.EffectiveModelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
@@ -50,6 +51,9 @@ import java.util.Map;
 @RequestMapping("/agentic")
 public class AgentController
 {
+    @org.springframework.beans.factory.annotation.Autowired
+    private EffectiveModelService effectiveModelService;
+
     @Autowired
     private UserScope userScope;
 
@@ -131,6 +135,8 @@ public class AgentController
         model.addAttribute("agent", agent);
         model.addAttribute("allProjects", userScope.accessibleProjects(userScope.currentUser()));
         model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
+        model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
+        model.addAttribute("lastActualModel", agent.getId() != null ? effectiveModelService.lastActualModelFor(agent) : null);
 
         return "agentic/agent/agent_edit";
     }
@@ -276,6 +282,8 @@ public class AgentController
         ClaudeCliSessionService.PartialTurn partialTurn = agentRunning ? claudeCliSessionService.getPartialTurn(agentId) : null;
 
         model.addAttribute("agent", agent);
+        model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
+        model.addAttribute("lastActualModel", effectiveModelService.lastActualModelFor(agent));
         model.addAttribute("messages", messages);
         // A full page (exactly MESSAGE_PAGE_SIZE rows) doesn't *guarantee* there's an older message
         // still to load - the conversation could happen to have exactly that many - but it's the

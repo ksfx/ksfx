@@ -51,6 +51,9 @@
                 <label for="model">Model (Override)</label>
                 <input type="text" class="form-control" id="model" th:field="*{model}" placeholder="empty = use the project default (Agentic Settings)" />
                 <small class="form-text text-muted">Optional: alias (sonnet / opus / fable) or full model name. Leave empty to use the project default.</small>
+                <small class="form-text" th:if="${effectiveModel != null}">
+                    Effective now: <strong th:text="${effectiveModel.display}">model (source)</strong><th:block th:if="${lastActualModel != null}"> &middot; last turn actually ran: <strong th:text="${lastActualModel}">model</strong></th:block>
+                </small>
             </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />

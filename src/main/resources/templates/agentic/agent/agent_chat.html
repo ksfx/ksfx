@@ -77,6 +77,11 @@
         <div class="agentic-toolbar">
             <button type="button" class="agentic-sidebar-toggle" id="agenticSidebarToggle" title="Agents" aria-label="Toggle agent list"><i class="fa fa-bars"></i></button>
             <span class="agentic-main-title" th:text="${agent.name}">Agent</span>
+            <!-- Expected (config chain) vs. actual (CLI init event of the last turn) - they differ
+                 exactly when something is misconfigured, which is the moment one looks here. -->
+            <span class="agentic-main-model text-muted" th:if="${effectiveModel != null}"
+                  th:title="${lastActualModel != null} ? |Last turn actually ran: ${lastActualModel}| : 'No captured turn yet'"
+                  th:text="${effectiveModel.display}">model</span>
             <span class="agentic-toolbar-actions">
                 <button type="button" id="agenticFilesBtn" class="agentic-toolbar-action" title="Browse workspace files"><i class="fa fa-folder-open-o"></i> Files</button>
                 <button type="button" id="agenticScheduleBtn" class="agentic-toolbar-action" title="Schedules"><i class="fa fa-clock-o"></i> Schedules</button>
