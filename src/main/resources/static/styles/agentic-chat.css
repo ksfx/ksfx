@@ -905,3 +905,16 @@ a.agentic-attachment-chip:hover {
     background: #26262e;
     border-color: #3a3a44;
 }
+
+/* "Neu laden" inside a connection-error system message (agentic-chat.js recoverBrokenStream). */
+.agentic-reload-btn {
+    margin-left: 6px;
+    padding: 2px 10px;
+    border: 1px solid currentColor;
+    border-radius: 12px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9em;
+    cursor: pointer;
+}

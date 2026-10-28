@@ -334,6 +334,10 @@
     function setSending(sending) {
         sendBtn.disabled = sending;
         inputEl.disabled = sending;
+
+        if (sending) {
+            hiddenDuringTurn = false; // a new turn starts watching from scratch (see recoverBrokenStream)
+        }
     }
 
     // Parses one raw multi-line SSE chunk (from the fetch()+ReadableStream buffer in sendMessage())
@@ -424,6 +428,55 @@
         scrollToBottom();
     }
 
+    // ---- Recovering a stream that broke because the app went to the background -----------------
+    // Leaving the app (mobile) kills the streaming connection, but the turn keeps running
+    // server-side and ends up persisted either way. A reload is the COMPLETE way back: the chat page
+    // re-renders the partial turn and re-attaches to the rest (see the 'agentRunning' block below) -
+    // re-attaching in place would only receive events from now on and miss what happened meanwhile.
+    // No draft to protect: the composer is disabled while a turn runs (setSending), and a stream can
+    // only break during one.
+    var hiddenDuringTurn = false;
+    var reloadWhenVisible = false;
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden' && inputEl.disabled) {
+            hiddenDuringTurn = true;
+        }
+
+        if (document.visibilityState === 'visible' && reloadWhenVisible) {
+            location.reload();
+        }
+    });
+
+    // Mobile browsers freeze scripts in the background, so the broken fetch often only rejects
+    // AFTER returning - "was the page hidden at some point during this turn" is the reliable test,
+    // not "is it hidden right now".
+    function recoverBrokenStream(assistantMessage, error) {
+        if (hiddenDuringTurn) {
+            if (document.visibilityState === 'visible') {
+                location.reload();
+            } else {
+                reloadWhenVisible = true;
+            }
+
+            return;
+        }
+
+        // A real network problem while watching: say so, and offer the same complete way back.
+        clearTyping(assistantMessage.bubble);
+        var errorMessage = createMessageEl('system');
+        errorMessage.bubble.textContent = 'Connection error: ' + error + ' ';
+        var reloadBtn = document.createElement('button');
+        reloadBtn.type = 'button';
+        reloadBtn.className = 'agentic-reload-btn';
+        reloadBtn.textContent = 'Neu laden';
+        reloadBtn.addEventListener('click', function () {
+            location.reload();
+        });
+        errorMessage.bubble.appendChild(reloadBtn);
+        setSending(false);
+    }
+
     function sendMessage() {
         stopVoiceInputIfListening();
 
@@ -508,9 +561,7 @@
 
             return pump();
         }).catch(function (error) {
-            clearTyping(assistantMessage.bubble);
-            createMessageEl('system').bubble.textContent = 'Connection error: ' + error;
-            setSending(false);
+            recoverBrokenStream(assistantMessage, error);
         });
     }
 
@@ -810,9 +861,23 @@
         // SSE event, which does): the SYSTEM error message is already persisted server-side by
         // executeTurn regardless, this connection existing purely to catch up on an in-flight turn.
         stream.addEventListener('error', function () {
+            stream.close();
+
+            // Broke while the app was in the background: same complete way back as the send flow
+            // (a reload re-renders the partial turn and re-attaches). Harmless if the turn had in
+            // fact just finished - the reload then simply shows the final answer.
+            if (hiddenDuringTurn) {
+                if (document.visibilityState === 'visible') {
+                    location.reload();
+                } else {
+                    reloadWhenVisible = true;
+                }
+
+                return;
+            }
+
             clearTyping(assistantMessage.bubble);
             setSending(false);
-            stream.close();
         });
     }
 
