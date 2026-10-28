@@ -130,7 +130,7 @@
                             <summary><i class="fa fa-wrench"></i> Tool Activity</summary>
                             <div class="agentic-tool-activity-body" th:data-tool-activity="${m.toolActivity}"></div>
                         </details>
-                        <div th:if="${m.inputTokens != null}" class="agentic-message-tokens" th:text="${m.inputTokens + m.outputTokens} + ' tokens'"></div>
+                        <div th:if="${m.inputTokens != null}" class="agentic-message-tokens" th:text="${m.inputTokens + m.outputTokens} + ' tokens' + (${m.model != null} ? ' · ' + ${m.model} : '')"></div>
                     </div>
                 </th:block>
 

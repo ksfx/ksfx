@@ -38,6 +38,17 @@ public class EffectiveModelService
             return new EffectiveModel(settings.getDefaultModel().trim(), "project default");
         }
 
+        // The step everyone forgets, proven empirically 2026-10-27: `claude --resume` RESTORES the
+        // session's previous model when no --model is passed. An agent whose chain is empty does
+        // not fall back to the provider/account default - it keeps whatever its session last ran
+        // (e.g. a long-removed override). Pinning it elsewhere needs an explicit model for at
+        // least one turn, or a session reset.
+        if (agent.getClaudeSessionId() != null && !agent.getClaudeSessionId().trim().isEmpty()) {
+            String lastActual = agentMessageDAO.getLatestModelForAgent(agent.getId());
+
+            return new EffectiveModel(lastActual, "resumed session keeps its model");
+        }
+
         return new EffectiveModel(null, "provider default");
     }
 
@@ -58,9 +69,17 @@ public class EffectiveModelService
             this.source = source;
         }
 
-        /** null = no model is sent, the provider picks. */
+        /** null = no model is sent; what runs depends on the source (provider default, or whatever the resumed session kept). */
         public String getModel() { return model; }
         public String getSource() { return source; }
-        public String getDisplay() { return model != null ? model + " (" + source + ")" : "provider default (no model sent)"; }
+
+        public String getDisplay()
+        {
+            if (model != null) {
+                return model + " (" + source + ")";
+            }
+
+            return source.startsWith("resumed") ? "unknown - " + source + " (no model sent)" : "provider default (no model sent)";
+        }
     }
 }
