@@ -402,10 +402,14 @@
             // Re-show the indicator: there's often a gap before the next tool call or the
             // final text while the agent keeps working, and without this it looks hung.
             showTyping(assistantMessage.bubble);
+        } else if (eventName === 'model') {
+            // Arrives just before 'usage' - remembered so the token line can show it, matching
+            // the server-rendered line ("N tokens · model") that a reload would produce.
+            assistantMessage.model = JSON.parse(data);
         } else if (eventName === 'usage') {
             var tokens = document.createElement('div');
             tokens.className = 'agentic-message-tokens';
-            tokens.textContent = JSON.parse(data) + ' tokens';
+            tokens.textContent = JSON.parse(data) + ' tokens' + (assistantMessage.model ? ' \u00b7 ' + assistantMessage.model : '');
             assistantMessage.root.appendChild(tokens);
         } else if (eventName === 'generated_files') {
             var filesDiv = document.createElement('div');
@@ -792,7 +796,7 @@
         // this connection only ever subscribes to an already-running turn, never starts one.
         var stream = new EventSource(root.dataset.streamEndpoint);
 
-        ['text', 'tool_use', 'tool_result', 'usage', 'generated_files'].forEach(function (name) {
+        ['text', 'tool_use', 'tool_result', 'model', 'usage', 'generated_files'].forEach(function (name) {
             stream.addEventListener(name, function (e) {
                 applyEvent(name, e.data, assistantMessage);
             });

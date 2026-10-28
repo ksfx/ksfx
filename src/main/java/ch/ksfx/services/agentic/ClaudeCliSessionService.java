@@ -840,6 +840,14 @@ public class ClaudeCliSessionService
                 }
             }
 
+            // The actual model goes out as its own event BEFORE "usage", so the live token line can
+            // show it like the server-rendered one does after a reload. A separate event rather
+            // than a changed "usage" payload: a browser still holding the previous agentic-chat.js
+            // simply ignores the unknown event instead of rendering "[object Object] tokens".
+            if (turnUsage.model != null) {
+                broadcastSend(agent.getId(), SseEmitter.event().name("model").data(objectMapper.writeValueAsString(turnUsage.model)));
+            }
+
             if (turnUsage.inputTokens != null) {
                 broadcastSend(agent.getId(), SseEmitter.event().name("usage").data(objectMapper.writeValueAsString(turnUsage.inputTokens + turnUsage.outputTokens)));
             }
