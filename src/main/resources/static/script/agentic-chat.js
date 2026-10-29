@@ -614,6 +614,12 @@
         // handler that always follows it doesn't also try to transparently restart into the same
         // failure - see both handlers below.
         var fatalError = false;
+        // Set when sending ends the recording: everything recognition still delivers afterwards
+        // belongs to a message that is already on its way. Without this, a final result arriving
+        // after the send rewrote the just-cleared input with the whole dictation, and re-set
+        // wasVoiceInput so the NEXT message was wrongly flagged as voice (found 2026-10-29).
+        // Cleared again when the next recording starts.
+        var discardResults = false;
 
         // Two earlier versions of this handler both assumed event.results entries are disjoint
         // chunks that should simply be concatenated - one summed from event.resultIndex onward
@@ -630,6 +636,10 @@
         // what's already there), which is what lets multiple distinct sentences within one
         // continuous session still accumulate correctly.
         recognition.addEventListener('result', function (event) {
+            if (discardResults) {
+                return;
+            }
+
             // Compared against the last committed segment only, not the whole accumulated text -
             // comparing against everything would (and, while building this fix, briefly did) wrongly
             // merge two genuinely separate sentences whenever the second one doesn't happen to start
@@ -745,9 +755,16 @@
             recognition.stop();
         }
 
+        // Called by sendMessage(): abort() rather than the button's stop() - stop() lets the
+        // recognizer finish the pending audio and deliver one more result, which used to land in
+        // the input AFTER it had been cleared. abort() drops pending results; discardResults guards
+        // against any that still slip through. Nothing is lost: the message sends the text that was
+        // in the field when the button was pressed.
         stopVoiceInputIfListening = function () {
             if (listening) {
-                stopListening();
+                discardResults = true;
+                manualStop = true;
+                recognition.abort();
             }
         };
 
@@ -758,6 +775,7 @@
             }
 
             baseText = inputEl.value.trim();
+            discardResults = false;
             listening = true;
             micBtn.classList.add('agentic-mic-btn--active');
             requestWakeLock();
