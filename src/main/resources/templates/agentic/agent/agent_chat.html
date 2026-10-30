@@ -33,7 +33,7 @@
             <span>Agents</span>
             <span class="agentic-sidebar-header-actions">
                 <button type="button" id="agenticSearchBtn" class="agentic-sidebar-search" title="Search chats" aria-label="Search chats"><i class="fa fa-search"></i></button>
-                <a th:if="${@projectContextService.canManage()}" th:with="sidebarProject=${@projectContextService.current()}" th:href="${sidebarProject != null} ? @{/agentic/edit(projectId=${sidebarProject.id})} : @{/agentic/edit}" class="agentic-sidebar-new" title="New Agent" aria-label="New Agent"><i class="fa fa-plus"></i></a>
+                <a th:if="${@projectContextService.canManage()}" th:href="@{/agentic/edit}" class="agentic-sidebar-new" title="New Agent" aria-label="New Agent"><i class="fa fa-plus"></i></a>
             </span>
         </div>
         <div class="agentic-sidebar-list">

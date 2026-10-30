@@ -119,21 +119,19 @@ public class AgentController
      * within a project lands in that project instead of "Ungrouped".
      */
     @GetMapping({"/edit", "/edit/{id}"})
-    public String edit(@PathVariable(value = "id", required = false) Long agentId,
-                       @RequestParam(required = false) Long projectId, Model model)
+    public String edit(@PathVariable(value = "id", required = false) Long agentId, Model model)
     {
         Agent agent = agentId != null ? agentDAO.getAgentForId(agentId) : new Agent();
 
-        // A new agent belongs to the current project (same rule as every other create), unless the
-        // caller names one explicitly (the sidebar's "New Agent" passes the project it shows).
+        // A new agent is always created in the CURRENT project (KSFX issue #19) - no project
+        // choice on the form, and no ?projectId= that could name a project the user only reads.
         if (agentId == null) {
-            agent.setProject(projectId != null ? projectDAO.getProjectForId(projectId) : projectContextService.current());
+            agent.setProject(projectContextService.current());
         }
 
         userScope.requireManage(agent.getProject()); // agents are project configuration (OWNER)
 
         model.addAttribute("agent", agent);
-        model.addAttribute("allProjects", userScope.accessibleProjects(userScope.currentUser()));
         model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
         model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
         model.addAttribute("lastActualModel", agent.getId() != null ? effectiveModelService.lastActualModelFor(agent) : null);
@@ -145,7 +143,6 @@ public class AgentController
     public String submit(@PathVariable(value = "id", required = false) Long agentId, @Valid @ModelAttribute Agent agent, BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes)
     {
         if (bindingResult.hasErrors()) {
-            model.addAttribute("allProjects", userScope.accessibleProjects(userScope.currentUser()));
             model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
             return "agentic/agent/agent_edit";
         }
@@ -161,21 +158,20 @@ public class AgentController
             userScope.requireManage(previousAgent.getProject());
         }
 
-        if (agent.getProject() != null && agent.getProject().getId() != null) {
-            userScope.requireManage(projectDAO.getProjectForId(agent.getProject().getId())); // moving an agent needs OWNER on the target too
+        // The form carries no project (KSFX issue #19): an existing agent keeps its project - moving
+        // is the Assignments screen's job - and a new one lands in the current project, which the
+        // user must OWN.
+        if (previousAgent != null) {
+            agent.setProject(previousAgent.getProject());
+        } else {
+            agent.setProject(projectContextService.current());
+            userScope.requireManage(agent.getProject());
         }
         if (previousAgent != null) {
             agent.setWorkspacePath(previousAgent.getWorkspacePath());
             agent.setClaudeSessionId(previousAgent.getClaudeSessionId());
             agent.setApiToken(previousAgent.getApiToken());
             agent.setCreatedAt(previousAgent.getCreatedAt());
-        }
-
-        // Every agent belongs to a project since the project migration (2026-10-10): an unselected
-        // option binds to a stub with a null id (see NoteController's identical NoteCategory
-        // handling), which now means "the default project" rather than "no project".
-        if (agent.getProject() == null || agent.getProject().getId() == null) {
-            agent.setProject(projectDAO.getDefaultProject());
         }
 
         if (isNew) {

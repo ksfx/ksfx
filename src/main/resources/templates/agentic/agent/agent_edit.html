@@ -29,10 +29,11 @@
                 <input type="text" class="form-control" id="description" th:field="*{description}" />
             </div>
             <div class="form-group">
-                <label for="project">Project</label>
-                <select class="form-control" id="project" th:field="*{project.id}">
-                                        <option th:each="p : ${allProjects}" th:value="${p.id}" th:text="${p.name}"></option>
-                </select>
+                <!-- No project select (KSFX issue #19): a new agent is created in the CURRENT project,
+                     an existing one stays in its project. Moving agents between projects is the
+                     Assignments screen's job (Admin -> Projects -> Assignments). -->
+                <label>Project</label>
+                <p class="form-control-plaintext" th:text="${agent.project != null ? agent.project.name : ''}">Project</p>
             </div>
             <div class="form-group">
                 <label for="systemPrompt">System Prompt</label>
