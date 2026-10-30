@@ -1,5 +1,9 @@
 package ch.ksfx.controller.agentic;
 
+import org.springframework.web.bind.annotation.RequestParam;
+import ch.ksfx.model.issues.IssueTracker;
+import ch.ksfx.model.Project;
+import ch.ksfx.services.issues.IssueAssigneeService;
 import ch.ksfx.services.project.AgentScope;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.IssueAssetDAO;
@@ -45,6 +49,9 @@ import java.util.Map;
 @RequestMapping("/agentic/api/issues")
 public class AgentIssueApiController
 {
+    @org.springframework.beans.factory.annotation.Autowired
+    private IssueAssigneeService issueAssigneeService;
+
     private final AgentDAO agentDAO;
     private final IssueTrackerDAO issueTrackerDAO;
     private final IssueDAO issueDAO;
@@ -93,7 +100,7 @@ public class AgentIssueApiController
 
     /** Who can be assigned - both humans and agents, in the same "user:{id}"/"agent:{id}" form the write endpoints accept. */
     @GetMapping("/assignees")
-    public ResponseEntity<?> assignees(HttpServletRequest request)
+    public ResponseEntity<?> assignees(HttpServletRequest request, @RequestParam(required = false) Long trackerId)
     {
         Agent caller = authenticate(request);
 
@@ -101,9 +108,28 @@ public class AgentIssueApiController
             return unauthorized();
         }
 
+        // ?trackerId= - candidates for that tracker's project (the precise answer). Without it: the
+        // caller's own project. Same rule as the issue form (IssueAssigneeService, issues #15/#16):
+        // project members and agents that can work on the project, sorted by name.
+        Project project = caller.getProject();
+
+        if (trackerId != null) {
+            IssueTracker tracker = issueTrackerDAO.getIssueTrackerForId(trackerId);
+
+            if (tracker == null || !AgentScope.canAccess(caller, tracker.getProject())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No tracker with that id."));
+            }
+
+            project = tracker.getProject();
+        }
+
         List<AssigneeDto> assignees = new ArrayList<>();
 
-        for (User user : userDAO.getAllUsers()) {
+        if (project == null) {
+            return ResponseEntity.ok(assignees);
+        }
+
+        for (User user : issueAssigneeService.userCandidates(project)) {
             AssigneeDto dto = new AssigneeDto();
             dto.assignee = "user:" + user.getId();
             dto.name = user.getUsername();
@@ -111,11 +137,7 @@ public class AgentIssueApiController
             assignees.add(dto);
         }
 
-        for (Agent agent : agentDAO.getAllAgents()) {
-            if (!agent.getEnabled() || !AgentScope.canAccess(caller, agent.getProject())) {
-                continue;
-            }
-
+        for (Agent agent : issueAssigneeService.agentCandidates(project, null)) {
             AssigneeDto dto = new AssigneeDto();
             dto.assignee = "agent:" + agent.getId();
             dto.name = agent.getName();
@@ -458,6 +480,13 @@ public class AgentIssueApiController
         }
 
         if (body.assignee != null) {
+            String currentAssignee = issue.getAssigneeUser() != null ? "user:" + issue.getAssigneeUser().getId()
+                    : issue.getAssigneeAgent() != null ? "agent:" + issue.getAssigneeAgent().getId() : "";
+
+            if (!body.assignee.equals(currentAssignee) && !issueAssigneeService.isAllowed(tracker.getProject(), body.assignee, null)) {
+                return "Assignee not available in this project - see GET /agentic/api/issues/assignees?trackerId=" + tracker.getId();
+            }
+
             if (body.assignee.isEmpty()) {
                 issue.setAssigneeUser(null);
                 issue.setAssigneeAgent(null);
