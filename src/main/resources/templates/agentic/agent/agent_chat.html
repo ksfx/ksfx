@@ -150,6 +150,19 @@
                         <div class="agentic-tool-activity-body" th:data-tool-activity="${partialToolActivity}"></div>
                     </details>
                 </div>
+
+                <!-- Messages sent while a turn was running: they wait here, after that turn, and run
+                     together as the next turn when it ends ("next_turn" turns them into normal
+                     messages in place - see agentic-chat.js). -->
+                <div th:each="q : ${queuedMessages}" class="agentic-msg agentic-msg--queued" th:classappend="${q.fromAgent != null} ? 'agentic-msg--agent' : 'agentic-msg--user'" th:data-queue-id="${q.id}">
+                    <div class="agentic-msg-header">
+                        <div class="agentic-role-label"><span th:text="${q.fromAgent != null} ? ('Agent: ' + ${q.fromAgent.name} + (${q.reply} ? ' (Antwort)' : '')) : 'You'">You</span> <span class="agentic-queued-badge">wartet</span></div>
+                        <button type="button" class="agentic-msg-delete" title="Remove from queue" aria-label="Remove from queue"
+                                th:attr="data-delete-endpoint=@{/agentic/chat/{id}/queued/{queueId}/delete(id=${agent.id},queueId=${q.id})}"><i class="fa fa-trash-o"></i></button>
+                    </div>
+                    <div class="agentic-bubble" th:text="${q.content}"></div>
+                    <div th:if="${q.attachments}" class="agentic-attachments" th:data-attachments="${q.attachments}"></div>
+                </div>
             </div>
 
             <div id="agenticPendingFiles" class="agentic-pending-files"></div>

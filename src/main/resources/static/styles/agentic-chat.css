@@ -918,3 +918,19 @@ a.agentic-attachment-chip:hover {
     font-size: 0.9em;
     cursor: pointer;
 }
+
+/* Chat queue: a message sent while a turn runs waits, dimmed, until that turn ends. */
+.agentic-msg--queued .agentic-bubble {
+    opacity: 0.6;
+}
+
+.agentic-queued-badge {
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 8px;
+    font-size: 0.8em;
+    font-weight: normal;
+    text-transform: none;
+    background: #e9ecef;
+    color: #495057;
+}

@@ -288,6 +288,7 @@ public class AgentController
         // on every single chat-page load just to get that one edge case exactly right.
         model.addAttribute("hasMoreOlderMessages", messages.size() == MESSAGE_PAGE_SIZE);
         model.addAttribute("agentRunning", agentRunning);
+        model.addAttribute("queuedMessages", claudeCliSessionService.getQueuedMessages(agentId));
         // Both null (not just agentRunning itself) when nothing's actually running yet - executeTurn
         // registers the RunningTurnState a moment after runningStatus, so there's a brief window
         // where isRunning() is already true but getPartialTurn() is still null; the template/JS
@@ -391,6 +392,16 @@ public class AgentController
      * transcript. Scoped to the {@code id} in the URL, not just {@code messageId}, so a message
      * can't be deleted by guessing its id while looking at a different agent's chat page.
      */
+    /** Removes a message that is still waiting in the chat queue (it never reached the agent). */
+    @PostMapping("/chat/{id}/queued/{queueId}/delete")
+    @ResponseBody
+    public Map<String, Boolean> deleteQueuedMessage(@PathVariable(value = "id") Long agentId, @PathVariable Long queueId)
+    {
+        userScope.requireWrite(agentDAO.getAgentForId(agentId).getProject());
+
+        return Collections.singletonMap("deleted", claudeCliSessionService.deleteQueuedMessage(agentId, queueId));
+    }
+
     @PostMapping("/chat/{id}/message/{messageId}/delete")
     @ResponseBody
     public Map<String, Boolean> deleteMessage(@PathVariable(value = "id") Long agentId, @PathVariable Long messageId)

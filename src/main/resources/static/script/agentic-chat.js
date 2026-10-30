@@ -84,6 +84,8 @@
     // still-running recording always gets stopped as part of sending, instead of silently
     // continuing to listen in the background until the user remembers to click the mic again.
     var stopVoiceInputIfListening = function () {};
+    // Overridden by the voice block below; a recording in progress must not be lost to an automatic reload.
+    var isVoiceInputListening = function () { return false; };
 
     var ROLE_LABELS = { user: 'You', assistant: 'Assistant', system: 'System', agent: 'Agent' };
 
@@ -331,9 +333,13 @@
         inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
     }
 
+    // The composer stays usable while a turn runs: what is sent then waits in the server-side queue
+    // and runs as the next turn (see sendMessage / 'queued' / 'next_turn'). turnBusy only tracks
+    // whether a turn is running in this page; read-only viewers keep their disabled composer.
+    var turnBusy = false;
+
     function setSending(sending) {
-        sendBtn.disabled = sending;
-        inputEl.disabled = sending;
+        turnBusy = sending;
 
         if (sending) {
             hiddenDuringTurn = false; // a new turn starts watching from scratch (see recoverBrokenStream)
@@ -347,7 +353,90 @@
     // this at all - its listeners get eventName/data pre-split by the browser and call applyEvent
     // directly - but both paths end up rendering through the exact same applyEvent, so a live-sent
     // turn and one you reconnect to mid-flight are visually indistinguishable.
-    function handleSseEvent(rawEvent, assistantMessage, userMessage) {
+    // ---- Chat queue ---------------------------------------------------------------------------
+    function markQueued(msg, queueId) {
+        msg.root.classList.add('agentic-msg--queued');
+        msg.root.dataset.queueId = queueId;
+
+        var label = msg.root.querySelector('.agentic-role-label');
+
+        if (label && !label.querySelector('.agentic-queued-badge')) {
+            var badge = document.createElement('span');
+            badge.className = 'agentic-queued-badge';
+            badge.textContent = 'wartet';
+            label.appendChild(badge);
+        }
+
+        if (!msg.root.querySelector('.agentic-msg-delete')) {
+            var del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'agentic-msg-delete';
+            del.title = 'Remove from queue';
+            del.innerHTML = '<i class="fa fa-trash-o"></i>';
+            del.dataset.deleteEndpoint = chatEndpoint.replace(/\/$/, '') + '/queued/' + queueId + '/delete';
+            msg.root.insertBefore(del, msg.root.querySelector('.agentic-bubble'));
+        }
+    }
+
+    function unmarkQueued(el) {
+        el.classList.remove('agentic-msg--queued');
+        delete el.dataset.queueId;
+
+        var badge = el.querySelector('.agentic-queued-badge');
+        if (badge) badge.remove();
+
+        // the queue's remove button points at the queue entry, which no longer exists
+        var del = el.querySelector('.agentic-msg-delete');
+        if (del) del.remove();
+    }
+
+    // "next_turn": the queued messages listed in data just became normal messages and run now.
+    // Returns the new answer bubble - placed before any message that is still waiting.
+    function startNextTurn(currentAssistant, data) {
+        if (currentAssistant) {
+            clearTyping(currentAssistant.bubble);
+        }
+
+        JSON.parse(data).forEach(function (pair) {
+            var el = messagesEl.querySelector('[data-queue-id="' + pair.queueId + '"]');
+
+            if (el) {
+                unmarkQueued(el);
+                el.dataset.messageId = pair.messageId;
+                return;
+            }
+
+            // An entry this page never saw (queued by another agent, or in another tab): render it,
+            // in order, before anything that is still waiting.
+            var msg = createMessageEl(pair.role === 'agent' ? 'agent' : 'user');
+            if (pair.role === 'agent') {
+                msg.root.querySelector('.agentic-role-label').textContent = 'Agent: ' + (pair.fromAgentName || '?');
+            }
+            msg.bubble.textContent = pair.content || '';
+            msg.root.dataset.messageId = pair.messageId;
+
+            var waiting = messagesEl.querySelector('.agentic-msg--queued');
+            if (waiting) {
+                messagesEl.insertBefore(msg.root, waiting);
+            }
+        });
+
+        var next = createMessageEl('assistant');
+        var stillWaiting = messagesEl.querySelector('.agentic-msg--queued');
+
+        if (stillWaiting) {
+            messagesEl.insertBefore(next.root, stillWaiting);
+        }
+
+        showTyping(next.bubble);
+
+        return next;
+    }
+
+    // turn = { assistant: answer bubble or null (this send was queued), user: the user bubble }
+    function handleSseEvent(rawEvent, turn) {
+        var assistantMessage = turn.assistant;
+        var userMessage = turn.user;
         var eventName = 'message';
         var dataLines = [];
 
@@ -377,7 +466,37 @@
             return;
         }
 
-        applyEvent(eventName, data, assistantMessage);
+        if (eventName === 'queued') {
+            if (turn.assistant) {
+                // This page thought the agent was idle, but a turn was running (another tab, a
+                // schedule, another agent): the reload shows that turn and the queue correctly.
+                reloadKeepingDraft();
+                return;
+            }
+
+            var queued = JSON.parse(data);
+            markQueued(turn.user, queued.queueId);
+
+            if (queued.content) {
+                turn.user.bubble.textContent = queued.content;
+            }
+
+            return;
+        }
+
+        if (eventName === 'next_turn') {
+            turn.assistant = startNextTurn(turn.assistant, data);
+            return;
+        }
+
+        if (!turn.assistant) {
+            // Sent as "queued", but the previous turn had just ended: the server ran it right away.
+            unmarkQueued(turn.user.root);
+            setSending(true);
+            turn.assistant = createMessageEl('assistant');
+        }
+
+        applyEvent(eventName, data, turn.assistant);
     }
 
     function applyEvent(eventName, data, assistantMessage) {
@@ -439,22 +558,58 @@
     var reloadWhenVisible = false;
 
     document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'hidden' && inputEl.disabled) {
+        if (document.visibilityState === 'hidden' && turnBusy) {
             hiddenDuringTurn = true;
         }
 
         if (document.visibilityState === 'visible' && reloadWhenVisible) {
-            location.reload();
+            reloadKeepingDraft();
         }
     });
 
     // Mobile browsers freeze scripts in the background, so the broken fetch often only rejects
     // AFTER returning - "was the page hidden at some point during this turn" is the reliable test,
     // not "is it hidden right now".
+    // Since the composer stays open during a turn (chat queue), a reload could hit a half-typed
+    // message: it is parked in sessionStorage (per tab, per agent, never leaves the browser) and
+    // restored after the reload. Chosen files and a running dictation cannot be parked, so with
+    // either pending there is no automatic reload - the error gets the "Neu laden" button instead.
+    var draftKey = 'ksfx-chat-draft:' + chatEndpoint;
+
+    function canReloadSafely() {
+        return pendingFiles.length === 0 && !isVoiceInputListening();
+    }
+
+    function reloadKeepingDraft() {
+        try {
+            if (inputEl.value) {
+                sessionStorage.setItem(draftKey, inputEl.value);
+            }
+        } catch (storageError) {
+            // storage unavailable (private mode quota etc.) - the reload still recovers the turn
+        }
+
+        location.reload();
+    }
+
+    try {
+        var parkedDraft = sessionStorage.getItem(draftKey);
+
+        if (parkedDraft !== null) {
+            sessionStorage.removeItem(draftKey);
+
+            if (!inputEl.value && !inputEl.disabled) {
+                inputEl.value = parkedDraft;
+            }
+        }
+    } catch (storageError) {
+        // nothing parked / storage unavailable
+    }
+
     function recoverBrokenStream(assistantMessage, error) {
-        if (hiddenDuringTurn) {
+        if (hiddenDuringTurn && canReloadSafely()) {
             if (document.visibilityState === 'visible') {
-                location.reload();
+                reloadKeepingDraft();
             } else {
                 reloadWhenVisible = true;
             }
@@ -471,7 +626,7 @@
         reloadBtn.className = 'agentic-reload-btn';
         reloadBtn.textContent = 'Neu laden';
         reloadBtn.addEventListener('click', function () {
-            location.reload();
+            reloadKeepingDraft();
         });
         errorMessage.bubble.appendChild(reloadBtn);
         setSending(false);
@@ -514,13 +669,20 @@
             formData.append('files', file);
         });
         clearPendingFiles();
-
         inputEl.value = '';
         autoResize();
-        setSending(true);
 
-        var assistantMessage = createMessageEl('assistant');
-        showTyping(assistantMessage.bubble);
+        // A turn already runs in this page: the server will queue this message (it says so with
+        // 'queued'), so no answer bubble yet. Otherwise a normal turn starts.
+        var turn = { assistant: null, user: userMessage };
+
+        if (turnBusy) {
+            userMessage.root.classList.add('agentic-msg--queued');
+        } else {
+            setSending(true);
+            turn.assistant = createMessageEl('assistant');
+            showTyping(turn.assistant.bubble);
+        }
 
         // No Content-Type header here - the browser sets multipart/form-data with the correct
         // boundary itself; setting it manually would drop the boundary and break parsing server-side.
@@ -539,8 +701,11 @@
             function pump() {
                 return reader.read().then(function (result) {
                     if (result.done) {
-                        clearTyping(assistantMessage.bubble);
-                        setSending(false);
+                        if (turn.assistant) {
+                            clearTyping(turn.assistant.bubble);
+                            setSending(false);
+                        }
+
                         return;
                     }
 
@@ -551,7 +716,7 @@
 
                     events.forEach(function (rawEvent) {
                         if (rawEvent.trim()) {
-                            handleSseEvent(rawEvent, assistantMessage, userMessage);
+                            handleSseEvent(rawEvent, turn);
                         }
                     });
 
@@ -561,7 +726,11 @@
 
             return pump();
         }).catch(function (error) {
-            recoverBrokenStream(assistantMessage, error);
+            if (turn.assistant) {
+                recoverBrokenStream(turn.assistant, error);
+            } else {
+                createMessageEl('system').bubble.textContent = 'Could not queue the message: ' + error;
+            }
         });
     }
 
@@ -760,6 +929,8 @@
         // the input AFTER it had been cleared. abort() drops pending results; discardResults guards
         // against any that still slip through. Nothing is lost: the message sends the text that was
         // in the field when the button was pressed.
+        isVoiceInputListening = function () { return listening; };
+
         stopVoiceInputIfListening = function () {
             if (listening) {
                 discardResults = true;
@@ -871,6 +1042,11 @@
             });
         });
 
+        // Chat queue hand-off: the queued messages run next on this same stream.
+        stream.addEventListener('next_turn', function (e) {
+            assistantMessage = startNextTurn(assistantMessage, e.data);
+        });
+
         // EventSource's own 'error' fires both for a genuine connection problem and for the normal
         // "server closed the stream" case (how a completed/failed turn ends this connection) - either
         // way there's nothing more coming, so just stop showing busy and let the next page load (or
@@ -884,9 +1060,9 @@
             // Broke while the app was in the background: same complete way back as the send flow
             // (a reload re-renders the partial turn and re-attaches). Harmless if the turn had in
             // fact just finished - the reload then simply shows the final answer.
-            if (hiddenDuringTurn) {
+            if (hiddenDuringTurn && canReloadSafely()) {
                 if (document.visibilityState === 'visible') {
-                    location.reload();
+                    reloadKeepingDraft();
                 } else {
                     reloadWhenVisible = true;
                 }

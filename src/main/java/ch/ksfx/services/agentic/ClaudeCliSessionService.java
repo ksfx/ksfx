@@ -1,5 +1,7 @@
 package ch.ksfx.services.agentic;
 
+import ch.ksfx.model.AgentMessageQueueEntry;
+import ch.ksfx.dao.AgentMessageQueueDAO;
 import ch.ksfx.model.ProjectAgenticSettings;
 import ch.ksfx.dao.ProjectAgenticSettingsDAO;
 import ch.ksfx.model.AgenticAuthMode;
@@ -73,6 +75,17 @@ import java.util.stream.Stream;
 @Service
 public class ClaudeCliSessionService
 {
+    @org.springframework.beans.factory.annotation.Autowired
+    private AgentMessageQueueDAO agentMessageQueueDAO;
+
+    /**
+     * Guards the chat queue's one race: "is a turn running? then queue the message" (runTurn) and
+     * "anything queued? else mark the agent idle" (end of executeTurn) must not interleave, or a
+     * message saved in the gap between the end-of-turn check and the idle mark would sit in the
+     * queue with nothing left to run it. Both critical sections are a few fast map/DB operations.
+     */
+    private final Object queueLock = new Object();
+
     @org.springframework.beans.factory.annotation.Autowired
     private ProjectAgenticSettingsDAO projectAgenticSettingsDAO;
 
@@ -267,11 +280,6 @@ public class ClaudeCliSessionService
             return;
         }
 
-        if (runningStatus.putIfAbsent(agentId, "Starting…") != null) {
-            completeWithError(emitter, "A request is already running for this agent.");
-            return;
-        }
-
         // Runs before the CLI turn itself, on this same (request) thread - completeWithError above
         // already proves sending on `emitter` synchronously here, before chatMessage() has even
         // returned it to Spring, is delivered fine (Spring buffers it against the async context
@@ -279,9 +287,7 @@ public class ClaudeCliSessionService
         // falls back to the raw dictated text - this is a nicety layered on top of a normal turn,
         // never something the turn itself should fail over.
         String messageToUse = userMessage;
-
         if (voiceInput) {
-            runningStatus.put(agentId, "Cleaning up dictated text…");
             VoiceCleanupResult cleanup = cleanupVoiceTranscript(agent, config, settingsFor(agent), userMessage);
 
             if (cleanup != null) {
@@ -296,8 +302,39 @@ public class ClaudeCliSessionService
         try {
             messageForCli = saveAttachmentsAndBuildNote(agent, config, files, messageToUse, attachmentsJson);
         } catch (IOException e) {
-            runningStatus.remove(agentId);
             completeWithError(emitter, "File upload failed: " + e.getMessage());
+            return;
+        }
+
+        // Chat queue: a message sent while a turn is still running is held back and runs as the
+        // next turn once the current one ends (see the hand-off at the end of executeTurn). The
+        // decision and the save happen under queueLock, atomically with the end-of-turn check.
+        AgentMessageQueueEntry queued = null;
+
+        synchronized (queueLock) {
+            if (runningStatus.putIfAbsent(agentId, "Starting…") != null) {
+                queued = new AgentMessageQueueEntry();
+                queued.setAgent(agent);
+                queued.setContent(messageToUse);
+                queued.setCliText(messageForCli);
+                queued.setAttachments(attachmentsJson[0]);
+                queued.setVoiceInput(voiceInput);
+                queued.setCreatedAt(new Date());
+                agentMessageQueueDAO.saveEntry(queued);
+            }
+        }
+
+        if (queued != null) {
+            ObjectNode queuedPayload = objectMapper.createObjectNode();
+            queuedPayload.put("queueId", queued.getId());
+            queuedPayload.put("content", messageToUse);
+            trySend(emitter, SseEmitter.event().name("queued").data(queuedPayload.toString()));
+
+            try {
+                emitter.complete();
+            } catch (Exception ignored) {
+            }
+
             return;
         }
 
@@ -361,12 +398,30 @@ public class ClaudeCliSessionService
         private final String reply;
         private final boolean skipped;
         private final String errorMessage;
-
+        private Long queueId;
         private AgentTriggeredTurnResult(String reply, boolean skipped, String errorMessage)
         {
             this.reply = reply;
             this.skipped = skipped;
             this.errorMessage = errorMessage;
+        }
+
+        /** Target was busy: the message waits in its queue, the answer is delivered back later. */
+        static AgentTriggeredTurnResult queued(Long queueId)
+        {
+            AgentTriggeredTurnResult result = new AgentTriggeredTurnResult(null, false, null);
+            result.queueId = queueId;
+            return result;
+        }
+
+        public boolean isQueued()
+        {
+            return queueId != null;
+        }
+
+        public Long getQueueId()
+        {
+            return queueId;
         }
 
         static AgentTriggeredTurnResult success(String reply)
@@ -429,22 +484,32 @@ public class ClaudeCliSessionService
             return AgentTriggeredTurnResult.error(validationError);
         }
 
-        if (runningStatus.putIfAbsent(targetAgentId, "Starting… (message from " + fromAgent.getName() + ")") != null) {
-            return AgentTriggeredTurnResult.skipped();
+        // Busy target: the message is queued instead of bouncing, and the answer of the turn that
+        // processes it goes back to the sender automatically (startQueuedTurn / deliverReply).
+        synchronized (queueLock) {
+            if (runningStatus.putIfAbsent(targetAgentId, "Starting… (message from " + fromAgent.getName() + ")") != null) {
+                AgentMessageQueueEntry entry = new AgentMessageQueueEntry();
+                entry.setAgent(targetAgent);
+                entry.setFromAgent(fromAgent);
+                entry.setContent(message);
+                entry.setCliText(message);
+                entry.setDeliverReply(true);
+                entry.setCreatedAt(new Date());
+                agentMessageQueueDAO.saveEntry(entry);
+
+                return AgentTriggeredTurnResult.queued(entry.getId());
+            }
         }
 
         persistIncomingAgentMessage(targetAgent, fromAgent, message);
-
-        String error = executeTurn(targetAgent, config, message, null);
-
+        AgentMessage[] answer = new AgentMessage[1];
+        String error = executeTurn(targetAgent, config, message, null, answer);
         if (error != null) {
             return AgentTriggeredTurnResult.error(error);
         }
-
-        AgentMessage lastMessage = agentMessageDAO.getLastMessageForAgent(targetAgentId);
-        String reply = lastMessage == null ? "" : lastMessage.getContent();
-
-        return AgentTriggeredTurnResult.success(reply);
+        // This turn's own answer - NOT the agent's latest message, which the chat-queue hand-off
+        // may already have replaced with a queued user message (found 2026-10-31).
+        return AgentTriggeredTurnResult.success(answer[0] == null ? "" : answer[0].getContent());
     }
 
     /** The project's account and policy - no inheritance, no fallback (concept "Agentic settings per project"). */
@@ -491,7 +556,7 @@ public class ClaudeCliSessionService
     }
 
     /** Sibling of {@link #persistUserMessage} for an agent-to-agent message - see {@link #runAgentTriggeredTurn}. */
-    private void persistIncomingAgentMessage(Agent targetAgent, Agent fromAgent, String content)
+    private AgentMessage persistIncomingAgentMessage(Agent targetAgent, Agent fromAgent, String content)
     {
         AgentMessage message = new AgentMessage();
         message.setAgent(targetAgent);
@@ -500,6 +565,8 @@ public class ClaudeCliSessionService
         message.setContent(content);
         message.setCreatedAt(new Date());
         agentMessageDAO.saveAgentMessage(message);
+
+        return message;
     }
 
     /** Result of {@link #cleanupVoiceTranscript} - null itself (not this) signals "couldn't clean up, keep the raw text". */
@@ -672,6 +739,17 @@ public class ClaudeCliSessionService
      */
     private String executeTurn(Agent agent, AgenticConfig config, String userMessage, SseEmitter emitter)
     {
+        return executeTurn(agent, config, userMessage, emitter, null);
+    }
+
+    /**
+     * answerOut (optional, length 1) receives the ASSISTANT message this very turn persisted.
+     * Callers that need "the answer of my turn" must use it instead of "the agent's latest
+     * message": the chat-queue hand-off at the end of this method already writes the next queued
+     * messages into the history before it returns.
+     */
+    private String executeTurn(Agent agent, AgenticConfig config, String userMessage, SseEmitter emitter, AgentMessage[] answerOut)
+    {
         RunningTurnState turnState = new RunningTurnState(objectMapper);
         runningTurnState.put(agent.getId(), turnState);
         addSubscriber(agent.getId(), emitter);
@@ -823,6 +901,10 @@ public class ClaudeCliSessionService
             assistantMessage.setCreatedAt(new Date());
             agentMessageDAO.saveAgentMessage(assistantMessage);
 
+            if (answerOut != null) {
+                answerOut[0] = assistantMessage;
+            }
+
             if (rateLimitSnapshot.status != null) {
                 // The snapshot describes the ACCOUNT, which belongs to the project now - re-read
                 // the row fresh so a settings save during the turn is not clobbered.
@@ -895,11 +977,250 @@ public class ClaudeCliSessionService
             // clear after) would leave a window where isRunning() still says true right after
             // completion already fired, and a subscriber added in that window would never be told
             // it's over.
-            runningStatus.remove(agent.getId());
             runningProcesses.remove(agent.getId());
             stopRequested.remove(agent.getId());
             runningTurnState.remove(agent.getId());
-            completeAllSubscribers(agent.getId(), turnError);
+
+            // Chat queue hand-off: messages sent during this turn run next, all together, as one
+            // turn - the agent stays "running" throughout, so nothing can slip in between, and the
+            // browsers following this turn keep their stream and just switch to the next answer.
+            List<QueuedMessage> next;
+
+            synchronized (queueLock) {
+                next = takeQueue(agent.getId());
+
+                if (next.isEmpty()) {
+                    runningStatus.remove(agent.getId());
+                } else {
+                    runningStatus.put(agent.getId(), "Starting…");
+                }
+            }
+
+            if (next.isEmpty()) {
+                completeAllSubscribers(agent.getId(), turnError);
+            } else {
+                try {
+                    startQueuedTurn(agent, next, turnError);
+                } catch (Exception handOffError) {
+                    // Never leave the agent stuck "running" with a stream nobody completes.
+                    systemLogger.logMessage("AGENTIC", "Chat queue hand-off failed for agent " + agent.getId(), handOffError);
+                    runningStatus.remove(agent.getId());
+                    completeAllSubscribers(agent.getId(), "Queued messages could not be started: " + handOffError.getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Turns the queued messages into normal USER messages (now, i.e. after the answer that just
+     * ended - agent_message is ordered by id) and runs them as one combined turn. The followers of
+     * the previous turn get "next_turn" (which queued bubbles became which messages) and keep their
+     * stream; a previous turn's error is passed on first so it is not swallowed by the hand-off.
+     */
+    /** Snapshot of a queue row, taken before the row is deleted (see the hand-off in executeTurn). */
+    private static class QueuedMessage
+    {
+        final Long queueId;
+        final String content;
+        final String cliText;
+        final String attachments;
+        final boolean voiceInput;
+        final Long fromAgentId;
+        final String fromAgentName;
+        final boolean deliverReply;
+        final boolean reply;
+
+        QueuedMessage(AgentMessageQueueEntry entry)
+        {
+            this.queueId = entry.getId();
+            this.content = entry.getContent();
+            this.cliText = entry.getCliText();
+            this.attachments = entry.getAttachments();
+            this.voiceInput = entry.getVoiceInput();
+            this.fromAgentId = entry.getFromAgent() != null ? entry.getFromAgent().getId() : null;
+            this.fromAgentName = entry.getFromAgent() != null ? entry.getFromAgent().getName() : null;
+            this.deliverReply = entry.getDeliverReply();
+            this.reply = entry.getReply();
+        }
+    }
+
+    /**
+     * Takes (snapshots and deletes) the agent's whole queue, oldest first. Caller holds queueLock.
+     * Every field is read BEFORE deleting: Ebean lazy-loads the @Lob texts on first access, which
+     * fails once the row is gone ("Bean has been deleted").
+     */
+    private List<QueuedMessage> takeQueue(Long agentId)
+    {
+        List<QueuedMessage> taken = new ArrayList<>();
+
+        for (AgentMessageQueueEntry entry : agentMessageQueueDAO.getQueueForAgent(agentId)) {
+            taken.add(new QueuedMessage(entry));
+            agentMessageQueueDAO.deleteEntry(entry);
+        }
+
+        return taken;
+    }
+
+    /** What the CLI gets for one queued entry: agent messages carry a header saying who wrote it and what happens with the answer. */
+    private String cliTextFor(QueuedMessage entry, String targetName)
+    {
+        if (entry.fromAgentId == null) {
+            return entry.cliText;
+        }
+
+        if (entry.reply) {
+            return "[Antwort von Agent " + entry.fromAgentName + " (id " + entry.fromAgentId + ") auf deine frühere Nachricht - "
+                    + "automatisch zugestellt, weil er beschäftigt war. Schreib nicht automatisch zurück.]\n" + entry.cliText;
+        }
+
+        return "[Nachricht von Agent " + entry.fromAgentName + " (id " + entry.fromAgentId + ") - eingereiht, weil du beschäftigt warst. "
+                + "Deine Antwort in diesem Turn wird automatisch an " + entry.fromAgentName + " zurückgeschickt; "
+                + "schick sie NICHT zusätzlich selbst per /agentic/api/message.]\n" + entry.cliText;
+    }
+
+    /**
+     * Moves the queued messages into the history (now, i.e. after the answer that just ended -
+     * agent_message is ordered by id) and runs them as one combined turn. The followers of the
+     * previous turn get "next_turn" (which queue entries became which messages, with role and text
+     * so a page that never saw an entry - e.g. one queued by another agent - can render it) and keep
+     * their stream; a previous turn's error is passed on first. After the turn, the answer goes back
+     * once to every agent whose message asked for it (deliver_reply).
+     */
+    private void startQueuedTurn(Agent agent, List<QueuedMessage> entries, String previousTurnError)
+    {
+        if (previousTurnError != null) {
+            broadcastSend(agent.getId(), SseEmitter.event().name("error").data(previousTurnError));
+        }
+
+        ArrayNode moved = objectMapper.createArrayNode();
+        StringBuilder combined = new StringBuilder();
+        java.util.LinkedHashSet<Long> replyTo = new java.util.LinkedHashSet<>();
+
+        for (QueuedMessage entry : entries) {
+            AgentMessage persisted;
+
+            if (entry.fromAgentId == null) {
+                persisted = persistUserMessage(agent, entry.content, entry.attachments, entry.voiceInput);
+            } else {
+                persisted = persistIncomingAgentMessage(agent, agentDAO.getAgentForId(entry.fromAgentId), entry.content);
+            }
+
+            ObjectNode pair = objectMapper.createObjectNode();
+            pair.put("queueId", entry.queueId);
+            pair.put("messageId", persisted.getId());
+            pair.put("role", entry.fromAgentId == null ? "user" : "agent");
+            pair.put("fromAgentName", entry.fromAgentName);
+            pair.put("content", entry.content);
+            moved.add(pair);
+
+            if (combined.length() > 0) {
+                combined.append("\n\n");
+            }
+
+            combined.append(cliTextFor(entry, agent.getName()));
+
+            if (entry.deliverReply && entry.fromAgentId != null && !entry.reply) {
+                replyTo.add(entry.fromAgentId);
+            }
+        }
+
+        broadcastSend(agent.getId(), SseEmitter.event().name("next_turn").data(moved.toString()));
+
+        Agent freshAgent = agentDAO.getAgentForId(agent.getId());
+        AgenticConfig config = agenticConfigDAO.getAgenticConfig();
+        String validationError = validateAgentAndConfig(freshAgent, config);
+
+        if (validationError != null) {
+            // The messages are in the history now; say why they did not run instead of hanging.
+            runningStatus.remove(agent.getId());
+            completeAllSubscribers(agent.getId(), validationError);
+
+            for (Long requester : replyTo) {
+                deliverReply(requester, freshAgent, freshAgent.getName() + " konnte deine Nachricht nicht verarbeiten: " + validationError);
+            }
+
+            return;
+        }
+
+        new Thread(() -> {
+            AgentMessage[] answer = new AgentMessage[1];
+            String error = executeTurn(freshAgent, config, combined.toString(), null, answer);
+
+            for (Long requester : replyTo) {
+                deliverReply(requester, freshAgent, error != null
+                        ? freshAgent.getName() + " konnte deine Nachricht nicht verarbeiten: " + abbreviate(error, 500)
+                        : (answer[0] != null ? answer[0].getContent() : ""));
+            }
+        }).start();
+    }
+
+    /**
+     * Delivers an answer back to the agent that asked (queued agent-to-agent message). Goes through
+     * the recipient's queue - marked as a reply, so it is never forwarded back again - and starts it
+     * right away if the recipient is idle.
+     */
+    private void deliverReply(Long toAgentId, Agent replier, String text)
+    {
+        Agent recipient = agentDAO.getAgentForId(toAgentId);
+
+        if (recipient == null || !recipient.getEnabled()) {
+            systemLogger.logMessage("AGENTIC", "Reply from agent " + replier.getId() + " not delivered - agent " + toAgentId + " is gone or disabled.");
+            return;
+        }
+
+        AgentMessageQueueEntry entry = new AgentMessageQueueEntry();
+        entry.setAgent(recipient);
+        entry.setFromAgent(replier);
+        entry.setContent(text);
+        entry.setCliText(text);
+        entry.setReply(true);
+        entry.setCreatedAt(new Date());
+
+        List<QueuedMessage> toRun = null;
+
+        synchronized (queueLock) {
+            agentMessageQueueDAO.saveEntry(entry);
+
+            if (runningStatus.putIfAbsent(toAgentId, "Starting… (reply from " + replier.getName() + ")") == null) {
+                toRun = takeQueue(toAgentId);
+            }
+        }
+
+        if (toRun != null) {
+            try {
+                startQueuedTurn(recipient, toRun, null);
+            } catch (Exception e) {
+                systemLogger.logMessage("AGENTIC", "Starting the delivered reply failed for agent " + toAgentId, e);
+                runningStatus.remove(toAgentId);
+                completeAllSubscribers(toAgentId, "Delivered reply could not be started: " + e.getMessage());
+            }
+        }
+    }
+
+    private static String abbreviate(String text, int max)
+    {
+        return text == null || text.length() <= max ? text : text.substring(0, max) + "…";
+    }
+
+    /** The chat's queued messages, oldest first - rendered after the running turn, marked "waiting". */
+    public List<AgentMessageQueueEntry> getQueuedMessages(Long agentId)
+    {
+        return agentMessageQueueDAO.getQueueForAgent(agentId);
+    }
+
+    /** Removes a still-waiting message from the queue; false if it already ran or belongs to another agent. */
+    public boolean deleteQueuedMessage(Long agentId, Long queueId)
+    {
+        synchronized (queueLock) {
+            AgentMessageQueueEntry entry = agentMessageQueueDAO.getEntryForId(queueId);
+
+            if (entry == null || entry.getAgent() == null || !entry.getAgent().getId().equals(agentId)) {
+                return false;
+            }
+
+            agentMessageQueueDAO.deleteEntry(entry);
+
+            return true;
         }
     }
 
@@ -1238,12 +1559,15 @@ public class ClaudeCliSessionService
                 .sorted(Comparator.comparing(Agent::getName))
                 .collect(Collectors.toList());
 
-        schedulingPrompt += "\nDu kannst auch andere Agenten direkt ansprechen (synchron - du wartest auf ihre "
-                + "Antwort), indem du mit dem Bash-Tool curl gegen die lokale KSFX-API aufrufst. Authentifiziere "
+        schedulingPrompt += "\nDu kannst auch andere Agenten direkt ansprechen (ist der Ziel-Agent frei, synchron - du "
+                + "wartest auf seine Antwort), indem du mit dem Bash-Tool curl gegen die lokale KSFX-API aufrufst. Authentifiziere "
                 + "dich dabei IMMER über $KSFX_AGENT_TOKEN. Endpunkt: POST " + agentApiBaseUrl + "/agentic/api/message\n"
                 + "Body: {\"targetAgentId\":<id>,\"message\":\"...\"}\n"
                 + "Die Antwort des Ziel-Agenten kommt direkt als JSON zurück: "
                 + "{\"targetAgentId\":<id>,\"targetAgentName\":\"...\",\"reply\":\"...\"}\n"
+                + "Ist der Ziel-Agent gerade beschäftigt, kommt sofort HTTP 202 mit {\"queued\":true,...}: deine Nachricht ist "
+                + "eingereiht, und seine Antwort wird dir später automatisch als neue Nachricht zugestellt. Dann nicht erneut senden "
+                + "und nicht darauf warten - arbeite weiter.\n"
                 + "Beispiel-Aufruf:\n"
                 + "curl -s -X POST " + agentApiBaseUrl + "/agentic/api/message "
                 + "-H \"Authorization: Bearer $KSFX_AGENT_TOKEN\" -H \"Content-Type: application/json\" "
