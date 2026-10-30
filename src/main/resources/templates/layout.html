@@ -117,7 +117,7 @@
                    th:title="|Published ports of ${currentProject.name}|"
                    th:data-status-url="@{/agentic/projects/{id}/ports/status(id=${currentProject.id})}">
                     <i class="fa fa-rocket"></i><span class="ksfx-port-dot"
-                        th:classappend="${currentProject.dockerContainerStatus != null and currentProject.dockerContainerStatus.name() == 'RUNNING'} ? ' ksfx-port-dot-green' : ' ksfx-port-dot-grey'"
+                        th:classappend="${currentProject.dockerContainerStatus != null and currentProject.dockerContainerStatus.name() == 'RUNNING'} ? 'ksfx-port-dot-green' : 'ksfx-port-dot-grey'"
                         th:title="|Container: ${currentProject.dockerContainerStatus}|"></span>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="ksfxPortsToggle">
@@ -137,25 +137,30 @@
 
         <footer th:fragment="site-footer" th:remove="tag">
             <script>
-                // Breadcrumb ports dropdown: knock only when it opens, asynchronously - the page
-                // never waits (see ProjectPortsService). Delegated so it works on every page.
+                // Fills every listen dot ([data-host-port] element with a [data-port-dot] child) from
+                // the project's ports status endpoint - shared by the breadcrumb dropdown (knocks when
+                // it opens) and the project dashboard's services block (knocks right after load, the
+                // page was opened on purpose). Never during rendering: see ProjectPortsService.
+                window.ksfxApplyPortStatus = function (statusUrl) {
+                    if (!statusUrl) return;
+                    fetch(statusUrl, { credentials: 'same-origin' })
+                        .then(function (r) { return r.ok ? r.json() : {}; })
+                        .then(function (status) {
+                            document.querySelectorAll('[data-host-port]').forEach(function (el) {
+                                var dot = el.querySelector('[data-port-dot]');
+                                if (!dot) return;
+                                dot.classList.remove('ksfx-port-dot-unknown', 'ksfx-port-dot-green', 'ksfx-port-dot-grey');
+                                var listening = status[el.dataset.hostPort];
+                                dot.classList.add(listening ? 'ksfx-port-dot-green' : 'ksfx-port-dot-grey');
+                                dot.title = listening ? 'A process listens on this port' : 'Nothing listens on this port';
+                            });
+                        })
+                        .catch(function () { /* dots stay unknown */ });
+                };
                 $(function () {
                     $(document).on('shown.bs.dropdown', '.ksfx-ports-crumb .dropdown', function () {
                         var toggle = document.getElementById('ksfxPortsToggle');
-                        if (!toggle) return;
-                        fetch(toggle.dataset.statusUrl, { credentials: 'same-origin' })
-                            .then(function (r) { return r.ok ? r.json() : {}; })
-                            .then(function (status) {
-                                document.querySelectorAll('.ksfx-port-link').forEach(function (link) {
-                                    var dot = link.querySelector('[data-port-dot]');
-                                    if (!dot) return;
-                                    dot.classList.remove('ksfx-port-dot-unknown', 'ksfx-port-dot-green', 'ksfx-port-dot-grey');
-                                    var listening = status[link.dataset.hostPort];
-                                    dot.classList.add(listening ? 'ksfx-port-dot-green' : 'ksfx-port-dot-grey');
-                                    dot.title = listening ? 'A process listens on this port' : 'Nothing listens on this port';
-                                });
-                            })
-                            .catch(function () { /* dots stay unknown */ });
+                        if (toggle) window.ksfxApplyPortStatus(toggle.dataset.statusUrl);
                     });
                 });
             </script>

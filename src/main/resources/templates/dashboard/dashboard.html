@@ -12,7 +12,40 @@
         </ol>
     </nav>
 
-    <th:block th:utext="${dashboardContent}"></th:block>
+    <!-- Custom part (Dashboard Manager) on top, only if there is any. -->
+    <th:block th:if="${!#strings.isEmpty(dashboardContent)}" th:utext="${dashboardContent}"></th:block>
+
+    <!-- Automatic part: the project's services - Docker-isolated projects only. Links come from the
+         same ProjectPortsService as the breadcrumb dropdown (one truth, incl. the port link
+         template); the listen dots are filled right after load by ksfxApplyPortStatus (site-footer
+         script), so the page itself never waits for the knock. -->
+    <div class="container ksfx-project-services" th:if="${project != null and project.dockerIsolationEnabled}"
+         th:with="portLinks=${@projectPortsService.currentProjectPortLinks()}, running=${project.dockerContainerStatus != null and project.dockerContainerStatus.name() == 'RUNNING'}"
+         th:data-status-url="@{/agentic/projects/{id}/ports/status(id=${project.id})}">
+        <h5>
+            <i class="fa fa-rocket"></i> Services
+            <small class="text-muted">
+                <span class="ksfx-port-dot" th:classappend="${running} ? 'ksfx-port-dot-green' : 'ksfx-port-dot-grey'"></span><span th:text="|Container ${project.dockerContainerStatus}|">Container RUNNING</span>
+            </small>
+        </h5>
+        <table class="table table-sm ksfx-services-table">
+            <thead><tr><th style="width:30px"></th><th>Container port</th><th>Link</th></tr></thead>
+            <tbody>
+                <tr th:each="l : ${portLinks}" th:data-host-port="${l.hostPort}">
+                    <td><span class="ksfx-port-dot ksfx-port-dot-unknown" data-port-dot=""></span></td>
+                    <td th:text="|:${l.containerPort}|">:8080</td>
+                    <td><a th:href="${l.url}" target="_blank" rel="noopener" th:text="${l.label}">host:18160</a></td>
+                </tr>
+            </tbody>
+        </table>
+        <small class="text-muted">Green = a process listens on that port inside the container. Grey = nothing runs there right now.</small>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var block = document.querySelector('.ksfx-project-services');
+                if (block && window.ksfxApplyPortStatus) window.ksfxApplyPortStatus(block.dataset.statusUrl);
+            });
+        </script>
+    </div>
 
     <footer th:replace="layout :: site-footer" />
 </body>

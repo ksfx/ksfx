@@ -162,3 +162,12 @@ th[data-grid-property="observationTime"]
     margin-left: 10px;
     white-space: nowrap;
 }
+
+/* Project dashboard: automatic services block below the custom part. */
+.ksfx-project-services {
+    margin-top: 24px;
+}
+
+.ksfx-services-table td {
+    vertical-align: middle;
+}

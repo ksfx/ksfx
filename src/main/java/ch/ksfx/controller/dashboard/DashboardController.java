@@ -24,6 +24,7 @@ public class DashboardController
         Project project = projectContextService.current();
 
         model.addAttribute("dashboardContent", project != null && project.getDashboardContent() != null ? project.getDashboardContent() : "");
+        model.addAttribute("project", project); // for the automatic services block below the custom part
 
         return "dashboard/dashboard";
     }
