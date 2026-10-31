@@ -357,7 +357,7 @@ public class AgentController
 
         SseEmitter emitter = new SseEmitter(0L);
 
-        claudeCliSessionService.runTurn(agentId, message, files, voiceInput, emitter);
+        claudeCliSessionService.runTurn(agentId, message, files, voiceInput, emitter, userScope.currentUser());
 
         return emitter;
     }

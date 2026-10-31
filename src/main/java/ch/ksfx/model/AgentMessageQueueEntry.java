@@ -1,5 +1,6 @@
 package ch.ksfx.model;
 
+import ch.ksfx.model.user.User;
 import javax.persistence.*;
 import java.util.Date;
 
@@ -20,6 +21,7 @@ public class AgentMessageQueueEntry
     private String attachments;
     private boolean voiceInput;
     private Agent fromAgent;
+    private User fromUser;
     private boolean deliverReply;
     private boolean reply;
     private Date createdAt;
@@ -52,6 +54,23 @@ public class AgentMessageQueueEntry
     @Column(name = "voice_input")
     public boolean getVoiceInput() { return voiceInput; }
     public void setVoiceInput(boolean voiceInput) { this.voiceInput = voiceInput; }
+
+    /** The human who sent this chat message (null for agent messages). */
+    @ManyToOne
+    @JoinColumn(name = "from_user_id")
+    public User getFromUser() { return fromUser; }
+    public void setFromUser(User fromUser) { this.fromUser = fromUser; }
+
+    /** Label for the chat: the sender's first name, else the login name; "User" when unknown (older messages, schedule prompts). */
+    @Transient
+    public String getUserLabel()
+    {
+        if (fromUser == null) {
+            return "User";
+        }
+
+        return fromUser.getFirstName() != null && !fromUser.getFirstName().trim().isEmpty() ? fromUser.getFirstName().trim() : fromUser.getUsername();
+    }
 
     /** Sending agent for agent-to-agent messages; null = a human in the chat. */
     @ManyToOne

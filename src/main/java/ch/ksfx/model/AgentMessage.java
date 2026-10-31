@@ -1,5 +1,6 @@
 package ch.ksfx.model;
 
+import ch.ksfx.model.user.User;
 import javax.persistence.*;
 import java.util.Date;
 
@@ -16,6 +17,7 @@ public class AgentMessage
     private Long id;
     private Agent agent;
     private Agent fromAgent;
+    private User fromUser;
     private AgentMessageRole role;
     private String content;
     private String toolActivity;
@@ -86,6 +88,30 @@ public class AgentMessage
      * The Agent that sent this message, set only when {@link #role} is {@link AgentMessageRole#AGENT}
      * (an agent-to-agent message via AgentMessageApiController) - null for USER/ASSISTANT/SYSTEM rows.
      */
+    /** The human who sent a USER message from the chat; null for older rows, schedule prompts and non-USER rows. */
+    @ManyToOne
+    @JoinColumn(name = "from_user_id")
+    public User getFromUser()
+    {
+        return fromUser;
+    }
+
+    public void setFromUser(User fromUser)
+    {
+        this.fromUser = fromUser;
+    }
+
+    /** Label for the chat: the sender's first name, else the login name; "User" when unknown (older messages, schedule prompts). */
+    @Transient
+    public String getUserLabel()
+    {
+        if (fromUser == null) {
+            return "User";
+        }
+
+        return fromUser.getFirstName() != null && !fromUser.getFirstName().trim().isEmpty() ? fromUser.getFirstName().trim() : fromUser.getUsername();
+    }
+
     @ManyToOne
     @JoinColumn(name = "from_agent_id")
     public Agent getFromAgent()

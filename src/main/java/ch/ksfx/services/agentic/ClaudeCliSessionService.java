@@ -1,5 +1,7 @@
 package ch.ksfx.services.agentic;
 
+import ch.ksfx.dao.user.UserDAO;
+import ch.ksfx.model.user.User;
 import ch.ksfx.model.AgentMessageQueueEntry;
 import ch.ksfx.dao.AgentMessageQueueDAO;
 import ch.ksfx.model.ProjectAgenticSettings;
@@ -75,6 +77,9 @@ import java.util.stream.Stream;
 @Service
 public class ClaudeCliSessionService
 {
+    @org.springframework.beans.factory.annotation.Autowired
+    private UserDAO userDAO;
+
     @org.springframework.beans.factory.annotation.Autowired
     private AgentMessageQueueDAO agentMessageQueueDAO;
 
@@ -268,7 +273,7 @@ public class ClaudeCliSessionService
         agentMessageDAO.saveAgentMessage(resetMessage);
     }
 
-    public void runTurn(Long agentId, String userMessage, MultipartFile[] files, boolean voiceInput, SseEmitter emitter)
+    public void runTurn(Long agentId, String userMessage, MultipartFile[] files, boolean voiceInput, SseEmitter emitter, User fromUser)
     {
         Agent agent = agentDAO.getAgentForId(agentId);
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
@@ -319,6 +324,7 @@ public class ClaudeCliSessionService
                 queued.setCliText(messageForCli);
                 queued.setAttachments(attachmentsJson[0]);
                 queued.setVoiceInput(voiceInput);
+                queued.setFromUser(fromUser);
                 queued.setCreatedAt(new Date());
                 agentMessageQueueDAO.saveEntry(queued);
             }
@@ -338,7 +344,7 @@ public class ClaudeCliSessionService
             return;
         }
 
-        AgentMessage persistedUserMessage = persistUserMessage(agent, messageToUse, attachmentsJson[0], voiceInput);
+        AgentMessage persistedUserMessage = persistUserMessage(agent, messageToUse, attachmentsJson[0], voiceInput, fromUser);
 
         if (voiceInput && !messageToUse.equals(userMessage)) {
             // The browser already rendered the raw dictated text optimistically, before this
@@ -379,7 +385,7 @@ public class ClaudeCliSessionService
             return SKIPPED_RESULT;
         }
 
-        persistUserMessage(agent, taskPrompt, null, false);
+        persistUserMessage(agent, taskPrompt, null, false, null);
 
         return executeTurn(agent, config, taskPrompt, null);
     }
@@ -542,10 +548,11 @@ public class ClaudeCliSessionService
         return null;
     }
 
-    private AgentMessage persistUserMessage(Agent agent, String content, String attachmentsJson, boolean voiceInput)
+    private AgentMessage persistUserMessage(Agent agent, String content, String attachmentsJson, boolean voiceInput, User fromUser)
     {
         AgentMessage userAgentMessage = new AgentMessage();
         userAgentMessage.setAgent(agent);
+        userAgentMessage.setFromUser(fromUser);
         userAgentMessage.setRole(AgentMessageRole.USER);
         userAgentMessage.setContent(content);
         userAgentMessage.setAttachments(attachmentsJson);
@@ -1029,9 +1036,13 @@ public class ClaudeCliSessionService
         final String fromAgentName;
         final boolean deliverReply;
         final boolean reply;
+        final Long fromUserId;
+        final String fromUserLabel;
 
         QueuedMessage(AgentMessageQueueEntry entry)
         {
+            this.fromUserId = entry.getFromUser() != null ? entry.getFromUser().getId() : null;
+            this.fromUserLabel = entry.getUserLabel();
             this.queueId = entry.getId();
             this.content = entry.getContent();
             this.cliText = entry.getCliText();
@@ -1100,7 +1111,8 @@ public class ClaudeCliSessionService
             AgentMessage persisted;
 
             if (entry.fromAgentId == null) {
-                persisted = persistUserMessage(agent, entry.content, entry.attachments, entry.voiceInput);
+                persisted = persistUserMessage(agent, entry.content, entry.attachments, entry.voiceInput,
+                        entry.fromUserId != null ? userDAO.getUser(entry.fromUserId) : null);
             } else {
                 persisted = persistIncomingAgentMessage(agent, agentDAO.getAgentForId(entry.fromAgentId), entry.content);
             }
@@ -1110,6 +1122,7 @@ public class ClaudeCliSessionService
             pair.put("messageId", persisted.getId());
             pair.put("role", entry.fromAgentId == null ? "user" : "agent");
             pair.put("fromAgentName", entry.fromAgentName);
+            pair.put("userLabel", entry.fromUserLabel);
             pair.put("content", entry.content);
             moved.add(pair);
 

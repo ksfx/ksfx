@@ -87,7 +87,9 @@
     // Overridden by the voice block below; a recording in progress must not be lost to an automatic reload.
     var isVoiceInputListening = function () { return false; };
 
-    var ROLE_LABELS = { user: 'You', assistant: 'Assistant', system: 'System', agent: 'Agent' };
+    // Chat messages are labelled with the sender's first name, not "You" (several members may read
+    // the same chat): live bubbles use the logged-in user's label from the page.
+    var ROLE_LABELS = { user: root.dataset.userLabel || 'User', assistant: 'Assistant', system: 'System', agent: 'Agent' };
 
     var TOOL_ICONS = {
         Bash: 'fa-terminal',
@@ -411,6 +413,9 @@
             var msg = createMessageEl(pair.role === 'agent' ? 'agent' : 'user');
             if (pair.role === 'agent') {
                 msg.root.querySelector('.agentic-role-label').textContent = 'Agent: ' + (pair.fromAgentName || '?');
+            }
+            if (pair.role !== 'agent' && pair.userLabel) {
+                msg.root.querySelector('.agentic-role-label').textContent = pair.userLabel;
             }
             msg.bubble.textContent = pair.content || '';
             msg.root.dataset.messageId = pair.messageId;
