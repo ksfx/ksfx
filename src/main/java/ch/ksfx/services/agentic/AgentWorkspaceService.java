@@ -1,5 +1,9 @@
 package ch.ksfx.services.agentic;
 
+import java.nio.file.StandardCopyOption;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import ch.ksfx.model.Agent;
 import ch.ksfx.model.AgenticConfig;
 import ch.ksfx.model.Project;
@@ -65,13 +69,62 @@ public class AgentWorkspaceService
         return CONTAINER_PROVIDER_DIR + "/agent-" + agent.getId();
     }
 
+    /**
+     * Transcript retention for platform agents (KSFX issue #12). The CLI deletes transcripts older
+     * than cleanupPeriodDays (default 30) - for a human CLI user reasonable, for an agent that rests
+     * for a month (spiderings may run for years untouched) it silently destroys the resume thread:
+     * the next turn fails with "No conversation found with session ID". 3650 is the CLI's own
+     * suggestion for "keep for a long time". Context length is unaffected - the CLI compacts on its
+     * own; this only decides whether the thread still exists at all.
+     */
+    static final int TRANSCRIPT_RETENTION_DAYS = 3650;
+
+    private static final ObjectMapper SETTINGS_MAPPER = new ObjectMapper();
+
     public Path ensureProviderDir(Agent agent, AgenticConfig config) throws IOException
     {
         Path providerDir = resolveProviderDir(agent, config);
 
         Files.createDirectories(providerDir);
+        ensureTranscriptRetention(providerDir);
 
         return providerDir;
+    }
+
+    /**
+     * Pins cleanupPeriodDays in the agent's settings.json (runs before every turn, idempotent):
+     * missing file -> created with just this key; file without the key -> key merged in, every
+     * other key kept; key already present (any value, e.g. set deliberately) -> untouched. A file
+     * that cannot be parsed is left alone - the CLI itself pauses its cleanup while a settings file
+     * is unreadable, so nothing is deleted in that state either. Never fails the turn.
+     */
+    void ensureTranscriptRetention(Path providerDir)
+    {
+        Path settingsFile = providerDir.resolve("settings.json");
+
+        try {
+            ObjectNode settings;
+
+            if (Files.isRegularFile(settingsFile)) {
+                JsonNode existing = SETTINGS_MAPPER.readTree(settingsFile.toFile());
+
+                if (!(existing instanceof ObjectNode) || existing.has("cleanupPeriodDays")) {
+                    return;
+                }
+
+                settings = (ObjectNode) existing;
+            } else {
+                settings = SETTINGS_MAPPER.createObjectNode();
+            }
+
+            settings.put("cleanupPeriodDays", TRANSCRIPT_RETENTION_DAYS);
+
+            Path temp = providerDir.resolve("settings.json.ksfx-tmp");
+            SETTINGS_MAPPER.writerWithDefaultPrettyPrinter().writeValue(temp.toFile(), settings);
+            Files.move(temp, settingsFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (Exception e) {
+            // Unparseable or unwritable: leave it - see the method comment.
+        }
     }
 
     public Path ensureWorkspace(Agent agent, AgenticConfig config) throws IOException
