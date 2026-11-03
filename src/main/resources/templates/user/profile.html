@@ -43,6 +43,13 @@
                 <button type="submit" class="btn btn-primary">Save</button>
             </form>
         </div>
+        <div class="list-group-item">
+            <h6>Angemeldet bleiben</h6>
+            <p class="text-muted small">Wer sich mit "Angemeldet bleiben" einloggt, bleibt 30 Tage angemeldet, auch über Neustarts hinweg; jede Nutzung verlängert das. Hier meldest du dich auf allen Geräten ab, auch auf diesem. Noch offene Sitzungen anderer Geräte enden spätestens beim nächsten Neustart von KSFX oder nach einer Weile Inaktivität.</p>
+            <form th:action="@{/user/logout-everywhere}" method="post" onsubmit="return confirm('Auf allen Geräten abmelden?');">
+                <button type="submit" class="btn btn-outline-danger"><i class="fa fa-sign-out"></i> Auf allen Geräten abmelden</button>
+            </form>
+        </div>
     </div>
 </div>
 

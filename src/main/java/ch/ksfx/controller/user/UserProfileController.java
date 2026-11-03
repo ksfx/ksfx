@@ -31,6 +31,26 @@ public class UserProfileController
         this.userScope = userScope;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices rememberMeServices;
+
+    /**
+     * "Auf allen Geräten abmelden": removes every remember-me token of this user (all devices lose
+     * "Angemeldet bleiben") and ends the current session. Other devices with a session that is still
+     * open keep it until it ends (idle timeout or the next app restart) - sessions live in memory and
+     * are not tracked per user; after that they need the password again.
+     */
+    @PostMapping("/logout-everywhere")
+    public String logoutEverywhere(javax.servlet.http.HttpServletRequest request, javax.servlet.http.HttpServletResponse response)
+    {
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+
+        rememberMeServices.logout(request, response, authentication); // removes ALL tokens of the user + clears this device's cookie
+        new org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler().logout(request, response, authentication);
+
+        return "redirect:/login?logout";
+    }
+
     @GetMapping("/profile")
     public String profile(Model model)
     {

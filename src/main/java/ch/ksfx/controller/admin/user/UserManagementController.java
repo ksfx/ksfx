@@ -39,6 +39,9 @@ import java.util.Set;
 @RequestMapping("/admin/usermanagement")
 public class UserManagementController
 {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ch.ksfx.services.security.EbeanPersistentTokenRepository persistentTokenRepository;
+
     private final UserDAO userDAO;
     private final ProjectMembershipDAO membershipDAO;
     private final ProjectDAO projectDAO;
@@ -146,6 +149,10 @@ public class UserManagementController
 
         if (!password.isEmpty()) {
             user.setPassword(new BCryptPasswordEncoder().encode(password));
+
+            if (!isNew) {
+                persistentTokenRepository.removeUserTokens(user.getUsername()); // new password -> remembered devices out
+            }
         }
 
         Set<Role> roles = new HashSet<>();
@@ -179,6 +186,7 @@ public class UserManagementController
         User user = userDAO.getUser(id);
 
         if (user != null) {
+            persistentTokenRepository.removeUserTokens(user.getUsername());
             userDAO.delete(user);
             redirectAttributes.addFlashAttribute("resultMessage", "User deleted.");
         }

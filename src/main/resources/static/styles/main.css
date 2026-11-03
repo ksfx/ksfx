@@ -171,3 +171,19 @@ th[data-grid-property="observationTime"]
 .ksfx-services-table td {
     vertical-align: middle;
 }
+
+/* Login dropdown in the navbar (not logged in). */
+.ksfx-login-menu {
+    min-width: 280px;
+    padding: 12px 14px;
+}
+
+.ksfx-remember-me {
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.ksfx-login-error {
+    padding: 4px 8px;
+    font-size: 0.85em;
+}

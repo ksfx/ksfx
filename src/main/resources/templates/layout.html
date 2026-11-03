@@ -137,6 +137,20 @@
 
         <footer th:fragment="site-footer" th:remove="tag">
             <script>
+                // Login dropdown: open by itself on the login page (redirect target of every
+                // unauthenticated request, and where a failed attempt comes back) and focus the
+                // first empty field.
+                $(function () {
+                    var toggle = document.getElementById('loginDropdown');
+                    if (!toggle || !/\/login\/?$/.test(location.pathname)) return;
+                    $(toggle).dropdown('toggle');
+                    setTimeout(function () {
+                        var user = document.getElementById('email');
+                        (user && !user.value ? user : document.getElementById('password')).focus();
+                    }, 50);
+                });
+            </script>
+            <script>
                 // Fills every listen dot ([data-host-port] element with a [data-port-dot] child) from
                 // the project's ports status endpoint - shared by the breadcrumb dropdown (knocks when
                 // it opens) and the project dashboard's services block (knocks right after load, the
@@ -335,23 +349,33 @@
                     </ul>
 
                     <!-- form-inline my-2 my-md-0 navbar-form navbar-right -->
-                    <form class="navbar-nav ml-auto" th:action="@{/login}" method="post" sec:authorize="!isAuthenticated()">
-                        <div class="input-group input-group-lg">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="fa fa-user"></i></span>
+                    <!-- Login behind a dropdown, like the user menu once logged in (2026-11-03) - the
+                         inline username/password row filled the whole bar. Opens by itself on the
+                         login page (where every unauthenticated request lands, see site-footer
+                         script). Clicks inside must not close it (checkbox label, etc.). -->
+                    <ul class="navbar-nav ml-auto" sec:authorize="!isAuthenticated()">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="loginDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="ksfx-user-badge"><i class="fa fa-user"></i></span> Anmelden</a>
+                            <div class="dropdown-menu dropdown-menu-right ksfx-login-menu" aria-labelledby="loginDropdown" onclick="event.stopPropagation()">
+                                <form th:action="@{/login}" method="post">
+                                    <div th:if="${param.error}" class="alert alert-danger ksfx-login-error">Benutzername oder Passwort falsch.</div>
+                                    <div class="form-group">
+                                        <input id="email" type="text" class="form-control" name="username" value="" placeholder="Username" autocomplete="username" />
+                                    </div>
+                                    <div class="form-group">
+                                        <input id="password" type="password" class="form-control" name="password" value="" placeholder="Password" autocomplete="current-password" />
+                                    </div>
+                                    <!-- On by default: KSFX is mostly used on personal devices, and a restart/deploy
+                                         otherwise logs everybody out (sessions live in memory only). -->
+                                    <div class="form-check ksfx-remember-me">
+                                        <input class="form-check-input" type="checkbox" id="rememberMe" name="remember-me" checked="checked" />
+                                        <label class="form-check-label" for="rememberMe" title="Bleibt 30 Tage angemeldet, auch über Neustarts hinweg - jede Nutzung verlängert das">Angemeldet bleiben</label>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                                </form>
                             </div>
-                            <input id="email" type="text" class="form-control" name="username" value="" placeholder="Username" />
-                        </div>
-
-                        <div class="input-group input-group-lg">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="fa fa-lock"></i></span>
-                            </div>
-                            <input id="password" type="password" class="form-control" name="password" value="" placeholder="Password" />
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Login</button>
-                    </form>
+                        </li>
+                    </ul>
 
                     <ul class="navbar-nav ml-auto" sec:authorize="isAuthenticated()">
                         <li class="nav-item dropdown">

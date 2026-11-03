@@ -57,4 +57,5 @@
     <include file="20261101000000_agentic_config_drop_moved_columns.sql" relativeToChangelogFile="true"/>
     <include file="20261031090000_agent_message_queue.sql" relativeToChangelogFile="true"/>
     <include file="20261101090000_agent_message_sender.sql" relativeToChangelogFile="true"/>
+    <include file="20261103090000_persistent_logins.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

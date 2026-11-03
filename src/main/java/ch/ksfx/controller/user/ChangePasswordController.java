@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/user")
 public class ChangePasswordController
 {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ch.ksfx.services.security.EbeanPersistentTokenRepository persistentTokenRepository;
+
     private static final Long ADMIN_USER = 1l;
 
     UserDAO userDAO;
@@ -51,6 +54,8 @@ public class ChangePasswordController
 
                 User user = userDAO.getUser(currentUser.getId());
                 user.setPassword(encoder.encode(password));
+                // A new password logs out every remembered device ("Angemeldet bleiben").
+                persistentTokenRepository.removeUserTokens(user.getUsername());
                 userDAO.save(user);
 
                 model.addAttribute("success", "Password changed");

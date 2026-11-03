@@ -1,5 +1,7 @@
 package ch.ksfx.services;
 
+import ch.ksfx.services.security.EbeanPersistentTokenRepository;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
@@ -30,6 +32,24 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @EnableWebSecurity
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter
 {
+    /** "Angemeldet bleiben" lasts 30 days - and is renewed on every use, so a daily user is never logged out. */
+    static final int REMEMBER_ME_SECONDS = 30 * 24 * 60 * 60;
+
+    // Only ties the RememberMeAuthenticationToken to its provider inside this JVM; the persistent
+    // tokens are validated against the database, so a fresh value per start is fine (restarts keep working).
+    private static final String REMEMBER_ME_KEY = java.util.UUID.randomUUID().toString();
+
+    @Autowired
+    private KsfxUserDetailsService ksfxUserDetailsService;
+
+    @Autowired
+    private EbeanPersistentTokenRepository persistentTokenRepository;
+
+    // Derived from the session cookie's name, so instances on the same domain (e.g. KSFX_TEST vs
+    // production) do not overwrite each other's remember-me cookie.
+    @org.springframework.beans.factory.annotation.Value("${server.servlet.session.cookie.name:JSESSIONID}")
+    private String sessionCookieName;
+
     @Override
     protected void configure(HttpSecurity http) throws Exception
     {
@@ -70,6 +90,13 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
                 // instead of the page the user actually wanted.
                 .requestCache()
                 .requestCache(htmlNavigationRequestCache())
+                .and()
+                // "Angemeldet bleiben": sessions die with every restart/deploy; the persistent
+                // remember-me cookie re-authenticates silently (checkbox on the login form, on by
+                // default). Logout removes the user's tokens via the same services.
+                .rememberMe()
+                .key(REMEMBER_ME_KEY)
+                .rememberMeServices(rememberMeServices())
                 .and()
                 .exceptionHandling()
                 // Explicit catch-all as well as the /api/** mapping - registering ANY mapping here
@@ -132,6 +159,17 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
 
         return "GET".equalsIgnoreCase(request.getMethod()) && accept != null && accept.contains("text/html");
     };
+
+    @Bean
+    public PersistentTokenBasedRememberMeServices rememberMeServices()
+    {
+        PersistentTokenBasedRememberMeServices services = new PersistentTokenBasedRememberMeServices(REMEMBER_ME_KEY, ksfxUserDetailsService, persistentTokenRepository);
+        services.setTokenValiditySeconds(REMEMBER_ME_SECONDS);
+        services.setCookieName(sessionCookieName + "_REMEMBER");
+        services.setParameter("remember-me");
+
+        return services;
+    }
 
     @Bean
     public HttpSessionRequestCache htmlNavigationRequestCache()
