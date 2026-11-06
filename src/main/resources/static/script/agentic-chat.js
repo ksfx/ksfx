@@ -455,6 +455,7 @@
         }
 
         showTyping(message.bubble);
+        scrollToBottom();
     }
 
     // THE live path of the chat (since 2026-11-06): an EventSource on the turn - after sending,
@@ -1233,12 +1234,27 @@
         });
     }
 
-    scrollToBottom();
-    // Again once everything has loaded: the call above can run before the chat CSS, fonts and
-    // images have shaped the layout (seen in Edge under web isolation - the page is rendered remotely
-    // and resources arrive late), leaving the chat at the top. sizeAgenticPanes listens to 'load' as
-    // well and is registered earlier, so the panes have their final height by the time this runs.
-    window.addEventListener('load', scrollToBottom);
+    // Keep the chat at the bottom for a moment after the page loads: in Edge under web isolation the
+    // page is rendered remotely and the layout settles late - even after 'load' when CSS and fonts
+    // come from the cache (switching agents) - so a single scroll can land at the top. Pinned on every
+    // frame until 2 s after 'load', and released at once when the user scrolls, taps or types.
+    var pinUntil = Date.now() + 2000;
+    function pinToBottom() {
+        if (Date.now() > pinUntil) return;
+        scrollToBottom();
+        requestAnimationFrame(pinToBottom);
+    }
+    function releasePin() { pinUntil = 0; }
+    ['wheel', 'touchstart', 'mousedown', 'keydown'].forEach(function (type) {
+        window.addEventListener(type, releasePin, { passive: true, once: true });
+    });
+    window.addEventListener('load', function () {
+        if (!pinUntil) return;
+        var running = Date.now() <= pinUntil;
+        pinUntil = Date.now() + 2000;
+        if (!running) pinToBottom();
+    });
+    pinToBottom();
     autoResize();
 })();
 
