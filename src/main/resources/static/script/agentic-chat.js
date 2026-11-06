@@ -1162,6 +1162,11 @@
     }
 
     scrollToBottom();
+    // Again once everything has loaded: the call above can run before the chat CSS, fonts and
+    // images have shaped the layout (seen in Edge under web isolation - the page is rendered remotely
+    // and resources arrive late), leaving the chat at the top. sizeAgenticPanes listens to 'load' as
+    // well and is registered earlier, so the panes have their final height by the time this runs.
+    window.addEventListener('load', scrollToBottom);
     autoResize();
 })();
 
