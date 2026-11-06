@@ -77,6 +77,39 @@ import java.util.stream.Stream;
 @Service
 public class ClaudeCliSessionService
 {
+    /**
+     * Serialises everything that goes out on an agent's live stream: "append to the running turn
+     * state + broadcast" (handleStreamEvent), "read the snapshot + subscribe" (attachToRunningTurn),
+     * the end-of-turn "done" and the heartbeat. A browser that attaches mid-turn therefore gets a
+     * snapshot that is exactly the sum of all events before it - no gap, no duplicate.
+     */
+    private final ConcurrentHashMap<Long, Object> streamLocks = new ConcurrentHashMap<>();
+
+    private Object streamLock(Long agentId)
+    {
+        return streamLocks.computeIfAbsent(agentId, k -> new Object());
+    }
+
+    /**
+     * Comment line on every open stream every 15 s: keeps idle connections alive, and nudges
+     * proxies that only pass data on once something new arrives (web isolation, inspection proxies).
+     */
+    private final java.util.concurrent.ScheduledExecutorService streamHeartbeat = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "agentic-stream-heartbeat");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    @javax.annotation.PostConstruct
+    void startStreamHeartbeat()
+    {
+        streamHeartbeat.scheduleAtFixedRate(() -> {
+            for (Long agentId : subscribers.keySet()) {
+                broadcastSend(agentId, SseEmitter.event().comment("keepalive"));
+            }
+        }, 15, 15, TimeUnit.SECONDS);
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     private UserDAO userDAO;
 
@@ -211,27 +244,46 @@ public class ClaudeCliSessionService
      */
     public boolean attachToRunningTurn(Long agentId, SseEmitter emitter)
     {
-        if (!isRunning(agentId)) {
-            return false;
-        }
+        synchronized (streamLock(agentId)) {
+            if (!isRunning(agentId)) {
+                // Nothing (any more) to follow - e.g. a very fast turn that ended before the browser
+                // attached. The page reloads and shows the persisted result.
+                try {
+                    emitter.send(SseEmitter.event().name("done").data("{\"notRunning\":true}"));
+                    emitter.complete();
+                } catch (Exception ignored) {
+                }
 
-        addSubscriber(agentId, emitter);
-
-        if (!isRunning(agentId)) {
-            CopyOnWriteArrayList<SseEmitter> list = subscribers.get(agentId);
-
-            if (list != null) {
-                list.remove(emitter);
+                return false;
             }
+
+            addSubscriber(agentId, emitter);
 
             try {
-                emitter.complete();
-            } catch (Exception ignored) {
-            }
-        }
+                // ~2 KB comment first: some proxies only start passing a response on once a buffer
+                // threshold is reached.
+                emitter.send(SseEmitter.event().comment(STREAM_PADDING));
 
-        return true;
+                // Everything this turn produced so far, taken under the same lock the turn uses to
+                // append + broadcast - so the events that follow continue exactly where it ends.
+                RunningTurnState state = runningTurnState.get(agentId);
+                ObjectNode snapshot = objectMapper.createObjectNode();
+                snapshot.put("text", state != null ? state.snapshotText() : "");
+                String toolActivity = state != null ? state.snapshotToolActivityJson() : null;
+                snapshot.set("toolActivity", toolActivity != null ? objectMapper.readTree(toolActivity) : objectMapper.createArrayNode());
+                emitter.send(SseEmitter.event().name("snapshot").data(snapshot.toString()));
+            } catch (Exception e) {
+                CopyOnWriteArrayList<SseEmitter> list = subscribers.get(agentId);
+                if (list != null) {
+                    list.remove(emitter);
+                }
+            }
+
+            return true;
+        }
     }
+
+    private static final String STREAM_PADDING = new String(new char[2048]).replace('\0', ' ');
 
     /**
      * Manually ends a running turn (chat/scheduled/agent-triggered alike, all funnel through the
@@ -273,7 +325,33 @@ public class ClaudeCliSessionService
         agentMessageDAO.saveAgentMessage(resetMessage);
     }
 
-    public void runTurn(Long agentId, String userMessage, MultipartFile[] files, boolean voiceInput, SseEmitter emitter, User fromUser)
+    /**
+     * Outcome of a chat send (runTurn): the POST answers with this right away, and the browser then
+     * follows the turn over the EventSource stream (attachToRunningTurn) - one live path for
+     * sending and for reloading mid-turn, and one that proxies do not buffer (web isolation buffered
+     * the former streamed POST response until the turn ended).
+     */
+    public static final class TurnStart
+    {
+        public final String status;      // "started" | "queued" | "error"
+        public final Long queueId;       // queued only
+        public final String content;     // the message as stored (voice input: the cleaned-up text)
+        public final String error;       // error only
+
+        private TurnStart(String status, Long queueId, String content, String error)
+        {
+            this.status = status;
+            this.queueId = queueId;
+            this.content = content;
+            this.error = error;
+        }
+
+        static TurnStart started(String content) { return new TurnStart("started", null, content, null); }
+        static TurnStart queued(Long queueId, String content) { return new TurnStart("queued", queueId, content, null); }
+        static TurnStart error(String error) { return new TurnStart("error", null, null, error); }
+    }
+
+    public TurnStart runTurn(Long agentId, String userMessage, MultipartFile[] files, boolean voiceInput, User fromUser)
     {
         Agent agent = agentDAO.getAgentForId(agentId);
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
@@ -281,16 +359,12 @@ public class ClaudeCliSessionService
         String validationError = validateAgentAndConfig(agent, config);
 
         if (validationError != null) {
-            completeWithError(emitter, validationError);
-            return;
+            return TurnStart.error(validationError);
         }
 
-        // Runs before the CLI turn itself, on this same (request) thread - completeWithError above
-        // already proves sending on `emitter` synchronously here, before chatMessage() has even
-        // returned it to Spring, is delivered fine (Spring buffers it against the async context
-        // regardless of exact timing). Failure of any kind (timeout, CLI error, empty reply) just
-        // falls back to the raw dictated text - this is a nicety layered on top of a normal turn,
-        // never something the turn itself should fail over.
+        // Voice cleanup runs before the CLI turn, on this request thread; the POST answers with the
+        // cleaned text. Failure of any kind (timeout, CLI error, empty reply) just falls back to the
+        // raw dictated text - a nicety layered on top of a normal turn, never a reason to fail it.
         String messageToUse = userMessage;
         if (voiceInput) {
             VoiceCleanupResult cleanup = cleanupVoiceTranscript(agent, config, settingsFor(agent), userMessage);
@@ -307,8 +381,7 @@ public class ClaudeCliSessionService
         try {
             messageForCli = saveAttachmentsAndBuildNote(agent, config, files, messageToUse, attachmentsJson);
         } catch (IOException e) {
-            completeWithError(emitter, "File upload failed: " + e.getMessage());
-            return;
+            return TurnStart.error("File upload failed: " + e.getMessage());
         }
 
         // Chat queue: a message sent while a turn is still running is held back and runs as the
@@ -331,35 +404,16 @@ public class ClaudeCliSessionService
         }
 
         if (queued != null) {
-            ObjectNode queuedPayload = objectMapper.createObjectNode();
-            queuedPayload.put("queueId", queued.getId());
-            queuedPayload.put("content", messageToUse);
-            trySend(emitter, SseEmitter.event().name("queued").data(queuedPayload.toString()));
-
-            try {
-                emitter.complete();
-            } catch (Exception ignored) {
-            }
-
-            return;
+            return TurnStart.queued(queued.getId(), messageToUse);
         }
 
-        AgentMessage persistedUserMessage = persistUserMessage(agent, messageToUse, attachmentsJson[0], voiceInput, fromUser);
+        persistUserMessage(agent, messageToUse, attachmentsJson[0], voiceInput, fromUser);
 
-        if (voiceInput && !messageToUse.equals(userMessage)) {
-            // The browser already rendered the raw dictated text optimistically, before this
-            // request ever reached the server (see agentic-chat.js's sendMessage) - this is what
-            // corrects that already-visible bubble to the cleaned-up version once it's ready.
-            ObjectNode voiceCleanedPayload = objectMapper.createObjectNode();
-            voiceCleanedPayload.put("messageId", persistedUserMessage.getId());
-            voiceCleanedPayload.put("content", messageToUse);
-            trySend(emitter, SseEmitter.event().name("voice_cleaned").data(voiceCleanedPayload.toString()));
-        }
+        // The agent is claimed ("running") before this returns, so the browser's EventSource that
+        // follows always finds the turn - or, if it was very fast, gets "done/notRunning".
+        new Thread(() -> executeTurn(agent, config, messageForCli, null)).start();
 
-        // Completion/error is now broadcast from inside executeTurn itself (to every subscriber,
-        // not just this one emitter) - see completeAllSubscribers - so this thread doesn't need to
-        // react to executeTurn's return value itself any more.
-        new Thread(() -> executeTurn(agent, config, messageForCli, emitter)).start();
+        return TurnStart.started(messageToUse);
     }
 
     /**
@@ -1249,12 +1303,17 @@ public class ClaudeCliSessionService
     /** Sends to every current subscriber for {@code agentId} - see {@link #subscribers}. No-op (not an error) if nobody's watching right now. */
     private void broadcastSend(Long agentId, SseEmitter.SseEventBuilder event)
     {
-        CopyOnWriteArrayList<SseEmitter> list = subscribers.get(agentId);
+        synchronized (streamLock(agentId)) {
+            broadcastSendLocked(agentId, event);
+        }
+    }
 
+    private void broadcastSendLocked(Long agentId, SseEmitter.SseEventBuilder event)
+    {
+        CopyOnWriteArrayList<SseEmitter> list = subscribers.get(agentId);
         if (list == null) {
             return;
         }
-
         for (SseEmitter subscriber : list) {
             try {
                 subscriber.send(event);
@@ -1275,21 +1334,23 @@ public class ClaudeCliSessionService
      */
     private void completeAllSubscribers(Long agentId, String errorMessage)
     {
-        CopyOnWriteArrayList<SseEmitter> list = subscribers.remove(agentId);
+        synchronized (streamLock(agentId)) {
+            CopyOnWriteArrayList<SseEmitter> list = subscribers.remove(agentId);
+            if (list == null) {
+                return;
+            }
+            for (SseEmitter subscriber : list) {
+                try {
+                    if (errorMessage != null) {
+                        subscriber.send(SseEmitter.event().name("error").data(errorMessage));
+                    }
 
-        if (list == null) {
-            return;
-        }
-
-        for (SseEmitter subscriber : list) {
-            try {
-                if (errorMessage != null) {
-                    subscriber.send(SseEmitter.event().name("error").data(errorMessage));
-                    subscriber.completeWithError(new IllegalStateException(errorMessage));
-                } else {
+                    // Explicit end: EventSource reconnects by itself whenever a stream closes, so
+                    // the browser must be told "this turn is over" and close it on its side.
+                    subscriber.send(SseEmitter.event().name("done").data("{}"));
                     subscriber.complete();
+                } catch (Exception ignored) {
                 }
-            } catch (Exception ignored) {
             }
         }
     }
@@ -1756,7 +1817,6 @@ public class ClaudeCliSessionService
 
                 if ("text".equals(blockType)) {
                     String text = contentBlock.path("text").asText("");
-                    turnState.appendText(text);
                     runningStatus.put(agentId, "Responding…");
 
                     // JSON-encoded (like tool_use/tool_result below), not sent raw: a raw
@@ -1764,7 +1824,10 @@ public class ClaudeCliSessionService
                     // parsing (it splits on a blank line, which a paragraph break inside the
                     // text also produces) and truncates the live-rendered response, even
                     // though turnState/the DB copy stays complete either way.
-                    broadcastSend(agentId, SseEmitter.event().name("text").data(objectMapper.writeValueAsString(text)));
+                    synchronized (streamLock(agentId)) { // atomic with snapshots, see streamLocks
+                        turnState.appendText(text);
+                        broadcastSend(agentId, SseEmitter.event().name("text").data(objectMapper.writeValueAsString(text)));
+                    }
                 } else if ("tool_use".equals(blockType)) {
                     String toolName = contentBlock.path("name").asText("tool");
 
@@ -1772,11 +1835,13 @@ public class ClaudeCliSessionService
                     toolUseEntry.put("type", "tool_use");
                     toolUseEntry.put("tool", toolName);
                     toolUseEntry.set("input", contentBlock.path("input"));
-                    turnState.addToolActivity(toolUseEntry);
 
                     runningStatus.put(agentId, "Tool: " + toolName);
 
-                    broadcastSend(agentId, SseEmitter.event().name("tool_use").data(objectMapper.writeValueAsString(toolUseEntry)));
+                    synchronized (streamLock(agentId)) {
+                        turnState.addToolActivity(toolUseEntry);
+                        broadcastSend(agentId, SseEmitter.event().name("tool_use").data(objectMapper.writeValueAsString(toolUseEntry)));
+                    }
                 }
             }
         } else if ("user".equals(type)) {
@@ -1789,11 +1854,13 @@ public class ClaudeCliSessionService
                     ObjectNode toolResultEntry = objectMapper.createObjectNode();
                     toolResultEntry.put("type", "tool_result");
                     toolResultEntry.put("result", result);
-                    turnState.addToolActivity(toolResultEntry);
 
                     runningStatus.put(agentId, "Evaluating tool result…");
 
-                    broadcastSend(agentId, SseEmitter.event().name("tool_result").data(objectMapper.writeValueAsString(toolResultEntry)));
+                    synchronized (streamLock(agentId)) {
+                        turnState.addToolActivity(toolResultEntry);
+                        broadcastSend(agentId, SseEmitter.event().name("tool_result").data(objectMapper.writeValueAsString(toolResultEntry)));
+                    }
                 }
             }
         } else if ("rate_limit_event".equals(type)) {
@@ -1885,36 +1952,6 @@ public class ClaudeCliSessionService
         ClaudeCliEnvironment.drainStream(inputStream, target);
     }
 
-    private void completeWithError(SseEmitter emitter, String message)
-    {
-        trySend(emitter, SseEmitter.event().name("error").data(message));
-
-        try {
-            emitter.completeWithError(new IllegalStateException(message));
-        } catch (Exception ignored) {
-        }
-    }
-
-    /**
-     * Sends an SSE event if an emitter is attached, silently ignoring failures. The emitter is
-     * null for headless/scheduled/agent-triggered runs (no browser attached); it's non-null but
-     * already completed if the browser navigated away mid-turn (Spring throws
-     * IllegalStateException on the next send). Either way the turn should keep running the CLI
-     * process to completion and persist normally, not treat "nobody's watching anymore" as a
-     * turn failure - that used to abort the read loop, land in executeTurn's catch block, and
-     * kill the still-working CLI process via its finally block.
-     */
-    private void trySend(SseEmitter emitter, SseEmitter.SseEventBuilder event)
-    {
-        if (emitter == null) {
-            return;
-        }
-
-        try {
-            emitter.send(event);
-        } catch (Exception ignored) {
-        }
-    }
 
     private boolean isBlank(String value)
     {

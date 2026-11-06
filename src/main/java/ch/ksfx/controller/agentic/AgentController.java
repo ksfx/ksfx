@@ -333,33 +333,41 @@ public class AgentController
      */
     @GetMapping(value = "/chat/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @ResponseBody
-    public SseEmitter attach(@PathVariable(value = "id") Long agentId)
+    public SseEmitter attach(@PathVariable(value = "id") Long agentId, javax.servlet.http.HttpServletResponse response)
     {
         userScope.requireRead(agentDAO.getAgentForId(agentId).getProject());
-
+        // The ONE live path of the chat (sending and reloading mid-turn): EventSource GET. Told not
+        // to buffer or transform - proxies (web isolation, inspection, nginx) otherwise may hold the
+        // stream back until it ends.
+        response.setHeader("Cache-Control", "no-cache, no-transform");
+        response.setHeader("X-Accel-Buffering", "no");
         SseEmitter emitter = new SseEmitter(0L);
-
-        if (!claudeCliSessionService.attachToRunningTurn(agentId, emitter)) {
-            emitter.complete();
-        }
-
+        claudeCliSessionService.attachToRunningTurn(agentId, emitter); // sends snapshot, or done/notRunning
         return emitter;
     }
 
-    @PostMapping(value = "/chat/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    /**
+     * Sends a chat message and answers right away (JSON): started / queued / error. The browser then
+     * follows the turn over GET /chat/{id}/stream. (Until 2026-11-06 this POST's response WAS the
+     * stream - buffered to the end by web isolation proxies.)
+     */
+    @PostMapping(value = "/chat/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public SseEmitter chatMessage(@PathVariable(value = "id") Long agentId,
-                                   @RequestParam("message") String message,
-                                   @RequestParam(value = "files", required = false) MultipartFile[] files,
-                                   @RequestParam(value = "voiceInput", defaultValue = "false") boolean voiceInput)
+    public Map<String, Object> chatMessage(@PathVariable(value = "id") Long agentId,
+                                           @RequestParam("message") String message,
+                                           @RequestParam(value = "files", required = false) MultipartFile[] files,
+                                           @RequestParam(value = "voiceInput", defaultValue = "false") boolean voiceInput)
     {
         userScope.requireWrite(agentDAO.getAgentForId(agentId).getProject()); // a chat turn makes the agent act
+        ClaudeCliSessionService.TurnStart start = claudeCliSessionService.runTurn(agentId, message, files, voiceInput, userScope.currentUser());
 
-        SseEmitter emitter = new SseEmitter(0L);
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("status", start.status);
+        if (start.queueId != null) result.put("queueId", start.queueId);
+        if (start.content != null) result.put("content", start.content);
+        if (start.error != null) result.put("error", start.error);
 
-        claudeCliSessionService.runTurn(agentId, message, files, voiceInput, emitter, userScope.currentUser());
-
-        return emitter;
+        return result;
     }
 
     /**

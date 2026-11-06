@@ -438,70 +438,86 @@
         return next;
     }
 
-    // turn = { assistant: answer bubble or null (this send was queued), user: the user bubble }
-    function handleSseEvent(rawEvent, turn) {
-        var assistantMessage = turn.assistant;
-        var userMessage = turn.user;
-        var eventName = 'message';
-        var dataLines = [];
+    // Replaces an answer bubble's content with the server's snapshot of the running turn - sent
+    // first whenever a stream attaches (send, reload, automatic reconnect). The events that follow
+    // continue exactly where the snapshot ends (server-side lock), so this is idempotent.
+    function applySnapshot(message, data) {
+        var snapshot = JSON.parse(data);
 
-        rawEvent.split('\n').forEach(function (line) {
-            if (line.indexOf('event:') === 0) {
-                eventName = line.substring(6).trim();
-            } else if (line.indexOf('data:') === 0) {
-                dataLines.push(line.substring(5).trim());
+        message.bubble.textContent = snapshot.text || '';
+
+        if (snapshot.toolActivity && snapshot.toolActivity.length) {
+            var body = ensureToolContainer(message);
+            body.innerHTML = '';
+            snapshot.toolActivity.forEach(function (entry) {
+                renderToolEntry(body, entry);
+            });
+        }
+
+        showTyping(message.bubble);
+    }
+
+    // THE live path of the chat (since 2026-11-06): an EventSource on the turn - after sending,
+    // and when a page loads mid-turn. Replaced the former streamed POST response, which proxies
+    // (Edge web isolation) buffered until the turn ended. turn = { assistant: answer bubble }.
+    function followTurn(turn) {
+        var stream = new EventSource(root.dataset.streamEndpoint);
+        var finished = false;
+        var receivedSomething = false;
+
+        stream.addEventListener('snapshot', function (e) {
+            receivedSomething = true;
+            applySnapshot(turn.assistant, e.data);
+        });
+
+        ['text', 'tool_use', 'tool_result', 'model', 'usage', 'generated_files'].forEach(function (name) {
+            stream.addEventListener(name, function (e) {
+                receivedSomething = true;
+                applyEvent(name, e.data, turn.assistant);
+            });
+        });
+
+        // Chat queue hand-off: the queued messages run next on this same stream.
+        stream.addEventListener('next_turn', function (e) {
+            turn.assistant = startNextTurn(turn.assistant, e.data);
+        });
+
+        stream.addEventListener('done', function (e) {
+            finished = true;
+            stream.close();
+            clearTyping(turn.assistant.bubble);
+            setSending(false);
+
+            var info = {};
+            try { info = JSON.parse(e.data); } catch (parseError) { /* plain done */ }
+
+            // The turn was over before this stream attached (very fast turn or early failure):
+            // nothing streamed, so show the persisted result.
+            if (info.notRunning && !receivedSomething) {
+                reloadKeepingDraft();
             }
         });
 
-        var data = dataLines.join('\n');
-
-        // Specific to this one live send (corrects the user bubble this same sendMessage() call
-        // already rendered optimistically with the raw dictated text) rather than part of
-        // applyEvent's general event vocabulary - the EventSource reconnect path never needs this,
-        // since a reload always re-renders history from the DB, where the cleanup has already
-        // landed by the time this event would have fired.
-        if (eventName === 'voice_cleaned') {
-            if (userMessage) {
-                try {
-                    userMessage.bubble.textContent = JSON.parse(data).content;
-                } catch (parseError) {
-                    // ignore - the raw dictated text stays displayed, a harmless fallback
-                }
-            }
-            return;
-        }
-
-        if (eventName === 'queued') {
-            if (turn.assistant) {
-                // This page thought the agent was idle, but a turn was running (another tab, a
-                // schedule, another agent): the reload shows that turn and the queue correctly.
-                reloadKeepingDraft();
+        // Two kinds of 'error' arrive here: the server's error EVENT (carries data - show it), and
+        // EventSource's own connection error (no data). On the latter the browser reconnects by
+        // itself and the fresh snapshot fills in whatever was missed; only if it gave up for good
+        // (CLOSED) does the reload recovery take over.
+        stream.addEventListener('error', function (e) {
+            if (e.data !== undefined) {
+                applyEvent('error', e.data, turn.assistant);
                 return;
             }
 
-            var queued = JSON.parse(data);
-            markQueued(turn.user, queued.queueId);
-
-            if (queued.content) {
-                turn.user.bubble.textContent = queued.content;
+            if (finished) {
+                return;
             }
 
-            return;
-        }
+            if (stream.readyState === EventSource.CLOSED) {
+                recoverBrokenStream(turn.assistant, 'connection lost');
+            }
+        });
 
-        if (eventName === 'next_turn') {
-            turn.assistant = startNextTurn(turn.assistant, data);
-            return;
-        }
-
-        if (!turn.assistant) {
-            // Sent as "queued", but the previous turn had just ended: the server ran it right away.
-            unmarkQueued(turn.user.root);
-            setSending(true);
-            turn.assistant = createMessageEl('assistant');
-        }
-
-        applyEvent(eventName, data, turn.assistant);
+        return stream;
     }
 
     function applyEvent(eventName, data, assistantMessage) {
@@ -677,9 +693,9 @@
         inputEl.value = '';
         autoResize();
 
-        // A turn already runs in this page: the server will queue this message (it says so with
-        // 'queued'), so no answer bubble yet. Otherwise a normal turn starts.
-        var turn = { assistant: null, user: userMessage };
+        // A turn already runs in this page: the server will queue this message, so no answer
+        // bubble yet. Otherwise a normal turn starts.
+        var turn = { assistant: null };
 
         if (turnBusy) {
             userMessage.root.classList.add('agentic-msg--queued');
@@ -694,42 +710,58 @@
         var headers = {};
         headers[csrfHeader] = csrfToken;
 
+        // The POST only sends; it answers at once (started / queued / error). The answer then
+        // streams over followTurn's EventSource.
         fetch(chatEndpoint, {
             method: 'POST',
             headers: headers,
             body: formData
         }).then(function (response) {
-            var reader = response.body.getReader();
-            var decoder = new TextDecoder();
-            var buffer = '';
+            return response.json();
+        }).then(function (result) {
+            if (result.status === 'error') {
+                if (turn.assistant) {
+                    clearTyping(turn.assistant.bubble);
+                    turn.assistant.root.remove();
+                    setSending(false);
+                }
 
-            function pump() {
-                return reader.read().then(function (result) {
-                    if (result.done) {
-                        if (turn.assistant) {
-                            clearTyping(turn.assistant.bubble);
-                            setSending(false);
-                        }
-
-                        return;
-                    }
-
-                    buffer += decoder.decode(result.value, { stream: true });
-
-                    var events = buffer.split('\n\n');
-                    buffer = events.pop();
-
-                    events.forEach(function (rawEvent) {
-                        if (rawEvent.trim()) {
-                            handleSseEvent(rawEvent, turn);
-                        }
-                    });
-
-                    return pump();
-                });
+                userMessage.root.classList.remove('agentic-msg--queued');
+                createMessageEl('system').bubble.textContent = result.error || 'Could not send the message.';
+                return;
             }
 
-            return pump();
+            if (result.status === 'queued') {
+                if (turn.assistant) {
+                    // This page thought the agent was idle, but a turn was running (another tab, a
+                    // schedule, another agent): the reload shows that turn and the queue correctly.
+                    reloadKeepingDraft();
+                    return;
+                }
+
+                markQueued(userMessage, result.queueId);
+
+                if (result.content) {
+                    userMessage.bubble.textContent = result.content;
+                }
+
+                return;
+            }
+
+            // started (voice input: the server returns the cleaned-up text)
+            if (result.content) {
+                userMessage.bubble.textContent = result.content;
+            }
+
+            if (!turn.assistant) {
+                // Sent as "queued", but the previous turn had just ended: it runs right away.
+                unmarkQueued(userMessage.root);
+                setSending(true);
+                turn.assistant = createMessageEl('assistant');
+                showTyping(turn.assistant.bubble);
+            }
+
+            followTurn(turn);
         }).catch(function (error) {
             if (turn.assistant) {
                 recoverBrokenStream(turn.assistant, error);
@@ -1027,9 +1059,8 @@
             ? {
                 root: inProgressEl,
                 bubble: inProgressEl.querySelector('.agentic-bubble'),
-                // Already populated by hydrateHistory() above if the server sent partial
-                // tool activity - reusing it here (instead of leaving toolBody unset) stops
-                // ensureToolContainer from creating a second, empty <details> block alongside it.
+                // Reuse the server-rendered tool block (hydrateHistory) so the snapshot refills it
+                // instead of ensureToolContainer creating a second one.
                 toolBody: inProgressEl.querySelector('.agentic-tool-activity-body')
             }
             : createMessageEl('assistant');
@@ -1037,47 +1068,9 @@
         showTyping(assistantMessage.bubble);
         setSending(true);
 
-        // GET, unlike the send flow's POST - EventSource can't do POST, but that's fine here since
-        // this connection only ever subscribes to an already-running turn, never starts one.
-        var stream = new EventSource(root.dataset.streamEndpoint);
-
-        ['text', 'tool_use', 'tool_result', 'model', 'usage', 'generated_files'].forEach(function (name) {
-            stream.addEventListener(name, function (e) {
-                applyEvent(name, e.data, assistantMessage);
-            });
-        });
-
-        // Chat queue hand-off: the queued messages run next on this same stream.
-        stream.addEventListener('next_turn', function (e) {
-            assistantMessage = startNextTurn(assistantMessage, e.data);
-        });
-
-        // EventSource's own 'error' fires both for a genuine connection problem and for the normal
-        // "server closed the stream" case (how a completed/failed turn ends this connection) - either
-        // way there's nothing more coming, so just stop showing busy and let the next page load (or
-        // the already-persisted AgentMessage on a future reload) reflect the final state. Not
-        // attempting to special-case a real mid-turn error here (unlike the send flow's own 'error'
-        // SSE event, which does): the SYSTEM error message is already persisted server-side by
-        // executeTurn regardless, this connection existing purely to catch up on an in-flight turn.
-        stream.addEventListener('error', function () {
-            stream.close();
-
-            // Broke while the app was in the background: same complete way back as the send flow
-            // (a reload re-renders the partial turn and re-attaches). Harmless if the turn had in
-            // fact just finished - the reload then simply shows the final answer.
-            if (hiddenDuringTurn && canReloadSafely()) {
-                if (document.visibilityState === 'visible') {
-                    reloadKeepingDraft();
-                } else {
-                    reloadWhenVisible = true;
-                }
-
-                return;
-            }
-
-            clearTyping(assistantMessage.bubble);
-            setSending(false);
-        });
+        // Same live path as after sending; the snapshot it starts with supersedes the partial text
+        // the server rendered into the page.
+        followTurn({ assistant: assistantMessage });
     }
 
     // Per-message delete (the small trash icon revealed on hover, see .agentic-msg-delete in
