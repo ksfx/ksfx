@@ -242,6 +242,33 @@ public class ClaudeCliSessionService
      * "never was" and the narrow race of the turn finishing in the gap between this check and
      * subscribing, which the follow-up isRunning check below self-heals.
      */
+    /**
+     * Fallback for environments that buffer every stream until it ends (Edge under web isolation
+     * buffers EventSource too): the chat polls this every 2 s instead. Same content as the stream's
+     * snapshot, taken under the same lock; turnKey changes when the queue hand-off starts the next
+     * turn, running=false when everything is over.
+     */
+    public Map<String, Object> getTurnSnapshot(Long agentId)
+    {
+        synchronized (streamLock(agentId)) {
+            RunningTurnState state = runningTurnState.get(agentId);
+            Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+            snapshot.put("running", isRunning(agentId));
+            snapshot.put("turnKey", state != null ? state.key : 0);
+            snapshot.put("text", state != null ? state.snapshotText() : "");
+
+            String toolActivity = state != null ? state.snapshotToolActivityJson() : null;
+
+            try {
+                snapshot.put("toolActivity", toolActivity != null ? objectMapper.readTree(toolActivity) : objectMapper.createArrayNode());
+            } catch (IOException e) {
+                snapshot.put("toolActivity", objectMapper.createArrayNode());
+            }
+
+            return snapshot;
+        }
+    }
+
     public boolean attachToRunningTurn(Long agentId, SseEmitter emitter)
     {
         synchronized (streamLock(agentId)) {
@@ -268,6 +295,7 @@ public class ClaudeCliSessionService
                 // append + broadcast - so the events that follow continue exactly where it ends.
                 RunningTurnState state = runningTurnState.get(agentId);
                 ObjectNode snapshot = objectMapper.createObjectNode();
+                snapshot.put("turnKey", state != null ? state.key : 0);
                 snapshot.put("text", state != null ? state.snapshotText() : "");
                 String toolActivity = state != null ? state.snapshotToolActivityJson() : null;
                 snapshot.set("toolActivity", toolActivity != null ? objectMapper.readTree(toolActivity) : objectMapper.createArrayNode());
@@ -1895,8 +1923,12 @@ public class ClaudeCliSessionService
      * see getPartialTurn) - synchronized so a snapshot never observes a StringBuilder/ArrayNode
      * half-way through a concurrent append.
      */
+    private static final java.util.concurrent.atomic.AtomicLong TURN_KEYS = new java.util.concurrent.atomic.AtomicLong();
+
     private static class RunningTurnState
     {
+        /** Identifies this turn - a polling browser sees the queue hand-off as a key change. */
+        final long key = TURN_KEYS.incrementAndGet();
         private final StringBuilder assistantText = new StringBuilder();
         private final ArrayNode toolActivity;
 

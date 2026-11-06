@@ -442,7 +442,7 @@
     // first whenever a stream attaches (send, reload, automatic reconnect). The events that follow
     // continue exactly where the snapshot ends (server-side lock), so this is idempotent.
     function applySnapshot(message, data) {
-        var snapshot = JSON.parse(data);
+        var snapshot = typeof data === 'string' ? JSON.parse(data) : data;
 
         message.bubble.textContent = snapshot.text || '';
 
@@ -460,13 +460,91 @@
     // THE live path of the chat (since 2026-11-06): an EventSource on the turn - after sending,
     // and when a page loads mid-turn. Replaced the former streamed POST response, which proxies
     // (Edge web isolation) buffered until the turn ended. turn = { assistant: answer bubble }.
+    // ---- Polling fallback for buffering proxies ------------------------------------------------
+    // The server sends the snapshot the moment a stream attaches; normally it arrives within
+    // milliseconds. Edge under web isolation buffers EventSource (and any stream) until it ends -
+    // then nothing arrives, and the chat switches to polling the snapshot every 2 s: short, complete
+    // requests every proxy passes on at once. Remembered per tab, so later turns poll right away.
+    var POLL_MODE_KEY = 'ksfx-chat-poll-mode';
+    var STREAM_WATCHDOG_MS = 3000;
+    var POLL_INTERVAL_MS_TURN = 2000;
+
+    function pollModeRemembered() {
+        try { return sessionStorage.getItem(POLL_MODE_KEY) === '1'; } catch (e) { return false; }
+    }
+
+    function rememberPollMode() {
+        try { sessionStorage.setItem(POLL_MODE_KEY, '1'); } catch (e) { /* storage unavailable */ }
+    }
+
+    function pollTurn(turn) {
+        var lastKey = null;
+
+        function next() {
+            setTimeout(tick, POLL_INTERVAL_MS_TURN);
+        }
+
+        function tick() {
+            fetch(root.dataset.snapshotEndpoint, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                .then(function (response) {
+                    if (response.status === 401) {
+                        reloadKeepingDraft(); // session gone - the reload leads to the login
+                        return null;
+                    }
+
+                    return response.ok ? response.json() : undefined;
+                })
+                .then(function (snapshot) {
+                    if (snapshot === null) {
+                        return;
+                    }
+
+                    if (snapshot === undefined) {
+                        next(); // transient server problem - try again
+                        return;
+                    }
+
+                    // Turn over, or the queue hand-off started the next one: the reload shows the
+                    // final answer (and follows the next turn, polling again) - simplest correct state.
+                    if (!snapshot.running || (lastKey !== null && snapshot.turnKey !== lastKey)) {
+                        reloadKeepingDraft();
+                        return;
+                    }
+
+                    lastKey = snapshot.turnKey;
+                    applySnapshot(turn.assistant, snapshot);
+                    next();
+                })
+                .catch(next);
+        }
+
+        tick();
+    }
+
     function followTurn(turn) {
+        if (pollModeRemembered()) {
+            pollTurn(turn);
+            return null;
+        }
+
         var stream = new EventSource(root.dataset.streamEndpoint);
         var finished = false;
         var receivedSomething = false;
 
+        // Nothing at all within 3 s (not even the snapshot sent on attach) means something between
+        // here and the server buffers the stream: switch to polling for this tab.
+        var watchdog = setTimeout(function () {
+            if (!receivedSomething && !finished) {
+                finished = true;
+                stream.close();
+                rememberPollMode();
+                pollTurn(turn);
+            }
+        }, STREAM_WATCHDOG_MS);
+
         stream.addEventListener('snapshot', function (e) {
             receivedSomething = true;
+            clearTimeout(watchdog);
             applySnapshot(turn.assistant, e.data);
         });
 
@@ -483,6 +561,7 @@
         });
 
         stream.addEventListener('done', function (e) {
+            clearTimeout(watchdog);
             finished = true;
             stream.close();
             clearTyping(turn.assistant.bubble);

@@ -331,6 +331,17 @@ public class AgentController
      * the fetch()+ReadableStream the send flow needs for POST) works natively for a plain GET SSE
      * stream.
      */
+    /** Polling fallback for buffering proxies - see ClaudeCliSessionService.getTurnSnapshot and agentic-chat.js pollTurn. */
+    @GetMapping(value = "/chat/{id}/snapshot", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, Object> turnSnapshot(@PathVariable(value = "id") Long agentId, javax.servlet.http.HttpServletResponse response)
+    {
+        userScope.requireRead(agentDAO.getAgentForId(agentId).getProject());
+        response.setHeader("Cache-Control", "no-cache, no-store");
+
+        return claudeCliSessionService.getTurnSnapshot(agentId);
+    }
+
     @GetMapping(value = "/chat/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @ResponseBody
     public SseEmitter attach(@PathVariable(value = "id") Long agentId, javax.servlet.http.HttpServletResponse response)

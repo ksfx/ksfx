@@ -91,7 +91,7 @@
         <div id="agenticChatRoot" class="agentic-chat-wrapper"
              th:data-agent-id="${agent.id}" th:data-user-label="${@userScope.currentUser() != null ? (#strings.isEmpty(@userScope.currentUser().firstName) ? @userScope.currentUser().username : @userScope.currentUser().firstName) : 'User'}"
              th:data-chat-endpoint="@{/agentic/chat/{id}(id=${agent.id})}"
-             th:data-stream-endpoint="@{/agentic/chat/{id}/stream(id=${agent.id})}"
+             th:data-stream-endpoint="@{/agentic/chat/{id}/stream(id=${agent.id})}" th:data-snapshot-endpoint="@{/agentic/chat/{id}/snapshot(id=${agent.id})}"
              th:data-agent-running="${agentRunning}"
              th:data-download-endpoint="@{/agentic/download/{id}(id=${agent.id})}"
              th:data-older-messages-endpoint="@{/agentic/chat/{id}/messages/older(id=${agent.id})}"
