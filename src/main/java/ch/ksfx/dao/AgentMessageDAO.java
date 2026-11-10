@@ -41,4 +41,13 @@ public interface AgentMessageDAO
      * AgenticSearchController.
      */
     public List<AgentMessage> searchMessages(String term, int limit);
+
+    /**
+     * The {@code limit} most recent tasks (USER and AGENT rows - what a human, a schedule or another
+     * agent asked) across all agents of a project, newest first. Backs the dashboard's task feed.
+     */
+    public List<AgentMessage> getRecentTasksForProject(Long projectId, int limit);
+
+    /** What followed a task: the first ASSISTANT or SYSTEM row after it (its answer, or the error), or null while none yet. */
+    public AgentMessage getOutcomeAfter(Long agentId, Long afterMessageId);
 }

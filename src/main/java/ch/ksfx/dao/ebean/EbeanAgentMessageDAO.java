@@ -113,4 +113,26 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
                 .setMaxRows(limit)
                 .findList();
     }
+
+    @Override
+    public List<AgentMessage> getRecentTasksForProject(Long projectId, int limit)
+    {
+        return Ebean.find(AgentMessage.class).fetch("agent").fetch("fromAgent").fetch("fromUser")
+                .where().eq("agent.project.id", projectId).eq("internal", false)
+                .in("role", AgentMessageRole.USER, AgentMessageRole.AGENT)
+                .order().desc("id")
+                .setMaxRows(limit)
+                .findList();
+    }
+
+    @Override
+    public AgentMessage getOutcomeAfter(Long agentId, Long afterMessageId)
+    {
+        return Ebean.find(AgentMessage.class)
+                .where().eq("agent.id", agentId).eq("internal", false).gt("id", afterMessageId)
+                .in("role", AgentMessageRole.ASSISTANT, AgentMessageRole.SYSTEM)
+                .order().asc("id")
+                .setMaxRows(1)
+                .findOne();
+    }
 }
