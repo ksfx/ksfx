@@ -93,6 +93,7 @@
              th:data-chat-endpoint="@{/agentic/chat/{id}(id=${agent.id})}"
              th:data-stream-endpoint="@{/agentic/chat/{id}/stream(id=${agent.id})}" th:data-snapshot-endpoint="@{/agentic/chat/{id}/snapshot(id=${agent.id})}"
              th:data-agent-running="${agentRunning}"
+             th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}" th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"
              th:data-download-endpoint="@{/agentic/download/{id}(id=${agent.id})}"
              th:data-older-messages-endpoint="@{/agentic/chat/{id}/messages/older(id=${agent.id})}"
              th:data-csrf-header="${_csrf.headerName}"

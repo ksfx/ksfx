@@ -1853,8 +1853,8 @@ public class ClaudeCliSessionService
                     // text also produces) and truncates the live-rendered response, even
                     // though turnState/the DB copy stays complete either way.
                     synchronized (streamLock(agentId)) { // atomic with snapshots, see streamLocks
-                        turnState.appendText(text);
-                        broadcastSend(agentId, SseEmitter.event().name("text").data(objectMapper.writeValueAsString(text)));
+                        String appended = turnState.appendText(text);
+                        broadcastSend(agentId, SseEmitter.event().name("text").data(objectMapper.writeValueAsString(appended)));
                     }
                 } else if ("tool_use".equals(blockType)) {
                     String toolName = contentBlock.path("name").asText("tool");
@@ -1937,9 +1937,19 @@ public class ClaudeCliSessionService
             this.toolActivity = objectMapper.createArrayNode();
         }
 
-        synchronized void appendText(String text)
+        /**
+         * Appends one text block and returns what was actually appended (the live stream sends
+         * exactly that, so it matches the stored answer). Each block is a complete text the model
+         * wrote between tool calls - "Let me read the page first." ... "## Answer" - so a blank
+         * line goes in between; glued together, the Markdown of the next block (a heading, a
+         * table) would no longer start on its own line.
+         */
+        synchronized String appendText(String text)
         {
-            assistantText.append(text);
+            String appended = assistantText.length() > 0 && !text.isEmpty() ? "\n\n" + text : text;
+            assistantText.append(appended);
+
+            return appended;
         }
 
         synchronized void addToolActivity(ObjectNode entry)

@@ -397,6 +397,7 @@
     function startNextTurn(currentAssistant, data) {
         if (currentAssistant) {
             clearTyping(currentAssistant.bubble);
+            renderMarkdown([currentAssistant.bubble]);
         }
 
         JSON.parse(data).forEach(function (pair) {
@@ -566,6 +567,7 @@
             finished = true;
             stream.close();
             clearTyping(turn.assistant.bubble);
+            renderMarkdown([turn.assistant.bubble]).then(scrollToBottom);
             setSending(false);
 
             var info = {};
@@ -1079,6 +1081,64 @@
     // attribute is deleted once consumed, so a selector requiring it present can never match
     // something already-hydrated, however many times (page load, then any number of "load older"
     // clicks) this runs over the whole document.
+    // ---- Markdown in agent answers ---------------------------------------------------------------
+    // Finished assistant answers render as Markdown through the same vendored Toast UI viewer the
+    // wiki and the issues use (one renderer, same look; its viewer sanitizes HTML). Lazy-loaded
+    // once. Live text stays plain while it streams - half a table would flicker on every chunk - and
+    // is rendered once its turn ends. If the renderer cannot load, the plain text simply stays.
+    var markdownReady = null;
+
+    function loadMarkdownRenderer() {
+        if (!markdownReady) {
+            markdownReady = new Promise(function (resolve, reject) {
+                if (window.toastui && window.toastui.Editor) {
+                    resolve();
+                    return;
+                }
+
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = root.dataset.toastuiCss;
+                document.head.appendChild(link);
+
+                var script = document.createElement('script');
+                script.src = root.dataset.toastuiJs;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        return markdownReady;
+    }
+
+    // Renders the given answer bubbles; resolves once done (or failed - then they stay plain text).
+    function renderMarkdown(bubbles) {
+        bubbles = Array.prototype.filter.call(bubbles, function (bubble) {
+            return !bubble.classList.contains('agentic-bubble--md') && bubble.textContent.trim() !== '';
+        });
+
+        if (!bubbles.length || !root.dataset.toastuiJs) {
+            return Promise.resolve();
+        }
+
+        return loadMarkdownRenderer().then(function () {
+            bubbles.forEach(function (bubble) {
+                var markdown = bubble.textContent;
+                bubble.textContent = '';
+                bubble.classList.add('agentic-bubble--md');
+                window.toastui.Editor.factory({ el: bubble, viewer: true, initialValue: markdown });
+            });
+        }).catch(function (error) {
+            console.error('Markdown renderer not available', error);
+        });
+    }
+
+    // The persisted answers on the page (they carry a message id; live and in-progress ones do not).
+    function renderHistoryMarkdown() {
+        return renderMarkdown(document.querySelectorAll('.agentic-msg--assistant[data-message-id] > .agentic-bubble'));
+    }
+
     function hydrateHistory() {
         document.querySelectorAll('.agentic-attachments[data-attachments]').forEach(function (el) {
             try {
@@ -1115,9 +1175,17 @@
 
             delete body.dataset.toolActivity;
         });
+
+        return renderHistoryMarkdown();
     }
 
-    hydrateHistory();
+    hydrateHistory().then(function () {
+        // Rendered Markdown is taller than the plain text was - stay at the bottom unless the user
+        // has scrolled in the meantime (pinUntil is 0 then, see pinToBottom below).
+        if (pinUntil) {
+            scrollToBottom();
+        }
+    });
 
     // Exposed globally so agentic-search.js can reuse this exact rendering logic for the message
     // bubbles it injects into the search-context view (see its loadContext()), instead of
@@ -1215,12 +1283,17 @@
                     var fetchedCount = container.querySelectorAll('.agentic-msg').length;
 
                     loadOlderBtn.insertAdjacentHTML('afterend', html);
-                    hydrateHistory();
 
                     // Prepending content above the current scroll position shoves everything below
                     // it down by the same amount - without this, the view visibly jumps and whatever
-                    // you were reading scrolls out of view instead of staying put.
-                    messagesEl.scrollTop = previousScrollTop + (messagesEl.scrollHeight - previousScrollHeight);
+                    // you were reading scrolls out of view instead of staying put. Again once the
+                    // new answers are rendered as Markdown (asynchronously, and taller).
+                    function keepPosition() {
+                        messagesEl.scrollTop = previousScrollTop + (messagesEl.scrollHeight - previousScrollHeight);
+                    }
+
+                    hydrateHistory().then(keepPosition);
+                    keepPosition();
 
                     if (fetchedCount < MESSAGE_PAGE_SIZE) {
                         loadOlderBtn.remove();
