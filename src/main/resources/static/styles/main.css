@@ -354,6 +354,33 @@ th[data-grid-property="observationTime"]
     margin: 0;
 }
 
+/* Agent edit form: usage figures (agent_edit.html, AgenticUsageStatsService.usageForAgent). */
+.ksfx-agent-usage-figures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ksfx-agent-usage-figures > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 130px;
+    padding: 8px 14px;
+    border: 1px solid rgba(128, 128, 128, .22);
+    border-radius: 8px;
+    background: rgba(128, 128, 128, .03);
+}
+
+.ksfx-agent-usage-figures strong {
+    font-size: 1.25em;
+}
+
+.ksfx-agent-usage-figures span,
+.ksfx-agent-usage-figures small {
+    opacity: .65;
+    font-size: .85em;
+}
+
 /* Dashboard task feed (dashboard.html, RecentTasksService): one card per task, agent badge left,
    who/when/status on top, the task clamped to two lines, the answer's start as one muted line.
    Dark mode only swaps the Bootstrap sheet (no body class), so text inherits and surfaces are

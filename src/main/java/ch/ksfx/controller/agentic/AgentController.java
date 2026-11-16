@@ -2,6 +2,7 @@ package ch.ksfx.controller.agentic;
 
 import ch.ksfx.services.agentic.EffectiveModelService;
 import ch.ksfx.services.agentic.AgenticAccessService;
+import ch.ksfx.services.agentic.AgenticUsageStatsService;
 import ch.ksfx.dao.AgenticAccessDAO;
 import ch.ksfx.model.AgenticAccess;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,9 @@ public class AgentController
 
     @Autowired
     private AgenticAccessDAO agenticAccessDAO;
+
+    @Autowired
+    private AgenticUsageStatsService agenticUsageStatsService;
 
     @Autowired
     private UserScope userScope;
@@ -232,13 +236,14 @@ public class AgentController
         return "redirect:/agentic/edit/" + agent.getId();
     }
 
-    /** The access part of the edit form: the project's accesses, its default and the agent's effective access. */
+    /** The access part of the edit form: the project's accesses, its default, the agent's effective access and its usage. */
     private void addAccessChoices(Agent agent, Model model)
     {
         List<AgenticAccess> accesses = agenticAccessService.accessesFor(agent != null ? agent.getProject() : null);
         model.addAttribute("accesses", accesses);
         model.addAttribute("defaultAccess", accesses.stream().filter(AgenticAccess::getDefaultAccess).findFirst().orElse(null));
         model.addAttribute("effectiveAccess", agenticAccessService.effectiveAccessFor(agent));
+        model.addAttribute("agentUsage", agent != null && agent.getId() != null ? agenticUsageStatsService.usageForAgent(agent.getId()) : null);
     }
 
     @GetMapping("/delete/{id}")

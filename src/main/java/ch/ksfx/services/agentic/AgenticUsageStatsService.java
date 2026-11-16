@@ -97,6 +97,71 @@ public class AgenticUsageStatsService
         return result;
     }
 
+    /**
+     * One agent's usage for its edit page: today, last 7 days and all-time, plus all-time per
+     * access (account) it ran on. Voice-cleanup rows count as tokens, not as turns - like everywhere.
+     */
+    public AgentUsage usageForAgent(Long agentId)
+    {
+        AgentUsage result = new AgentUsage();
+        LocalDate today = LocalDate.now();
+        LocalDate weekStart = today.minusDays(6);
+        java.util.Map<String, AccessUsage> byAccess = new java.util.LinkedHashMap<>();
+
+        for (AgentMessage message : agentMessageDAO.getAssistantMessagesWithUsageForAgent(agentId)) {
+            long tokens = (message.getInputTokens() != null ? message.getInputTokens() : 0) + (message.getOutputTokens() != null ? message.getOutputTokens() : 0);
+            int turn = message.getInternal() ? 0 : 1;
+            LocalDate day = toLocalDate(message.getCreatedAt());
+
+            result.allTime.add(tokens, turn);
+
+            if (!day.isBefore(weekStart)) {
+                result.week.add(tokens, turn);
+            }
+
+            if (day.equals(today)) {
+                result.today.add(tokens, turn);
+            }
+
+            String accessName = message.getAgenticAccess() != null ? message.getAgenticAccess().getName() : "(deleted access)";
+            AccessUsage access = byAccess.computeIfAbsent(accessName, name -> new AccessUsage());
+            access.tokensAllTime += tokens;
+            access.turnsAllTime += turn;
+        }
+
+        result.byAccess = byAccess;
+
+        return result;
+    }
+
+    public static class AgentUsage
+    {
+        private final Figures today = new Figures();
+        private final Figures week = new Figures();
+        private final Figures allTime = new Figures();
+        private java.util.Map<String, AccessUsage> byAccess;
+
+        public Figures getToday() { return today; }
+        public Figures getWeek() { return week; }
+        public Figures getAllTime() { return allTime; }
+        public java.util.Map<String, AccessUsage> getByAccess() { return byAccess; }
+    }
+
+    public static class Figures
+    {
+        private long tokens;
+        private int turns;
+
+        void add(long tokens, int turns)
+        {
+            this.tokens += tokens;
+            this.turns += turns;
+        }
+
+        public long getTokens() { return tokens; }
+        public int getTurns() { return turns; }
+    }
+
     public static class AccessUsage
     {
         public long tokensAllTime;

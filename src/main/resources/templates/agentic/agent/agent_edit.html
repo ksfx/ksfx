@@ -69,6 +69,19 @@
                 </select>
                 <small class="form-text text-muted">The account this agent runs on - accesses are managed on the project's Agentic Settings page. The status is what the last turn on that access reported.</small>
             </div>
+            <!-- What this agent has used (AgenticUsageStatsService.usageForAgent) - per period, and
+                 per access when it ran on more than one. -->
+            <div class="form-group ksfx-agent-usage" th:if="${agentUsage != null and agentUsage.allTime.turns + agentUsage.allTime.tokens > 0}">
+                <label>Usage</label>
+                <div class="ksfx-agent-usage-figures">
+                    <div><strong th:text="${#numbers.formatInteger(agentUsage.today.tokens, 1, 'COMMA')}">0</strong><span>tokens today</span><small th:text="|${agentUsage.today.turns} turns|"></small></div>
+                    <div><strong th:text="${#numbers.formatInteger(agentUsage.week.tokens, 1, 'COMMA')}">0</strong><span>last 7 days</span><small th:text="|${agentUsage.week.turns} turns|"></small></div>
+                    <div><strong th:text="${#numbers.formatInteger(agentUsage.allTime.tokens, 1, 'COMMA')}">0</strong><span>all-time</span><small th:text="|${agentUsage.allTime.turns} turns|"></small></div>
+                </div>
+                <small class="form-text text-muted" th:if="${agentUsage.byAccess.size() > 1}">
+                    By access: <th:block th:each="e, st : ${agentUsage.byAccess}"><strong th:text="${e.key}"></strong> <span th:text="|${#numbers.formatInteger(e.value.tokensAllTime, 1, 'COMMA')} tokens (${e.value.turnsAllTime} turns)|"></span><th:block th:unless="${st.last}"> &middot; </th:block></th:block>
+                </small>
+            </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
                 <label class="form-check-label" for="enabled">Enabled</label>

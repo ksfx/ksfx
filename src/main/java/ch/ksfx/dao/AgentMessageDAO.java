@@ -33,6 +33,9 @@ public interface AgentMessageDAO
 
     public List<AgentMessage> getAssistantMessagesWithUsageForProject(Long projectId);
 
+    /** One agent's answers (incl. internal voice-cleanup rows) that carry token usage, newest first. */
+    public List<AgentMessage> getAssistantMessagesWithUsageForAgent(Long agentId);
+
     public String getLatestModelForAgent(Long agentId);
 
     /**
