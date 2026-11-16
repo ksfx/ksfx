@@ -59,4 +59,5 @@
     <include file="20261101090000_agent_message_sender.sql" relativeToChangelogFile="true"/>
     <include file="20261103090000_persistent_logins.sql" relativeToChangelogFile="true"/>
     <include file="20261116090000_agentic_access.sql" relativeToChangelogFile="true"/>
+    <include file="20261117090000_agentic_access_defaults.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

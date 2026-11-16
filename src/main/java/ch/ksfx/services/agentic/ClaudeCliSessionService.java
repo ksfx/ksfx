@@ -4,10 +4,8 @@ import ch.ksfx.dao.user.UserDAO;
 import ch.ksfx.model.user.User;
 import ch.ksfx.model.AgentMessageQueueEntry;
 import ch.ksfx.dao.AgentMessageQueueDAO;
-import ch.ksfx.model.ProjectAgenticSettings;
 import ch.ksfx.model.AgenticAccess;
 import ch.ksfx.dao.AgenticAccessDAO;
-import ch.ksfx.dao.ProjectAgenticSettingsDAO;
 import ch.ksfx.model.AgenticAuthMode;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.StandardCopyOption;
@@ -125,9 +123,6 @@ public class ClaudeCliSessionService
      * queue with nothing left to run it. Both critical sections are a few fast map/DB operations.
      */
     private final Object queueLock = new Object();
-
-    @org.springframework.beans.factory.annotation.Autowired
-    private ProjectAgenticSettingsDAO projectAgenticSettingsDAO;
 
     @org.springframework.beans.factory.annotation.Autowired
     private AgenticAccessService agenticAccessService;
@@ -641,12 +636,6 @@ public class ClaudeCliSessionService
         }
     }
 
-    /** The project's policy (enabled, default model / permission mode) - no inheritance, no fallback (concept "Agentic settings per project"). */
-    private ProjectAgenticSettings settingsFor(Agent agent)
-    {
-        return agent != null && agent.getProject() != null ? projectAgenticSettingsDAO.getForProjectId(agent.getProject().getId()) : null;
-    }
-
     private String validateAgentAndConfig(Agent agent, AgenticConfig config)
     {
         if (agent == null || !agent.getEnabled()) {
@@ -657,18 +646,15 @@ public class ClaudeCliSessionService
             return "Agentic is not fully configured. Please set and enable the CLI path and workspace root under Admin -> Agentic (/admin/agentic/).";
         }
 
-        ProjectAgenticSettings settings = settingsFor(agent);
-
-        if (settings == null || !settings.getEnabled()) {
-            return "Agentic is not configured for this project. A project OWNER can set account, model and permission mode under Projects -> "
-                    + (agent.getProject() != null ? agent.getProject().getName() : "?") + " -> Agentic Settings.";
-        }
-
         AgenticAccess access = agenticAccessService.effectiveAccessFor(agent);
 
         if (access == null) {
             return "No access (account) configured for this project. A project OWNER can add one under Projects -> "
-                    + agent.getProject().getName() + " -> Agentic Settings -> Accesses.";
+                    + (agent.getProject() != null ? agent.getProject().getName() : "?") + " -> Agentic Settings -> Accesses.";
+        }
+
+        if (!access.getEnabled()) {
+            return "Access '" + access.getName() + "' is disabled - a project OWNER can enable it, or pick another access for this agent, on the project's Agentic Settings page.";
         }
 
         if (!access.isUsable()) {
@@ -911,8 +897,7 @@ public class ClaudeCliSessionService
             // The CLI's own state (transcripts, memory, settings) goes to the agent's provider
             // directory instead of ~/.claude - see AgentWorkspaceService.resolveProviderDir.
             Path providerDir = agentWorkspaceService.ensureProviderDir(agent, config);
-            ProjectAgenticSettings settings = settingsFor(agent); // non-null: validateAgentAndConfig ran before every executeTurn call
-            access = agenticAccessService.effectiveAccessFor(agent); // non-null and usable: same validation
+            access = agenticAccessService.effectiveAccessFor(agent); // non-null, enabled and usable: validateAgentAndConfig ran before every executeTurn call
             syncOAuthCredentialsInto(providerDir, access);
             Map<String, FileTime> filesBefore;
 
@@ -945,7 +930,7 @@ public class ClaudeCliSessionService
                     : Files.createTempFile("agentic-system-prompt-", ".txt");
             Files.write(systemPromptFile, buildAppendedSystemPrompt(agent).getBytes(StandardCharsets.UTF_8));
 
-            ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(agent, config, settings, access, userMessage, systemPromptFile));
+            ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(agent, config, access, userMessage, systemPromptFile));
             processBuilder.directory(workspace.toFile());
             // Neither the userMessage (a -p argument) nor the system prompt (its own temp file, see
             // above) are ever piped in via stdin - but ProcessBuilder defaults stdin to an open PIPE
@@ -1516,7 +1501,7 @@ public class ClaudeCliSessionService
      * from) differs. No `-t`/`-i`: a pseudo-tty would corrupt the --output-format stream-json framing
      * this class's stdout parser relies on.
      */
-    private List<String> buildCommand(Agent agent, AgenticConfig config, ProjectAgenticSettings settings, AgenticAccess access, String userMessage, Path systemPromptFile)
+    private List<String> buildCommand(Agent agent, AgenticConfig config, AgenticAccess access, String userMessage, Path systemPromptFile)
     {
         Project project = agent.getProject();
         boolean useDocker = project != null && project.getDockerIsolationEnabled();
@@ -1529,9 +1514,9 @@ public class ClaudeCliSessionService
         claudeArgs.add("stream-json");
         claudeArgs.add("--verbose");
         claudeArgs.add("--permission-mode");
-        claudeArgs.add(!isBlank(agent.getPermissionMode()) ? agent.getPermissionMode() : settings.getDefaultPermissionMode());
+        claudeArgs.add(!isBlank(agent.getPermissionMode()) ? agent.getPermissionMode() : !isBlank(access.getDefaultPermissionMode()) ? access.getDefaultPermissionMode() : "default");
 
-        String model = !isBlank(agent.getModel()) ? agent.getModel() : settings.getDefaultModel();
+        String model = !isBlank(agent.getModel()) ? agent.getModel() : access.getDefaultModel(); // same chain as EffectiveModelService
         if (!isBlank(model)) {
             claudeArgs.add("--model");
             claudeArgs.add(model);

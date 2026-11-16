@@ -45,13 +45,13 @@
             </div>
             <div class="form-group">
                 <label for="permissionMode">Permission Mode (Override)</label>
-                <input type="text" class="form-control" id="permissionMode" th:field="*{permissionMode}" placeholder="empty = use the project default (Agentic Settings)" />
-                <small class="form-text text-muted">Optional: default / acceptEdits / bypassPermissions / plan. Leave empty to use the project default.</small>
+                <input type="text" class="form-control" id="permissionMode" th:field="*{permissionMode}" th:placeholder="|empty = default of the access (${effectiveAccess != null and effectiveAccess.defaultPermissionMode != null ? effectiveAccess.defaultPermissionMode : 'default'})|" />
+                <small class="form-text text-muted">Optional: default / acceptEdits / bypassPermissions / plan. Leave empty to use the default of the agent's access.</small>
             </div>
             <div class="form-group">
                 <label for="model">Model (Override)</label>
-                <input type="text" class="form-control" id="model" th:field="*{model}" placeholder="empty = use the project default (Agentic Settings)" />
-                <small class="form-text text-muted">Optional: alias (sonnet / opus / fable) or full model name. Leave empty to use the project default.</small>
+                <input type="text" class="form-control" id="model" th:field="*{model}" th:placeholder="|empty = default of the access (${effectiveAccess != null and effectiveAccess.defaultModel != null ? effectiveAccess.defaultModel : 'provider default'})|" />
+                <small class="form-text text-muted">Optional: alias (sonnet / opus / fable) or full model name. Leave empty to use the default of the agent's access.</small>
                 <small class="form-text text-muted" th:if="${effectiveModel != null and #strings.contains(effectiveModel.source, 'resumed')}">
                     Note: a resumed session keeps the model it last ran - clearing overrides does NOT return it to the account default. To change it, set a model explicitly (one turn is enough to re-pin) or reset the session.
                 </small>

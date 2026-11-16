@@ -22,6 +22,10 @@ import java.util.Date;
  * project's default access. Project-bound: managed by the project's OWNERs on its Agentic Settings
  * page, never shared across projects.
  *
+ * Default model, default permission mode and the enabled switch live here too (since 2026-11-17,
+ * before that per project): the model often follows the account, and switching one account off
+ * stops exactly its agents. An agent's own model / permission mode still wins.
+ *
  * The rate-limit snapshot lives here because it describes the account: captured from the CLI after
  * every turn that ran on this access. OAUTH accesses all use the host's one `claude login`, so two
  * OAUTH accesses are the same account under two names.
@@ -50,6 +54,18 @@ public class AgenticAccess
 
     @Column(name = "is_default")
     private boolean defaultAccess = false;
+
+    /** Model for agents on this access that set none themselves; empty = the provider's own default. */
+    @Column(name = "default_model")
+    private String defaultModel;
+
+    /** Permission mode for agents on this access that set none themselves. */
+    @Column(name = "default_permission_mode")
+    private String defaultPermissionMode = "default";
+
+    /** Switch per account: a disabled access runs no turns - its agents stop with a clear message. */
+    @Column(name = "enabled")
+    private boolean enabled = true;
 
     @Column(name = "claude_rate_limit_status")
     private String claudeRateLimitStatus;
@@ -102,6 +118,12 @@ public class AgenticAccess
     public void setClaudeRateLimitUsingOverage(Boolean v) { this.claudeRateLimitUsingOverage = v; }
     public Date getClaudeRateLimitUpdatedAt() { return claudeRateLimitUpdatedAt; }
     public void setClaudeRateLimitUpdatedAt(Date v) { this.claudeRateLimitUpdatedAt = v; }
+    public String getDefaultModel() { return defaultModel; }
+    public void setDefaultModel(String defaultModel) { this.defaultModel = defaultModel; }
+    public String getDefaultPermissionMode() { return defaultPermissionMode; }
+    public void setDefaultPermissionMode(String defaultPermissionMode) { this.defaultPermissionMode = defaultPermissionMode; }
+    public boolean getEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public Date getCreatedAt() { return createdAt; }
     public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
 

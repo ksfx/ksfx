@@ -1,14 +1,13 @@
 package ch.ksfx.services.agentic;
 
 import ch.ksfx.dao.AgentMessageDAO;
-import ch.ksfx.dao.ProjectAgenticSettingsDAO;
 import ch.ksfx.model.Agent;
-import ch.ksfx.model.ProjectAgenticSettings;
+import ch.ksfx.model.AgenticAccess;
 import org.springframework.stereotype.Service;
 
 /**
  * Answers "which model does this agent run on, and why" for the UI (agent form, chat header):
- * the resolution chain agent override > project default > provider default - exactly the logic
+ * the resolution chain agent override > access default > provider default - exactly the logic
  * ClaudeCliSessionService.buildCommand applies per turn - plus, separately, the model that
  * ACTUALLY answered the last turn (AgentMessage.model, captured from the CLI's init event).
  * Expected and actual shown side by side end the guessing: a model asked "what are you" inside a
@@ -17,12 +16,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class EffectiveModelService
 {
-    private final ProjectAgenticSettingsDAO settingsDAO;
+    private final AgenticAccessService agenticAccessService;
     private final AgentMessageDAO agentMessageDAO;
 
-    public EffectiveModelService(ProjectAgenticSettingsDAO settingsDAO, AgentMessageDAO agentMessageDAO)
+    public EffectiveModelService(AgenticAccessService agenticAccessService, AgentMessageDAO agentMessageDAO)
     {
-        this.settingsDAO = settingsDAO;
+        this.agenticAccessService = agenticAccessService;
         this.agentMessageDAO = agentMessageDAO;
     }
 
@@ -32,10 +31,10 @@ public class EffectiveModelService
             return new EffectiveModel(agent.getModel().trim(), "agent override");
         }
 
-        ProjectAgenticSettings settings = agent.getProject() != null ? settingsDAO.getForProjectId(agent.getProject().getId()) : null;
+        AgenticAccess access = agenticAccessService.effectiveAccessFor(agent);
 
-        if (settings != null && settings.getDefaultModel() != null && !settings.getDefaultModel().trim().isEmpty()) {
-            return new EffectiveModel(settings.getDefaultModel().trim(), "project default");
+        if (access != null && access.getDefaultModel() != null && !access.getDefaultModel().trim().isEmpty()) {
+            return new EffectiveModel(access.getDefaultModel().trim(), "default of access '" + access.getName() + "'");
         }
 
         // The step everyone forgets, proven empirically 2026-10-27: `claude --resume` RESTORES the

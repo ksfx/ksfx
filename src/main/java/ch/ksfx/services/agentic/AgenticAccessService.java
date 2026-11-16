@@ -84,8 +84,14 @@ public class AgenticAccessService
         return cards;
     }
 
-    /** Short status text for a pill or a dropdown option: "OK", "Warning", "Blocked until Mon 14:00", "no status yet". */
+    /** Status text for a dropdown option or a tooltip: "disabled", or the rate-limit status (see {@link #rateLimitLabel}). */
     public static String statusLabel(AgenticAccess access)
+    {
+        return access.getEnabled() ? rateLimitLabel(access) : "disabled";
+    }
+
+    /** The last rate-limit snapshot as short text: "OK", "Warning", "Blocked until Mon 14:00", "no status yet". */
+    public static String rateLimitLabel(AgenticAccess access)
     {
         switch (access.getStatusKey()) {
             case "ok":
@@ -110,7 +116,7 @@ public class AgenticAccessService
         public AgenticAccess getAccess() { return access; }
         public List<Agent> getAgents() { return agents; }
         public AgenticUsageStatsService.AccessUsage getUsage() { return usage; }
-        public String getStatusLabel() { return statusLabel(access); }
+        public String getStatusLabel() { return rateLimitLabel(access); } // the card shows "disabled" separately
 
         /** "5 h limit", "7 day limit" - the CLI's rateLimitType, readable; null if unknown. */
         public String getLimitLabel()

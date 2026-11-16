@@ -17,7 +17,7 @@
 <message th:replace="layout :: message"/>
 
 <div class="container">
-    <p class="text-muted">The accounts and policy of <strong th:text="${project.name}"></strong> - nothing is inherited: what this page shows is exactly what this project's agents use. A project without enabled settings has no working agents.</p>
+    <p class="text-muted">The accounts of <strong th:text="${project.name}"></strong> and what they were used for - nothing is inherited: what this page shows is exactly what this project's agents run on. Without an enabled access, the project's agents cannot run.</p>
 
     <div class="alert alert-danger" th:if="${accessError}" th:text="${accessError}">Error</div>
 
@@ -29,14 +29,20 @@
             <a class="btn btn-sm btn-outline-primary" th:href="@{/agentic/projects/{id}/accesses/new(id=${project.id})}"><i class="fa fa-plus"></i> Add access</a>
         </div>
         <p class="text-muted" th:if="${#lists.isEmpty(accessCards)}">No access yet - the project's agents cannot run until one is added.</p>
-        <div class="ksfx-access-card" th:each="c : ${accessCards}" th:classappend="|ksfx-access--${c.access.statusKey}|">
+        <div class="ksfx-access-card" th:each="c : ${accessCards}" th:classappend="|ksfx-access--${c.access.statusKey}| + (${c.access.enabled} ? '' : ' ksfx-access--disabled')">
             <div class="ksfx-access-top">
                 <span class="ksfx-access-name" th:text="${c.access.name}">Standard</span>
                 <span class="ksfx-access-default" th:if="${c.access.defaultAccess}">Default</span>
                 <span class="ksfx-access-meta"><span th:text="${c.access.authModeLabel}">API key</span> &middot; <code th:text="${c.access.maskedKey}">sk-ant-…abcd</code></span>
+                <span class="ksfx-access-off" th:unless="${c.access.enabled}">disabled</span>
                 <span class="ksfx-access-status" th:title="${c.access.claudeRateLimitUsingOverage == true} ? 'Currently using overage capacity' : ''">
                     <span class="ksfx-access-status-dot"></span><span th:text="${c.statusLabel}">OK</span><th:block th:if="${c.access.claudeRateLimitUsingOverage == true}"> &middot; overage</th:block>
                 </span>
+            </div>
+            <div class="ksfx-access-defaults">
+                <span><i class="fa fa-microchip"></i> <span th:text="${#strings.isEmpty(c.access.defaultModel)} ? 'provider default model' : ${c.access.defaultModel}">opus</span></span>
+                <span><i class="fa fa-shield"></i> <span th:text="${#strings.isEmpty(c.access.defaultPermissionMode)} ? 'default' : ${c.access.defaultPermissionMode}">default</span></span>
+                <span class="text-muted">defaults for its agents</span>
             </div>
             <div class="ksfx-access-figures">
                 <span><strong th:text="${#numbers.formatInteger(c.usage.tokensToday, 1, 'COMMA')}">0</strong> tokens today <span class="text-muted" th:text="|(${c.usage.turnsToday} turns)|"></span></span>
@@ -64,30 +70,10 @@
                 </span>
             </div>
         </div>
-        <small class="text-muted">Each agent picks its access on its edit page; without a choice it runs on the default. OAuth uses the host's one <code>claude login</code> - every OAuth access is that same account. The status shows what the last turn on that access reported - it is not live.</small>
+        <small class="text-muted">Each agent picks its access on its edit page; without a choice it runs on the default. An agent's own model / permission mode wins over the access defaults. OAuth uses the host's one <code>claude login</code> - every OAuth access is that same account. The status shows what the last turn on that access reported - it is not live.</small>
     </div>
 
     <div class="list-group">
-        <div class="list-group-item">
-            <form id="projectAgenticSettingsForm" action="#" th:action="@{/agentic/projects/{id}/settings/(id=${project.id})}" th:object="${settings}" method="post">
-                <div class="form-group">
-                    <label for="defaultPermissionMode">Default Permission Mode</label>
-                    <input type="text" class="form-control" id="defaultPermissionMode" th:field="*{defaultPermissionMode}" placeholder="default / acceptEdits / bypassPermissions / plan" />
-                    <small class="form-text text-muted">Used for every agent of this project that has no own permission mode set.</small>
-                </div>
-                <div class="form-group">
-                    <label for="defaultModel">Default Model</label>
-                    <input type="text" class="form-control" id="defaultModel" th:field="*{defaultModel}" placeholder="sonnet / opus / fable / claude-sonnet-5 - empty = provider's own default" />
-                    <small class="form-text text-muted">Used for every agent of this project that has no own model set; empty lets the provider pick.</small>
-                </div>
-                <div class="form-group form-check">
-                    <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
-                    <label class="form-check-label" for="enabled">Enabled - agents of this project may run</label>
-                </div>
-                <button type="submit" class="btn btn-primary">Save</button>
-                <a th:href="@{/agentic/projects/edit/{id}(id=${project.id})}" class="btn btn-danger">Cancel</a>
-            </form>
-        </div>
         <div class="list-group-item" th:if="${totalTurns} > 0">
             <h5>Usage Statistics (All-Time)</h5>
             <p>

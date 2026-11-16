@@ -232,12 +232,13 @@ public class AgentController
         return "redirect:/agentic/edit/" + agent.getId();
     }
 
-    /** The access dropdown of the edit form: the project's accesses and which one is its default. */
+    /** The access part of the edit form: the project's accesses, its default and the agent's effective access. */
     private void addAccessChoices(Agent agent, Model model)
     {
         List<AgenticAccess> accesses = agenticAccessService.accessesFor(agent != null ? agent.getProject() : null);
         model.addAttribute("accesses", accesses);
         model.addAttribute("defaultAccess", accesses.stream().filter(AgenticAccess::getDefaultAccess).findFirst().orElse(null));
+        model.addAttribute("effectiveAccess", agenticAccessService.effectiveAccessFor(agent));
     }
 
     @GetMapping("/delete/{id}")

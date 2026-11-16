@@ -19,7 +19,8 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * A project's accesses (accounts, see {@link AgenticAccess}): add, edit, make default, delete.
+ * A project's accesses (accounts, see {@link AgenticAccess}) with their defaults (model,
+ * permission mode) and enabled switch: add, edit, make default, delete.
  * OWNER-only like the rest of the project's Agentic settings, and like there the OWNER sees the
  * key in plaintext on the edit form (the cards only show it masked). Exactly one access per
  * project is the default once there is any: the first one becomes it, the default cannot be
@@ -70,6 +71,9 @@ public class AgenticAccessController
                        @RequestParam("name") String name,
                        @RequestParam("authMode") AgenticAuthMode authMode,
                        @RequestParam(value = "apiKey", required = false) String apiKey,
+                       @RequestParam(value = "defaultModel", required = false) String defaultModel,
+                       @RequestParam(value = "defaultPermissionMode", required = false) String defaultPermissionMode,
+                       @RequestParam(value = "enabled", defaultValue = "false") boolean enabled,
                        Model model, RedirectAttributes redirectAttributes)
     {
         Project project = requireProject(projectId);
@@ -78,6 +82,9 @@ public class AgenticAccessController
         access.setName(name != null ? name.trim() : "");
         access.setAuthMode(authMode);
         access.setApiKey(authMode == AgenticAuthMode.OAUTH || apiKey == null || apiKey.trim().isEmpty() ? null : apiKey.trim());
+        access.setDefaultModel(defaultModel == null || defaultModel.trim().isEmpty() ? null : defaultModel.trim());
+        access.setDefaultPermissionMode(defaultPermissionMode == null || defaultPermissionMode.trim().isEmpty() ? "default" : defaultPermissionMode.trim());
+        access.setEnabled(enabled);
 
         if (access.getName().isEmpty()) {
             model.addAttribute("project", project);
