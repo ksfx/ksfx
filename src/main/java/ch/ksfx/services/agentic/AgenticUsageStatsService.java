@@ -66,6 +66,50 @@ public class AgenticUsageStatsService
         model.addAttribute("totalVoiceCleanupOutputTokensForDay", day.totalVoiceCleanupOutputTokens);
     }
 
+    /**
+     * Token usage per access (account) of a project - all-time and today - for the access cards on
+     * the project's Agentic Settings page. Keyed by access id; answers whose access was deleted
+     * (or that ran before accesses were recorded) are not counted here, only in the totals.
+     */
+    public java.util.Map<Long, AccessUsage> usageByAccess(Long projectId)
+    {
+        java.util.Map<Long, AccessUsage> result = new java.util.HashMap<>();
+        LocalDate today = LocalDate.now();
+
+        for (AgentMessage message : agentMessageDAO.getAssistantMessagesWithUsageForProject(projectId)) {
+            if (message.getAgenticAccess() == null) {
+                continue;
+            }
+
+            AccessUsage usage = result.computeIfAbsent(message.getAgenticAccess().getId(), id -> new AccessUsage());
+            long tokens = (message.getInputTokens() != null ? message.getInputTokens() : 0) + (message.getOutputTokens() != null ? message.getOutputTokens() : 0);
+            boolean isToday = toLocalDate(message.getCreatedAt()).equals(today);
+
+            usage.tokensAllTime += tokens;
+            usage.tokensToday += isToday ? tokens : 0;
+
+            if (!message.getInternal()) {
+                usage.turnsAllTime++;
+                usage.turnsToday += isToday ? 1 : 0;
+            }
+        }
+
+        return result;
+    }
+
+    public static class AccessUsage
+    {
+        public long tokensAllTime;
+        public long tokensToday;
+        public int turnsAllTime;
+        public int turnsToday;
+
+        public long getTokensAllTime() { return tokensAllTime; }
+        public long getTokensToday() { return tokensToday; }
+        public int getTurnsAllTime() { return turnsAllTime; }
+        public int getTurnsToday() { return turnsToday; }
+    }
+
     private LocalDate toLocalDate(java.util.Date date)
     {
         return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();

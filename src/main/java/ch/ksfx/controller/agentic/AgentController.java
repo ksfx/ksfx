@@ -1,6 +1,9 @@
 package ch.ksfx.controller.agentic;
 
 import ch.ksfx.services.agentic.EffectiveModelService;
+import ch.ksfx.services.agentic.AgenticAccessService;
+import ch.ksfx.dao.AgenticAccessDAO;
+import ch.ksfx.model.AgenticAccess;
 import org.springframework.beans.factory.annotation.Autowired;
 import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
@@ -53,6 +56,12 @@ public class AgentController
 {
     @org.springframework.beans.factory.annotation.Autowired
     private EffectiveModelService effectiveModelService;
+
+    @Autowired
+    private AgenticAccessService agenticAccessService;
+
+    @Autowired
+    private AgenticAccessDAO agenticAccessDAO;
 
     @Autowired
     private UserScope userScope;
@@ -135,15 +144,18 @@ public class AgentController
         model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
         model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
         model.addAttribute("lastActualModel", agent.getId() != null ? effectiveModelService.lastActualModelFor(agent) : null);
+        addAccessChoices(agent, model);
 
         return "agentic/agent/agent_edit";
     }
 
     @PostMapping({"/edit", "/edit/{id}"})
-    public String submit(@PathVariable(value = "id", required = false) Long agentId, @Valid @ModelAttribute Agent agent, BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes)
+    public String submit(@PathVariable(value = "id", required = false) Long agentId, @Valid @ModelAttribute Agent agent, BindingResult bindingResult,
+                         @RequestParam(value = "agenticAccessId", required = false) Long agenticAccessId, Model model, RedirectAttributes redirectAttributes)
     {
         if (bindingResult.hasErrors()) {
             model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
+            addAccessChoices(agent.getId() != null ? agentDAO.getAgentForId(agent.getId()) : agent, model);
             return "agentic/agent/agent_edit";
         }
 
@@ -173,6 +185,10 @@ public class AgentController
             agent.setApiToken(previousAgent.getApiToken());
             agent.setCreatedAt(previousAgent.getCreatedAt());
         }
+
+        // Only an access of the agent's own project; anything else (or none) = the project default.
+        AgenticAccess chosenAccess = agenticAccessId != null ? agenticAccessDAO.getAgenticAccessForId(agenticAccessId) : null;
+        agent.setAgenticAccess(chosenAccess != null && agent.getProject() != null && chosenAccess.getProject().getId().equals(agent.getProject().getId()) ? chosenAccess : null);
 
         if (isNew) {
             agent.setCreatedAt(new Date());
@@ -214,6 +230,14 @@ public class AgentController
         }
 
         return "redirect:/agentic/edit/" + agent.getId();
+    }
+
+    /** The access dropdown of the edit form: the project's accesses and which one is its default. */
+    private void addAccessChoices(Agent agent, Model model)
+    {
+        List<AgenticAccess> accesses = agenticAccessService.accessesFor(agent != null ? agent.getProject() : null);
+        model.addAttribute("accesses", accesses);
+        model.addAttribute("defaultAccess", accesses.stream().filter(AgenticAccess::getDefaultAccess).findFirst().orElse(null));
     }
 
     @GetMapping("/delete/{id}")
@@ -280,6 +304,8 @@ public class AgentController
         model.addAttribute("agent", agent);
         model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
         model.addAttribute("lastActualModel", effectiveModelService.lastActualModelFor(agent));
+        model.addAttribute("effectiveAccess", agenticAccessService.effectiveAccessFor(agent));
+        model.addAttribute("accessCount", agenticAccessService.accessesFor(agent.getProject()).size());
         model.addAttribute("messages", messages);
         // A full page (exactly MESSAGE_PAGE_SIZE rows) doesn't *guarantee* there's an older message
         // still to load - the conversation could happen to have exactly that many - but it's the

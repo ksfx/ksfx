@@ -4,6 +4,7 @@ import ch.ksfx.dao.ProjectAgenticSettingsDAO;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.model.Project;
 import ch.ksfx.model.ProjectAgenticSettings;
+import ch.ksfx.services.agentic.AgenticAccessService;
 import ch.ksfx.services.agentic.AgenticUsageStatsService;
 import ch.ksfx.services.project.UserScope;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,8 +22,9 @@ import javax.validation.Valid;
 import java.time.LocalDate;
 
 /**
- * A project's Agentic settings (concept "Agentic settings per project"): account, policy
- * defaults, enablement, the project's rate-limit snapshot and its usage view. OWNER-only
+ * A project's Agentic settings (concept "Agentic settings per project"): policy defaults,
+ * enablement, the project's accesses (accounts, managed by AgenticAccessController) with their
+ * rate-limit snapshots, and its usage view. OWNER-only
  * (UserScope.requireManage - instance admins included), and the OWNER sees the key in plaintext:
  * the project's key is the project's property, and a write-only field would only obscure a value
  * an OWNER could extract through an agent's environment anyway. No inheritance - what this page
@@ -35,14 +37,17 @@ public class ProjectAgenticSettingsController
     private final ProjectDAO projectDAO;
     private final ProjectAgenticSettingsDAO settingsDAO;
     private final AgenticUsageStatsService usageStatsService;
+    private final AgenticAccessService agenticAccessService;
     private final UserScope userScope;
 
     public ProjectAgenticSettingsController(ProjectDAO projectDAO, ProjectAgenticSettingsDAO settingsDAO,
-                                            AgenticUsageStatsService usageStatsService, UserScope userScope)
+                                            AgenticUsageStatsService usageStatsService, AgenticAccessService agenticAccessService,
+                                            UserScope userScope)
     {
         this.projectDAO = projectDAO;
         this.settingsDAO = settingsDAO;
         this.usageStatsService = usageStatsService;
+        this.agenticAccessService = agenticAccessService;
         this.userScope = userScope;
     }
 
@@ -61,6 +66,7 @@ public class ProjectAgenticSettingsController
 
         model.addAttribute("project", project);
         model.addAttribute("settings", settings);
+        model.addAttribute("accessCards", agenticAccessService.cardsFor(project));
         usageStatsService.addUsageStats(model, statsDate != null ? statsDate : LocalDate.now(), projectId);
 
         return "agentic/project/agentic_project_settings";
@@ -74,25 +80,16 @@ public class ProjectAgenticSettingsController
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("project", project);
+            model.addAttribute("accessCards", agenticAccessService.cardsFor(project));
             usageStatsService.addUsageStats(model, LocalDate.now(), projectId);
 
             return "agentic/project/agentic_project_settings";
         }
 
-        // The settings object is built from the form fields only - the claudeRateLimit* snapshot
-        // is system-captured per turn, never a form input, so it is carried over from the stored
-        // row (same pattern the instance form used before the split).
         ProjectAgenticSettings previous = settingsDAO.getForProjectId(projectId);
 
         if (previous != null) {
             settings.setId(previous.getId());
-            settings.setClaudeRateLimitStatus(previous.getClaudeRateLimitStatus());
-            settings.setClaudeRateLimitType(previous.getClaudeRateLimitType());
-            settings.setClaudeRateLimitResetsAt(previous.getClaudeRateLimitResetsAt());
-            settings.setClaudeRateLimitOverageStatus(previous.getClaudeRateLimitOverageStatus());
-            settings.setClaudeRateLimitOverageResetsAt(previous.getClaudeRateLimitOverageResetsAt());
-            settings.setClaudeRateLimitUsingOverage(previous.getClaudeRateLimitUsingOverage());
-            settings.setClaudeRateLimitUpdatedAt(previous.getClaudeRateLimitUpdatedAt());
         }
 
         settings.setProject(project);

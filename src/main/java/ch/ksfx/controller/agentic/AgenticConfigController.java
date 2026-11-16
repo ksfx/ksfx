@@ -1,6 +1,7 @@
 package ch.ksfx.controller.agentic;
 
 import ch.ksfx.services.agentic.AgenticUsageStatsService;
+import ch.ksfx.dao.AgenticAccessDAO;
 import ch.ksfx.dao.AgentMessageDAO;
 import ch.ksfx.dao.AgenticConfigDAO;
 import ch.ksfx.model.AgentMessage;
@@ -32,6 +33,9 @@ public class AgenticConfigController
     private final AgenticUsageStatsService usageStatsService;
     private final SystemEnvironment systemEnvironment;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private AgenticAccessDAO agenticAccessDAO;
+
     public AgenticConfigController(AgenticConfigDAO agenticConfigDAO, AgenticUsageStatsService usageStatsService, SystemEnvironment systemEnvironment)
     {
         this.agenticConfigDAO = agenticConfigDAO;
@@ -53,6 +57,7 @@ public class AgenticConfigController
         }
 
         model.addAttribute("agenticConfig", agenticConfig);
+        model.addAttribute("allAccesses", agenticAccessDAO.getAllAccesses()); // overview only - managed per project
 
         usageStatsService.addUsageStats(model, statsDate != null ? statsDate : LocalDate.now(), null);
 

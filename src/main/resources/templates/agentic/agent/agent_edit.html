@@ -59,6 +59,16 @@
                     Effective now: <strong th:text="${effectiveModel.display}">model (source)</strong><th:block th:if="${lastActualModel != null}"> &middot; last turn actually ran: <strong th:text="${lastActualModel}">model</strong></th:block>
                 </small>
             </div>
+            <div class="form-group" th:if="${!#lists.isEmpty(accesses)}">
+                <label for="agenticAccessId">Access</label>
+                <select class="form-control" id="agenticAccessId" name="agenticAccessId">
+                    <option value="" th:text="|Project default (${defaultAccess != null ? defaultAccess.name + ' · ' + T(ch.ksfx.services.agentic.AgenticAccessService).statusLabel(defaultAccess) : 'none'})|">Project default</option>
+                    <option th:each="x : ${accesses}" th:value="${x.id}"
+                            th:selected="${agent.agenticAccess != null and agent.agenticAccess.id == x.id}"
+                            th:text="|${x.name} · ${T(ch.ksfx.services.agentic.AgenticAccessService).statusLabel(x)}|">Access</option>
+                </select>
+                <small class="form-text text-muted">The account this agent runs on - accesses are managed on the project's Agentic Settings page. The status is what the last turn on that access reported.</small>
+            </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />
                 <label class="form-check-label" for="enabled">Enabled</label>

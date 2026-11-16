@@ -6,7 +6,7 @@ import java.util.Date;
 /**
  * Per-instance configuration for the "Agentic" feature - since the per-project split (concept
  * "Agentic settings per project") instance INFRASTRUCTURE only: workspace root, CLI path and the
- * global kill switch. Account and policy live in {@link ProjectAgenticSettings} per project. The
+ * global kill switch. Policy lives in {@link ProjectAgenticSettings}, accounts in {@link AgenticAccess}, both per project. The
  * moved DB columns still exist until the deferred drop changeset ships (rollback safety for the
  * previous jar) but are no longer mapped here. Exactly one row per instance.
  */

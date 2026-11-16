@@ -254,7 +254,13 @@ public class ProjectAssignmentService
             item.notes.add(target.getDockerIsolationEnabled() ? "target project runs agents in Docker - applies from the next turn" : "target project runs agents without Docker");
         }
 
+        if (agent.getAgenticAccess() != null) {
+            item.notes.add("its access '" + agent.getAgenticAccess().getName() + "' stays behind - runs on the target project's default access");
+        }
+
         if (execute) {
+            agent.setAgenticAccess(null); // accesses are project-bound
+
             if (config != null) {
                 Path oldWorkspace = agentWorkspaceService.resolveWorkspace(agent, config);
                 Path oldProviderDir = agentWorkspaceService.resolveProviderDir(agent, config);

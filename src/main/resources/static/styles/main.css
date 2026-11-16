@@ -172,6 +172,157 @@ th[data-grid-property="observationTime"]
     vertical-align: middle;
 }
 
+/* Accesses (agentic_project_settings.html, AgenticAccessService.cardsFor): one card per account,
+   same visual language as the dashboard task feed - colored left edge and status pill per
+   rate-limit state, translucent neutrals so both themes work. */
+.ksfx-accesses {
+    margin-bottom: 1.5rem;
+}
+
+.ksfx-accesses .text-muted,
+.ksfx-access-table .text-muted {
+    margin: 0; /* the global ".container .text-muted" margin would blow up the card rows */
+}
+
+.ksfx-accesses-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.ksfx-accesses-head h5 {
+    margin: 0;
+}
+
+.ksfx-access-card {
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(128, 128, 128, .22);
+    border-left: 3px solid rgba(128, 128, 128, .35);
+    border-radius: 8px;
+    background: rgba(128, 128, 128, .03);
+}
+
+.ksfx-access--ok { border-left-color: #28a745; }
+.ksfx-access--warning { border-left-color: #e0a800; }
+.ksfx-access--blocked { border-left-color: #dc3545; }
+
+.ksfx-access-top,
+.ksfx-access-bottom,
+.ksfx-access-figures {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+}
+
+.ksfx-access-name {
+    font-weight: 600;
+    font-size: 1.05em;
+}
+
+.ksfx-access-default {
+    padding: 0 7px;
+    border-radius: 9px;
+    background: #4a6fa5; /* readable on light and dark */
+    color: #fff;
+    font-size: .72em;
+    font-weight: 600;
+    letter-spacing: .02em;
+    vertical-align: 1px;
+}
+
+.ksfx-access-meta {
+    opacity: .7;
+    font-size: .85em;
+}
+
+.ksfx-access-meta code {
+    color: inherit;
+}
+
+.ksfx-access-status {
+    margin-left: auto;
+    padding: 1px 9px;
+    border-radius: 10px;
+    background: rgba(128, 128, 128, .14);
+    font-size: .8em;
+    white-space: nowrap;
+}
+
+.ksfx-access-table .ksfx-access-status {
+    margin-left: 0;
+}
+
+.ksfx-access-status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 5px;
+    border-radius: 50%;
+    vertical-align: 1px;
+    background: #adb5bd;
+}
+
+.ksfx-access--ok .ksfx-access-status { background: rgba(40, 167, 69, .15); color: #28a745; }
+.ksfx-access--ok .ksfx-access-status-dot { background: #28a745; }
+.ksfx-access--warning .ksfx-access-status { background: rgba(224, 168, 0, .18); color: #b38600; }
+.ksfx-access--warning .ksfx-access-status-dot { background: #e0a800; }
+.ksfx-access--blocked .ksfx-access-status { background: rgba(220, 53, 69, .14); color: #dc3545; }
+.ksfx-access--blocked .ksfx-access-status-dot { background: #dc3545; }
+
+.ksfx-access-figures {
+    margin: 6px 0 8px;
+    font-size: .88em;
+}
+
+.ksfx-access-agents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    font-size: .85em;
+}
+
+.ksfx-access-agent {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 9px 1px 2px;
+    border-radius: 12px;
+    background: rgba(128, 128, 128, .12);
+    color: inherit;
+}
+
+.ksfx-access-agent:hover {
+    color: inherit;
+    text-decoration: none;
+    background: rgba(128, 128, 128, .22);
+}
+
+.ksfx-access-agent-badge {
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    border-radius: 50%;
+    background: #0b2142;
+    color: #fff;
+    font-size: .8em;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ksfx-access-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.ksfx-access-actions form {
+    margin: 0;
+}
+
 /* Dashboard task feed (dashboard.html, RecentTasksService): one card per task, agent badge left,
    who/when/status on top, the task clamped to two lines, the answer's start as one muted line.
    Dark mode only swaps the Bootstrap sheet (no body class), so text inherits and surfaces are

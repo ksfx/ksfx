@@ -17,6 +17,7 @@ public class Agent
 {
     private Long id;
     private Project project;
+    private AgenticAccess agenticAccess;
 
     @NotNull
     @Size(min = 2, max = 200)
@@ -54,6 +55,23 @@ public class Agent
     public void setProject(Project project)
     {
         this.project = project;
+    }
+
+    /**
+     * The access (account) this agent runs on; null = the project's default access. An access of
+     * another project (left over after the agent moved) is ignored the same way - see
+     * AgenticAccessService.effectiveAccessFor.
+     */
+    @ManyToOne
+    @JoinColumn(name = "agentic_access_id")
+    public AgenticAccess getAgenticAccess()
+    {
+        return agenticAccess;
+    }
+
+    public void setAgenticAccess(AgenticAccess agenticAccess)
+    {
+        this.agenticAccess = agenticAccess;
     }
 
     public String getName()

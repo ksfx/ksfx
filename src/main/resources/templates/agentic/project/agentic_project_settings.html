@@ -17,31 +17,59 @@
 <message th:replace="layout :: message"/>
 
 <div class="container">
-    <p class="text-muted">The account and policy of <strong th:text="${project.name}"></strong> - nothing is inherited: what this page shows is exactly what this project's agents use. A project without enabled settings has no working agents.</p>
+    <p class="text-muted">The accounts and policy of <strong th:text="${project.name}"></strong> - nothing is inherited: what this page shows is exactly what this project's agents use. A project without enabled settings has no working agents.</p>
+
+    <div class="alert alert-danger" th:if="${accessError}" th:text="${accessError}">Error</div>
+
+    <!-- Accesses (AgenticAccessController / AgenticAccessService.cardsFor): one card per account -
+         rate-limit status of its last turn, tokens spent on it, and the agents running on it. -->
+    <div class="ksfx-accesses">
+        <div class="ksfx-accesses-head">
+            <h5><i class="fa fa-key"></i> Accesses</h5>
+            <a class="btn btn-sm btn-outline-primary" th:href="@{/agentic/projects/{id}/accesses/new(id=${project.id})}"><i class="fa fa-plus"></i> Add access</a>
+        </div>
+        <p class="text-muted" th:if="${#lists.isEmpty(accessCards)}">No access yet - the project's agents cannot run until one is added.</p>
+        <div class="ksfx-access-card" th:each="c : ${accessCards}" th:classappend="|ksfx-access--${c.access.statusKey}|">
+            <div class="ksfx-access-top">
+                <span class="ksfx-access-name" th:text="${c.access.name}">Standard</span>
+                <span class="ksfx-access-default" th:if="${c.access.defaultAccess}">Default</span>
+                <span class="ksfx-access-meta"><span th:text="${c.access.authModeLabel}">API key</span> &middot; <code th:text="${c.access.maskedKey}">sk-ant-…abcd</code></span>
+                <span class="ksfx-access-status" th:title="${c.access.claudeRateLimitUsingOverage == true} ? 'Currently using overage capacity' : ''">
+                    <span class="ksfx-access-status-dot"></span><span th:text="${c.statusLabel}">OK</span><th:block th:if="${c.access.claudeRateLimitUsingOverage == true}"> &middot; overage</th:block>
+                </span>
+            </div>
+            <div class="ksfx-access-figures">
+                <span><strong th:text="${#numbers.formatInteger(c.usage.tokensToday, 1, 'COMMA')}">0</strong> tokens today <span class="text-muted" th:text="|(${c.usage.turnsToday} turns)|"></span></span>
+                <span><strong th:text="${#numbers.formatInteger(c.usage.tokensAllTime, 1, 'COMMA')}">0</strong> all-time <span class="text-muted" th:text="|(${c.usage.turnsAllTime} turns)|"></span></span>
+                <span class="text-muted" th:if="${c.snapshotAge != null}">
+                    <th:block th:if="${c.limitLabel != null}" th:text="|${c.limitLabel} · |"></th:block>status <span th:text="${c.snapshotAge}"></span>, updated on every turn
+                </span>
+            </div>
+            <div class="ksfx-access-bottom">
+                <span class="ksfx-access-agents">
+                    <span class="text-muted" th:if="${#lists.isEmpty(c.agents)}">no agent runs on it</span>
+                    <a th:each="a : ${c.agents}" class="ksfx-access-agent" th:href="@{/agentic/chat/{id}(id=${a.id})}" th:title="${a.name}">
+                        <span class="ksfx-access-agent-badge" th:text="${#strings.toUpperCase(#strings.substring(a.name, 0, 1))}">K</span><span th:text="${a.name}">Agent</span>
+                    </a>
+                </span>
+                <span class="ksfx-access-actions">
+                    <a class="btn btn-sm btn-outline-secondary" th:href="@{/agentic/projects/{p}/accesses/{a}/edit(p=${project.id},a=${c.access.id})}"><i class="fa fa-pencil"></i> Edit</a>
+                    <form th:unless="${c.access.defaultAccess}" method="post" th:action="@{/agentic/projects/{p}/accesses/{a}/default(p=${project.id},a=${c.access.id})}">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Make default</button>
+                    </form>
+                    <form th:unless="${c.access.defaultAccess}" method="post" th:action="@{/agentic/projects/{p}/accesses/{a}/delete(p=${project.id},a=${c.access.id})}"
+                          onsubmit="return confirm('Delete this access? Its agents fall back to the default access.');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa fa-trash-o"></i></button>
+                    </form>
+                </span>
+            </div>
+        </div>
+        <small class="text-muted">Each agent picks its access on its edit page; without a choice it runs on the default. OAuth uses the host's one <code>claude login</code> - every OAuth access is that same account. The status shows what the last turn on that access reported - it is not live.</small>
+    </div>
 
     <div class="list-group">
         <div class="list-group-item">
             <form id="projectAgenticSettingsForm" action="#" th:action="@{/agentic/projects/{id}/settings/(id=${project.id})}" th:object="${settings}" method="post">
-                <div class="form-group">
-                    <label>Auth Mode</label>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="API_KEY" id="authModeApiKey" />
-                        <label class="form-check-label" for="authModeApiKey">API Key (Anthropic Console, pay per token)</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="SETUP_TOKEN" id="authModeSetupToken" />
-                        <label class="form-check-label" for="authModeSetupToken">Setup Token (output of `claude setup-token`, subscription-based)</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" th:field="*{authMode}" th:value="OAUTH" id="authModeOauth" />
-                        <label class="form-check-label" for="authModeOauth">OAuth (host login)</label>
-                    </div>
-                    <small class="form-text text-muted">OAuth uses the credentials of the host's one interactive `claude login` - every project choosing OAuth shares that same account. A key or setup token is genuinely this project's own.</small>
-                </div>
-                <div class="form-group">
-                    <label for="apiKey">API Key / Setup Token</label>
-                    <input type="text" class="form-control" id="apiKey" th:field="*{apiKey}" placeholder="Anthropic API Key or claude setup-token output" />
-                </div>
                 <div class="form-group">
                     <label for="defaultPermissionMode">Default Permission Mode</label>
                     <input type="text" class="form-control" id="defaultPermissionMode" th:field="*{defaultPermissionMode}" placeholder="default / acceptEdits / bypassPermissions / plan" />
@@ -60,20 +88,6 @@
                 <a th:href="@{/agentic/projects/edit/{id}(id=${project.id})}" class="btn btn-danger">Cancel</a>
             </form>
         </div>
-<div class="list-group-item" th:if="${settings.claudeRateLimitUpdatedAt}">
-            <h5>Rate Limit</h5>
-            <p>
-                Status: <strong th:text="${settings.claudeRateLimitStatus}"></strong>
-                (<span th:text="${settings.claudeRateLimitType}"></span>),
-                resets <span th:text="${#dates.format(settings.claudeRateLimitResetsAt, 'yyyy-MM-dd HH:mm')}"></span>
-            </p>
-            <p th:if="${settings.claudeRateLimitUsingOverage}">
-                Currently using overage capacity (<span th:text="${settings.claudeRateLimitOverageStatus}"></span>),
-                resets <span th:text="${#dates.format(settings.claudeRateLimitOverageResetsAt, 'yyyy-MM-dd HH:mm')}"></span>
-            </p>
-            <small class="form-text text-muted">Snapshot as of <span th:text="${#dates.format(settings.claudeRateLimitUpdatedAt, 'yyyy-MM-dd HH:mm')}"></span> - only refreshed when an agent actually runs a turn, not live.</small>
-        </div>
-
         <div class="list-group-item" th:if="${totalTurns} > 0">
             <h5>Usage Statistics (All-Time)</h5>
             <p>

@@ -1,6 +1,6 @@
 package ch.ksfx.services.agentic;
 
-import ch.ksfx.model.ProjectAgenticSettings;
+import ch.ksfx.model.AgenticAccess;
 import ch.ksfx.model.Agent;
 import ch.ksfx.model.AgenticConfig;
 import ch.ksfx.services.systemlogger.SystemLogger;
@@ -42,7 +42,7 @@ public class ClaudeCliCompletionClient implements VoiceCompletionClient
     }
 
     @Override
-    public VoiceCompletionResult complete(String prompt, Agent agent, AgenticConfig config, ProjectAgenticSettings settings)
+    public VoiceCompletionResult complete(String prompt, Agent agent, AgenticConfig config, AgenticAccess access)
     {
         Path workspace;
 
@@ -66,10 +66,10 @@ public class ClaudeCliCompletionClient implements VoiceCompletionClient
         processBuilder.directory(workspace.toFile());
         processBuilder.redirectInput(ProcessBuilder.Redirect.from(new File(ClaudeCliEnvironment.nullDevicePath())));
 
-        String authEnvVar = ClaudeCliEnvironment.authEnvironmentVariableName(settings.getAuthMode());
+        String authEnvVar = ClaudeCliEnvironment.authEnvironmentVariableName(access.getAuthMode());
 
         if (authEnvVar != null) {
-            processBuilder.environment().put(authEnvVar, settings.getApiKey());
+            processBuilder.environment().put(authEnvVar, access.getApiKey());
         }
 
         StringBuilder resultText = new StringBuilder();

@@ -18,6 +18,7 @@ public class AgentMessage
     private Agent agent;
     private Agent fromAgent;
     private User fromUser;
+    private AgenticAccess agenticAccess;
     private AgentMessageRole role;
     private String content;
     private String toolActivity;
@@ -99,6 +100,23 @@ public class AgentMessage
     public void setFromUser(User fromUser)
     {
         this.fromUser = fromUser;
+    }
+
+    /**
+     * The access (account) this turn ran on - ASSISTANT rows only, incl. internal voice-cleanup
+     * rows; null for other rows and for an access that was deleted since. Recorded per answer so
+     * usage stays with the account it was spent on, even after the agent switches access.
+     */
+    @ManyToOne
+    @JoinColumn(name = "agentic_access_id")
+    public AgenticAccess getAgenticAccess()
+    {
+        return agenticAccess;
+    }
+
+    public void setAgenticAccess(AgenticAccess agenticAccess)
+    {
+        this.agenticAccess = agenticAccess;
     }
 
     /** Label for the chat: the sender's first name, else the login name; "User" when unknown (older messages, schedule prompts). */
