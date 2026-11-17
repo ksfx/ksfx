@@ -74,6 +74,11 @@
     </div>
 
     <div class="list-group">
+        <div class="list-group-item" th:unless="${#lists.isEmpty(mails)}">
+            <h5>Mails <small class="text-muted">(sent by this project's agents, latest 30)</small></h5>
+            <table th:replace="admin/mail/mail_log :: mailLog"></table>
+        </div>
+
         <div class="list-group-item" th:if="${totalTurns} > 0">
             <h5>Usage Statistics (All-Time)</h5>
             <p>

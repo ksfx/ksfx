@@ -214,6 +214,17 @@
 			<artifactId>mail</artifactId>
 			<version>1.4.4</version>
 		</dependency>
+		<!-- Markdown -> HTML for outgoing mails (MailService); 0.21 is the last line built for Java 8 -->
+		<dependency>
+			<groupId>org.commonmark</groupId>
+			<artifactId>commonmark</artifactId>
+			<version>0.21.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.commonmark</groupId>
+			<artifactId>commonmark-ext-gfm-tables</artifactId>
+			<version>0.21.0</version>
+		</dependency>
 
 		<!-- Bean validation only works with Validator on CP -->
 		<dependency>

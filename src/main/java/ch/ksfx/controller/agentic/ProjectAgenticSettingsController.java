@@ -1,5 +1,6 @@
 package ch.ksfx.controller.agentic;
 
+import ch.ksfx.dao.MailDAO;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.model.Project;
 import ch.ksfx.services.agentic.AgenticAccessService;
@@ -32,6 +33,9 @@ public class ProjectAgenticSettingsController
     private final AgenticAccessService agenticAccessService;
     private final UserScope userScope;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private MailDAO mailDAO;
+
     public ProjectAgenticSettingsController(ProjectDAO projectDAO,
                                             AgenticUsageStatsService usageStatsService, AgenticAccessService agenticAccessService,
                                             UserScope userScope)
@@ -50,6 +54,7 @@ public class ProjectAgenticSettingsController
         Project project = requireProject(projectId);
         model.addAttribute("project", project);
         model.addAttribute("accessCards", agenticAccessService.cardsFor(project));
+        model.addAttribute("mails", mailDAO.getRecentEntries(projectId, 30)); // what the project's agents sent
         usageStatsService.addUsageStats(model, statsDate != null ? statsDate : LocalDate.now(), projectId);
 
         return "agentic/project/agentic_project_settings";

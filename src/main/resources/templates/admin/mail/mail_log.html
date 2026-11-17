@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- The mail log table - Admin -> Mail (all mails) and the project's Agentic Settings page (its mails only). -->
+<table th:fragment="mailLog" class="table table-sm ksfx-mail-log" th:unless="${#lists.isEmpty(mails)}">
+    <thead><tr><th>When</th><th>From</th><th>To</th><th>Subject</th><th>Status</th></tr></thead>
+    <tbody>
+    <tr th:each="m : ${mails}" th:classappend="|ksfx-mail--${#strings.toLowerCase(m.status.name())}|">
+        <td class="text-nowrap" th:text="${#dates.format(m.createdAt, 'yyyy-MM-dd HH:mm')}">2026-11-17 10:00</td>
+        <td>
+            <span th:text="${m.sourceLabel != null ? m.sourceLabel : m.sourceType}">Lexi</span>
+            <small class="text-muted" th:if="${m.project != null}" th:text="|· ${m.project.name}|"></small>
+        </td>
+        <td class="ksfx-mail-to" th:text="${m.toAddresses + (m.ccAddresses != null ? ', cc: ' + m.ccAddresses : '')}">a@b.ch</td>
+        <td th:text="${m.subject}">Subject</td>
+        <td class="text-nowrap" th:title="${m.lastError}">
+            <span class="ksfx-mail-status" th:text="${m.status}">SENT</span>
+            <small class="text-muted" th:if="${m.status.name() == 'QUEUED' and m.attempts > 0}" th:text="|retry ${m.attempts}|"></small>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

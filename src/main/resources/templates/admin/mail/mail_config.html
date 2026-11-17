@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Mail</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
+        <li class="breadcrumb-item">Admin</li>
+        <li class="breadcrumb-item active">Mail</li>
+    </ol>
+</nav>
+<message th:replace="layout :: message"/>
+
+<div class="container">
+    <p class="text-muted">The platform's one mail account - used by agents (their <code>/agentic/api/mail</code> endpoint) and later by services like the issues and the wiki. Mails always go out with the address below as sender; an agent's name shows in the display name and in a footer.</p>
+    <div class="alert alert-danger" th:if="${mailError}" th:text="${mailError}">Error</div>
+
+    <div class="list-group">
+        <div class="list-group-item">
+            <form th:action="@{/admin/mail/}" method="post" th:object="${mailConfig}">
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="enabled" name="enabled" value="true" th:checked="*{enabled}" />
+                    <label class="form-check-label" for="enabled">Enabled - mails are accepted and sent</label>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="smtpHost">SMTP Host</label>
+                        <input type="text" class="form-control" id="smtpHost" name="smtpHost" th:value="*{smtpHost}" placeholder="smtp.example.com" />
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label for="smtpPort">Port</label>
+                        <input type="number" class="form-control" id="smtpPort" name="smtpPort" th:value="*{smtpPort}" min="1" max="65535" />
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="smtpSecurity">Security</label>
+                        <select class="form-control" id="smtpSecurity" name="smtpSecurity">
+                            <option value="STARTTLS" th:selected="*{smtpSecurity == 'STARTTLS'}">STARTTLS (usually port 587)</option>
+                            <option value="SSL" th:selected="*{smtpSecurity == 'SSL'}">SSL/TLS (usually port 465)</option>
+                            <option value="NONE" th:selected="*{smtpSecurity == 'NONE'}">None (usually port 25)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="smtpUsername">User</label>
+                        <input type="text" class="form-control" id="smtpUsername" name="smtpUsername" th:value="*{smtpUsername}" autocomplete="off" placeholder="empty = no authentication" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="smtpPassword">Password</label>
+                        <input type="password" class="form-control" id="smtpPassword" name="smtpPassword" autocomplete="new-password"
+                               th:placeholder="${passwordSet} ? 'set - leave empty to keep it' : 'not set'" />
+                        <div class="form-check" th:if="${passwordSet}">
+                            <input type="checkbox" class="form-check-input" id="clearPassword" name="clearPassword" value="true" />
+                            <label class="form-check-label" for="clearPassword"><small>Remove the stored password</small></label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="fromAddress">From Address</label>
+                        <input type="email" class="form-control" id="fromAddress" name="fromAddress" th:value="*{fromAddress}" placeholder="noreply@company.ch" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="fromName">Display Name</label>
+                        <input type="text" class="form-control" id="fromName" name="fromName" th:value="*{fromName}" placeholder="KSFX HQ - agents appear as &quot;Lexi via KSFX HQ&quot;" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="replyTo">Reply-To (optional)</label>
+                        <input type="email" class="form-control" id="replyTo" name="replyTo" th:value="*{replyTo}" placeholder="where replies should go - empty = the from address" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="dailyLimit">Daily Limit (emergency brake)</label>
+                        <input type="number" class="form-control" id="dailyLimit" name="dailyLimit" th:value="*{dailyLimit}" min="0" />
+                        <small class="form-text text-muted">At most this many mails per day across the whole platform. Beyond it, mails are rejected (logged as BLOCKED) and the admins get one notice.</small>
+                    </div>
+                </div>
+                <div class="ksfx-mail-actions">
+                    <button type="submit" name="action" value="save" class="btn btn-primary">Save</button>
+                    <span class="ksfx-mail-test">
+                        <input type="email" class="form-control form-control-sm" name="testAddress" th:value="${testAddress}" placeholder="test recipient" />
+                        <button type="submit" name="action" value="test" class="btn btn-outline-secondary btn-sm">Save &amp; send test mail</button>
+                    </span>
+                </div>
+            </form>
+        </div>
+
+        <div class="list-group-item">
+            <h5>Mail log <small class="text-muted">(latest 100)</small></h5>
+            <p class="text-muted" th:if="${#lists.isEmpty(mails)}">No mails yet.</p>
+            <table th:replace="admin/mail/mail_log :: mailLog"></table>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

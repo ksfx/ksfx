@@ -381,6 +381,44 @@ th[data-grid-property="observationTime"]
     font-size: .85em;
 }
 
+/* Mail (admin/mail/mail_config.html, mail_log.html). */
+.ksfx-mail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.ksfx-mail-test {
+    display: inline-flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.ksfx-mail-test input {
+    width: 240px;
+}
+
+.ksfx-mail-log td {
+    vertical-align: middle;
+}
+
+.ksfx-mail-to {
+    max-width: 260px;
+    overflow-wrap: anywhere;
+}
+
+.ksfx-mail-status {
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: rgba(128, 128, 128, .14);
+    font-size: .8em;
+}
+
+.ksfx-mail--sent .ksfx-mail-status { background: rgba(40, 167, 69, .15); color: #28a745; }
+.ksfx-mail--failed .ksfx-mail-status,
+.ksfx-mail--blocked .ksfx-mail-status { background: rgba(220, 53, 69, .14); color: #dc3545; }
+
 /* Dashboard task feed (dashboard.html, RecentTasksService): one card per task, agent badge left,
    who/when/status on top, the task clamped to two lines, the answer's start as one muted line.
    Dark mode only swaps the Bootstrap sheet (no body class), so text inherits and surfaces are
