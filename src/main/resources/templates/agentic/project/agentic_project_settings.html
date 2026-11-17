@@ -32,7 +32,6 @@
         <div class="ksfx-access-card" th:each="c : ${accessCards}" th:classappend="|ksfx-access--${c.access.statusKey}| + (${c.access.enabled} ? '' : ' ksfx-access--disabled')">
             <div class="ksfx-access-top">
                 <span class="ksfx-access-name" th:text="${c.access.name}">Standard</span>
-                <span class="ksfx-access-default" th:if="${c.access.defaultAccess}">Default</span>
                 <span class="ksfx-access-meta"><span th:text="${c.access.authModeLabel}">API key</span> &middot; <code th:text="${c.access.maskedKey}">sk-ant-…abcd</code></span>
                 <span class="ksfx-access-off" th:unless="${c.access.enabled}">disabled</span>
                 <span class="ksfx-access-status" th:title="${c.access.claudeRateLimitUsingOverage == true} ? 'Currently using overage capacity' : ''">
@@ -60,17 +59,15 @@
                 </span>
                 <span class="ksfx-access-actions">
                     <a class="btn btn-sm btn-outline-secondary" th:href="@{/agentic/projects/{p}/accesses/{a}/edit(p=${project.id},a=${c.access.id})}"><i class="fa fa-pencil"></i> Edit</a>
-                    <form th:unless="${c.access.defaultAccess}" method="post" th:action="@{/agentic/projects/{p}/accesses/{a}/default(p=${project.id},a=${c.access.id})}">
-                        <button type="submit" class="btn btn-sm btn-outline-secondary">Make default</button>
-                    </form>
-                    <form th:unless="${c.access.defaultAccess}" method="post" th:action="@{/agentic/projects/{p}/accesses/{a}/delete(p=${project.id},a=${c.access.id})}"
-                          onsubmit="return confirm('Delete this access? Its agents fall back to the default access.');">
-                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa fa-trash-o"></i></button>
+                    <form method="post" th:action="@{/agentic/projects/{p}/accesses/{a}/delete(p=${project.id},a=${c.access.id})}"
+                          onsubmit="return confirm('Delete this access?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" th:disabled="${!#lists.isEmpty(c.agents)}"
+                                th:title="${#lists.isEmpty(c.agents)} ? 'Delete this access' : 'Still used by agents - switch them to another access first'"><i class="fa fa-trash-o"></i></button>
                     </form>
                 </span>
             </div>
         </div>
-        <small class="text-muted">Each agent picks its access on its edit page; without a choice it runs on the default. An agent's own model / permission mode wins over the access defaults. OAuth uses the host's one <code>claude login</code> - every OAuth access is that same account. The status shows what the last turn on that access reported - it is not live.</small>
+        <small class="text-muted">Each agent names its access on its edit page - there is no default, and an access agents still run on cannot be deleted. An agent's own model / permission mode wins over the access defaults. OAuth uses the host's one <code>claude login</code> - every OAuth access is that same account. The status shows what the last turn on that access reported - it is not live.</small>
     </div>
 
     <div class="list-group">

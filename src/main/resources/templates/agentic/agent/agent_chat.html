@@ -82,9 +82,9 @@
             <span class="agentic-main-model text-muted" th:if="${effectiveModel != null}"
                   th:title="${lastActualModel != null} ? |Last turn actually ran: ${lastActualModel}| : 'No captured turn yet'"
                   th:text="${effectiveModel.display}">model</span>
-            <!-- Only with more than one access in the project - with one, it is always that one. -->
-            <span class="agentic-main-model text-muted" th:if="${effectiveAccess != null and accessCount > 1}"
+            <span class="agentic-main-model text-muted" th:if="${effectiveAccess != null}"
                   th:title="|Runs on the access '${effectiveAccess.name}' - ${T(ch.ksfx.services.agentic.AgenticAccessService).statusLabel(effectiveAccess)}|"><i class="fa fa-key"></i> <span th:text="${effectiveAccess.name}">access</span></span>
+            <span class="agentic-main-model text-danger" th:if="${effectiveAccess == null}" title="Pick an access on the agent's edit page - until then it cannot run"><i class="fa fa-key"></i> no access chosen</span>
             <span class="agentic-toolbar-actions">
                 <button type="button" id="agenticFilesBtn" class="agentic-toolbar-action" title="Browse workspace files"><i class="fa fa-folder-open-o"></i> Files</button>
                 <button type="button" id="agenticScheduleBtn" class="agentic-toolbar-action" title="Schedules"><i class="fa fa-clock-o"></i> Schedules</button>

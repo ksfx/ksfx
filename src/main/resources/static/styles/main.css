@@ -222,17 +222,6 @@ th[data-grid-property="observationTime"]
     font-size: 1.05em;
 }
 
-.ksfx-access-default {
-    padding: 0 7px;
-    border-radius: 9px;
-    background: #4a6fa5; /* readable on light and dark */
-    color: #fff;
-    font-size: .72em;
-    font-weight: 600;
-    letter-spacing: .02em;
-    vertical-align: 1px;
-}
-
 .ksfx-access-meta {
     opacity: .7;
     font-size: .85em;

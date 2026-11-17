@@ -18,8 +18,8 @@ import java.util.Date;
 /**
  * One named account of a project (concept "Agentic accesses"): auth mode and key decide whose
  * Anthropic account a turn runs on. A project can hold several - "company API key", "Kejo's Max
- * subscription" - and each agent picks one (Agent.agenticAccess); agents without a choice use the
- * project's default access. Project-bound: managed by the project's OWNERs on its Agentic Settings
+ * subscription" - and each agent names the one it runs on (Agent.agenticAccess, required since
+ * 2026-11-17 - there is no default access). Project-bound: managed by the project's OWNERs on its Agentic Settings
  * page, never shared across projects.
  *
  * Default model, default permission mode and the enabled switch live here too (since 2026-11-17,
@@ -51,9 +51,6 @@ public class AgenticAccess
 
     @Column(name = "api_key")
     private String apiKey;
-
-    @Column(name = "is_default")
-    private boolean defaultAccess = false;
 
     /** Model for agents on this access that set none themselves; empty = the provider's own default. */
     @Column(name = "default_model")
@@ -102,8 +99,6 @@ public class AgenticAccess
     @JsonIgnore
     public String getApiKey() { return apiKey; }
     public void setApiKey(String apiKey) { this.apiKey = apiKey; }
-    public boolean getDefaultAccess() { return defaultAccess; }
-    public void setDefaultAccess(boolean defaultAccess) { this.defaultAccess = defaultAccess; }
     public String getClaudeRateLimitStatus() { return claudeRateLimitStatus; }
     public void setClaudeRateLimitStatus(String v) { this.claudeRateLimitStatus = v; }
     public String getClaudeRateLimitType() { return claudeRateLimitType; }

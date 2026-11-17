@@ -12,8 +12,8 @@ import java.util.List;
 
 /**
  * Which access (account) an agent runs on - one rule for the turn itself, the voice cleanup, the
- * chat header and the forms: the agent's own access if it belongs to the agent's project, else the
- * project's default access; null if the project has none.
+ * chat header and the forms: the access the agent names, if it belongs to the agent's project; else
+ * none (null) - there is no default access, the agent then does not run until one is chosen.
  */
 @Service("agenticAccessService")
 public class AgenticAccessService
@@ -37,11 +37,7 @@ public class AgenticAccessService
 
         AgenticAccess own = agent.getAgenticAccess();
 
-        if (own != null && own.getProject() != null && own.getProject().getId().equals(agent.getProject().getId())) {
-            return own;
-        }
-
-        return agenticAccessDAO.getDefaultAccessForProject(agent.getProject().getId());
+        return own != null && own.getProject() != null && own.getProject().getId().equals(agent.getProject().getId()) ? own : null;
     }
 
     public List<AgenticAccess> accessesFor(Project project)
@@ -49,17 +45,16 @@ public class AgenticAccessService
         return project != null && project.getId() != null ? agenticAccessDAO.getAccessesForProject(project.getId()) : new ArrayList<>();
     }
 
-    /** The agents that currently run on {@code access} - incl. those that use it as the project default. */
+    /** The agents that currently run on {@code access}. */
     public List<Agent> agentsUsing(AgenticAccess access)
     {
         List<Agent> agents = new ArrayList<>();
         Long projectId = access.getProject().getId();
 
         for (Agent agent : agentDAO.getAgentsForProject(projectId)) {
-            AgenticAccess own = agent.getAgenticAccess();
-            boolean ownValid = own != null && own.getProject() != null && own.getProject().getId().equals(projectId);
+            AgenticAccess effective = effectiveAccessFor(agent);
 
-            if (ownValid ? own.getId().equals(access.getId()) : access.getDefaultAccess()) {
+            if (effective != null && effective.getId().equals(access.getId())) {
                 agents.add(agent);
             }
         }

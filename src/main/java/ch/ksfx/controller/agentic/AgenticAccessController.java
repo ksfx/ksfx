@@ -2,7 +2,9 @@ package ch.ksfx.controller.agentic;
 
 import ch.ksfx.dao.AgenticAccessDAO;
 import ch.ksfx.dao.ProjectDAO;
+import ch.ksfx.model.Agent;
 import ch.ksfx.model.AgenticAccess;
+import ch.ksfx.services.agentic.AgenticAccessService;
 import ch.ksfx.model.AgenticAuthMode;
 import ch.ksfx.model.Project;
 import ch.ksfx.services.project.UserScope;
@@ -17,14 +19,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A project's accesses (accounts, see {@link AgenticAccess}) with their defaults (model,
- * permission mode) and enabled switch: add, edit, make default, delete.
- * OWNER-only like the rest of the project's Agentic settings, and like there the OWNER sees the
- * key in plaintext on the edit form (the cards only show it masked). Exactly one access per
- * project is the default once there is any: the first one becomes it, the default cannot be
- * deleted - another one has to be made default first.
+ * permission mode) and enabled switch: add, edit, delete. OWNER-only like the rest of the
+ * project's Agentic settings; the OWNER sees the key in plaintext on the edit form (the cards only
+ * show it masked). There is no default access - every agent names its own - so an access that
+ * agents still run on cannot be deleted.
  */
 @Controller
 @RequestMapping("/agentic/projects/{projectId}/accesses")
@@ -33,12 +35,14 @@ public class AgenticAccessController
     private final ProjectDAO projectDAO;
     private final AgenticAccessDAO agenticAccessDAO;
     private final UserScope userScope;
+    private final AgenticAccessService agenticAccessService;
 
-    public AgenticAccessController(ProjectDAO projectDAO, AgenticAccessDAO agenticAccessDAO, UserScope userScope)
+    public AgenticAccessController(ProjectDAO projectDAO, AgenticAccessDAO agenticAccessDAO, UserScope userScope, AgenticAccessService agenticAccessService)
     {
         this.projectDAO = projectDAO;
         this.agenticAccessDAO = agenticAccessDAO;
         this.userScope = userScope;
+        this.agenticAccessService = agenticAccessService;
     }
 
     @GetMapping("/new")
@@ -97,32 +101,10 @@ public class AgenticAccessController
         if (access.getId() == null) {
             access.setProject(project);
             access.setCreatedAt(new Date());
-            access.setDefaultAccess(agenticAccessDAO.getDefaultAccessForProject(projectId) == null); // the first one is the default
         }
 
         agenticAccessDAO.saveOrUpdateAgenticAccess(access);
         redirectAttributes.addFlashAttribute("message", "Access '" + access.getName() + "' saved.");
-
-        return redirectToSettings(projectId);
-    }
-
-    @PostMapping("/{accessId}/default")
-    public String makeDefault(@PathVariable Long projectId, @PathVariable Long accessId, RedirectAttributes redirectAttributes)
-    {
-        Project project = requireProject(projectId);
-        AgenticAccess chosen = requireAccess(project, accessId);
-        List<AgenticAccess> accesses = agenticAccessDAO.getAccessesForProject(projectId);
-
-        for (AgenticAccess access : accesses) {
-            boolean isChosen = access.getId().equals(chosen.getId());
-
-            if (access.getDefaultAccess() != isChosen) {
-                access.setDefaultAccess(isChosen);
-                agenticAccessDAO.saveOrUpdateAgenticAccess(access);
-            }
-        }
-
-        redirectAttributes.addFlashAttribute("message", "'" + chosen.getName() + "' is now the default access - every agent without an own choice runs on it.");
 
         return redirectToSettings(projectId);
     }
@@ -133,14 +115,19 @@ public class AgenticAccessController
         Project project = requireProject(projectId);
         AgenticAccess access = requireAccess(project, accessId);
 
-        if (access.getDefaultAccess()) {
-            redirectAttributes.addFlashAttribute("accessError", "The default access cannot be deleted - make another access the default first.");
+        // No agent may end up without an access: switch them over first.
+        List<Agent> users = agenticAccessService.agentsUsing(access);
+
+        if (!users.isEmpty()) {
+            redirectAttributes.addFlashAttribute("accessError", "'" + access.getName() + "' is still used by "
+                    + users.stream().map(Agent::getName).collect(Collectors.joining(", "))
+                    + " - switch them to another access first.");
 
             return redirectToSettings(projectId);
         }
 
         agenticAccessDAO.deleteAgenticAccess(access);
-        redirectAttributes.addFlashAttribute("message", "Access '" + access.getName() + "' deleted - its agents now run on the default access.");
+        redirectAttributes.addFlashAttribute("message", "Access '" + access.getName() + "' deleted.");
 
         return redirectToSettings(projectId);
     }

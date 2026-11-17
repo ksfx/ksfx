@@ -255,7 +255,7 @@ public class ProjectAssignmentService
         }
 
         if (agent.getAgenticAccess() != null) {
-            item.notes.add("its access '" + agent.getAgenticAccess().getName() + "' stays behind - runs on the target project's default access");
+            item.notes.add("its access '" + agent.getAgenticAccess().getName() + "' stays behind - choose an access of the target project on the agent's edit page before it can run again");
         }
 
         if (execute) {

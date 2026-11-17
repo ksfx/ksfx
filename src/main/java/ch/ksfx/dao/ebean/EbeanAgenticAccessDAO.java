@@ -20,23 +20,15 @@ public class EbeanAgenticAccessDAO implements AgenticAccessDAO
     public List<AgenticAccess> getAccessesForProject(Long projectId)
     {
         return Ebean.find(AgenticAccess.class).where().eq("project.id", projectId)
-                .orderBy("defaultAccess desc, name asc")
+                .orderBy("name asc")
                 .findList();
-    }
-
-    @Override
-    public AgenticAccess getDefaultAccessForProject(Long projectId)
-    {
-        return Ebean.find(AgenticAccess.class).where().eq("project.id", projectId).eq("defaultAccess", true)
-                .setMaxRows(1)
-                .findOne();
     }
 
     @Override
     public List<AgenticAccess> getAllAccesses()
     {
         return Ebean.find(AgenticAccess.class).fetch("project")
-                .orderBy("project.name asc, defaultAccess desc, name asc")
+                .orderBy("project.name asc, name asc")
                 .findList();
     }
 
@@ -53,8 +45,8 @@ public class EbeanAgenticAccessDAO implements AgenticAccessDAO
     @Override
     public void deleteAgenticAccess(AgenticAccess access)
     {
-        // agent.agentic_access_id and agent_message.agentic_access_id are ON DELETE SET NULL:
-        // its agents fall back to the default access, its usage stays as "deleted access".
+        // Only called for an access no agent uses (AgenticAccessController refuses otherwise);
+        // agent_message.agentic_access_id is ON DELETE SET NULL - its usage stays as "deleted access".
         Ebean.delete(access);
     }
 }

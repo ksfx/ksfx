@@ -653,8 +653,8 @@ public class ClaudeCliSessionService
         AgenticAccess access = agenticAccessService.effectiveAccessFor(agent);
 
         if (access == null) {
-            return "No access (account) configured for this project. A project OWNER can add one under Projects -> "
-                    + (agent.getProject() != null ? agent.getProject().getName() : "?") + " -> Agentic Settings -> Accesses.";
+            return "No access (account) chosen for this agent. A project OWNER can pick one on the agent's edit page"
+                    + " (accesses are managed under Projects -> " + (agent.getProject() != null ? agent.getProject().getName() : "?") + " -> Agentic Settings).";
         }
 
         if (!access.getEnabled()) {

@@ -62,4 +62,5 @@
     <include file="20261117090000_agentic_access_defaults.sql" relativeToChangelogFile="true"/>
     <include file="20261201000000_project_agentic_settings_drop.sql" relativeToChangelogFile="true"/>
     <include file="20261117100000_mail.sql" relativeToChangelogFile="true"/>
+    <include file="20261118090000_agentic_access_explicit.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

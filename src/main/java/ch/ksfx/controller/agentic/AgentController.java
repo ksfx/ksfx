@@ -190,9 +190,26 @@ public class AgentController
             agent.setCreatedAt(previousAgent.getCreatedAt());
         }
 
-        // Only an access of the agent's own project; anything else (or none) = the project default.
+        // Every agent names its access - there is no default (Kejo, 2026-11-17). Only an access of
+        // the agent's own project counts; without one the form comes back with a clear message.
         AgenticAccess chosenAccess = agenticAccessId != null ? agenticAccessDAO.getAgenticAccessForId(agenticAccessId) : null;
-        agent.setAgenticAccess(chosenAccess != null && agent.getProject() != null && chosenAccess.getProject().getId().equals(agent.getProject().getId()) ? chosenAccess : null);
+        boolean accessValid = chosenAccess != null && agent.getProject() != null && chosenAccess.getProject().getId().equals(agent.getProject().getId());
+
+        if (!accessValid) {
+            agent.setAgenticAccess(null);
+            model.addAttribute("agent", agent);
+            model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
+            model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
+            model.addAttribute("lastActualModel", isNew ? null : effectiveModelService.lastActualModelFor(agent));
+            addAccessChoices(agent, model);
+            model.addAttribute("accessError", agenticAccessService.accessesFor(agent.getProject()).isEmpty()
+                    ? "This project has no access yet - add one on the project's Agentic Settings page first."
+                    : "Please choose the access this agent runs on.");
+
+            return "agentic/agent/agent_edit";
+        }
+
+        agent.setAgenticAccess(chosenAccess);
 
         if (isNew) {
             agent.setCreatedAt(new Date());
@@ -236,12 +253,11 @@ public class AgentController
         return "redirect:/agentic/edit/" + agent.getId();
     }
 
-    /** The access part of the edit form: the project's accesses, its default, the agent's effective access and its usage. */
+    /** The access part of the edit form: the project's accesses, the agent's effective access and its usage. */
     private void addAccessChoices(Agent agent, Model model)
     {
         List<AgenticAccess> accesses = agenticAccessService.accessesFor(agent != null ? agent.getProject() : null);
         model.addAttribute("accesses", accesses);
-        model.addAttribute("defaultAccess", accesses.stream().filter(AgenticAccess::getDefaultAccess).findFirst().orElse(null));
         model.addAttribute("effectiveAccess", agenticAccessService.effectiveAccessFor(agent));
         model.addAttribute("agentUsage", agent != null && agent.getId() != null ? agenticUsageStatsService.usageForAgent(agent.getId()) : null);
     }
@@ -311,7 +327,6 @@ public class AgentController
         model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
         model.addAttribute("lastActualModel", effectiveModelService.lastActualModelFor(agent));
         model.addAttribute("effectiveAccess", agenticAccessService.effectiveAccessFor(agent));
-        model.addAttribute("accessCount", agenticAccessService.accessesFor(agent.getProject()).size());
         model.addAttribute("messages", messages);
         // A full page (exactly MESSAGE_PAGE_SIZE rows) doesn't *guarantee* there's an older message
         // still to load - the conversation could happen to have exactly that many - but it's the

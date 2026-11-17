@@ -56,7 +56,7 @@
                 <tbody>
                 <tr th:each="x : ${allAccesses}" th:classappend="|ksfx-access--${x.statusKey}|">
                     <td><a th:href="@{/agentic/projects/{id}/settings/(id=${x.project.id})}" th:text="${x.project.name}">Project</a></td>
-                    <td><span th:text="${x.name}">Standard</span> <span class="ksfx-access-default" th:if="${x.defaultAccess}">Default</span></td>
+                    <td><span th:text="${x.name}">Standard</span></td>
                     <td th:text="${x.authModeLabel}">API key</td>
                     <td><span class="ksfx-access-status"><span class="ksfx-access-status-dot"></span><span th:text="${T(ch.ksfx.services.agentic.AgenticAccessService).statusLabel(x)}">OK</span></span></td>
                     <td class="text-muted" th:text="${x.claudeRateLimitUpdatedAt != null} ? ${#dates.format(x.claudeRateLimitUpdatedAt, 'yyyy-MM-dd HH:mm')} : '-'"></td>
