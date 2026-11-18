@@ -363,7 +363,8 @@
         }
     });
 
-    saveBtn.addEventListener('click', function () {
+    // Save and leave the editor - the button below the editor and the same one above it.
+    function saveAndClose() {
         if (!form.reportValidity() || !editor) {
             return;
         }
@@ -371,7 +372,56 @@
         stopped = true;
         contentField.value = editor.getMarkdown();
         form.submit();
-    });
+    }
+
+    // Ctrl+S / Cmd+S: save a version and stay in the editor (the live session goes on). Posts the
+    // same form in the background; the server answers with a redirect - to the page on success,
+    // back to /edit (with the reason) when the save was refused, e.g. without a title.
+    var saving = false;
+
+    function saveAndStay() {
+        if (solo) {
+            saveAndClose(); // a new page is created by its first save - that leaves the editor once
+            return;
+        }
+
+        if (!form.reportValidity() || !editor || saving) {
+            return;
+        }
+
+        saving = true;
+        contentField.value = editor.getMarkdown();
+        setStatus('saving…', 'warn');
+
+        fetch(form.action, { method: 'POST', credentials: 'same-origin', body: new FormData(form) })
+            .then(function (response) {
+                if (!response.ok || /\/edit(\?|$)/.test(response.url)) {
+                    throw new Error('not saved - check the title and the parent page');
+                }
+
+                var now = new Date();
+                setStatus('saved ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2), 'ok');
+                setTimeout(function () { setStatus('live', 'ok'); }, 4000);
+            })
+            .catch(function (error) {
+                setStatus('save failed', 'error');
+                notify('Save failed: ' + error.message);
+            })
+            .then(function () {
+                saving = false;
+            });
+    }
+
+    saveBtn.addEventListener('click', saveAndClose);
+    document.getElementById('wikiCollabSaveTop').addEventListener('click', saveAndClose);
+
+    // Capture phase: before the editor (or the browser's own "save page as") sees the keystroke.
+    document.addEventListener('keydown', function (event) {
+        if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === 's' || event.key === 'S')) {
+            event.preventDefault();
+            saveAndStay();
+        }
+    }, true);
 
     window.addEventListener('pagehide', function () {
         stopped = true;

@@ -978,6 +978,24 @@
     background: rgba(128, 128, 128, .12);
 }
 
+.wiki-collab-toolbar .wiki-collab-save {
+    margin-left: auto;
+    padding: 0 12px;
+    border-color: #2e77d0;
+    background: #2e77d0;
+    color: #fff;
+}
+
+.wiki-collab-toolbar .wiki-collab-save:hover {
+    border-color: #1f5fae;
+    background: #1f5fae;
+}
+
+.wiki-edit-shortcut {
+    opacity: .55;
+    font-size: .8em;
+}
+
 .wiki-collab-toolbar .sep {
     width: 1px;
     height: 18px;

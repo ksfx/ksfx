@@ -79,6 +79,8 @@
                 <button type="button" data-cmd="image" title="Image (or simply paste / drop one into the text)"><i class="fa fa-picture-o"></i></button>
                 <input type="file" id="wikiCollabImageInput" accept="image/*" hidden="hidden" />
                 <button type="button" data-cmd="hr" title="Horizontal line">—</button>
+                <button type="button" id="wikiCollabSaveTop" class="wiki-collab-save"
+                        th:title="${isNew} ? 'Save (Ctrl+S)' : 'Save and close - Ctrl+S saves without leaving the editor'"><i class="fa fa-check"></i> Save</button>
             </div>
             <div id="wikiCollabMount" class="wiki-collab-mount"
                  th:data-collab-js="@{/vendor/collab-editor/collab-editor.min.js}"
@@ -95,6 +97,7 @@
                 <button type="button" id="wikiEditSaveBtn" class="wiki-btn wiki-btn-primary"><i class="fa fa-check"></i> Save</button>
                 <a th:if="${!isNew}" th:href="@{/wiki/{wikiId}/page/{pageId}(wikiId=${currentWiki.id},pageId=${pageId})}" class="wiki-btn">Cancel</a>
                 <a th:if="${isNew}" th:href="@{/wiki/{wikiId}/(wikiId=${currentWiki.id})}" class="wiki-btn">Cancel</a>
+                <span class="wiki-edit-shortcut" th:unless="${isNew}">Ctrl+S saves without leaving the editor</span>
 
                 <!-- Moving a page is rare - a quiet link that reveals the folder select on demand
                      (see wiki.js). The select is in the form (and submits its pre-selected current
