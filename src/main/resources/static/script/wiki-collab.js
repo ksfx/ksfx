@@ -14,6 +14,9 @@
  * Agents write through their own API; while a session runs, their write arrives here (only at the
  * leader, the longest-present client) and is merged three-way into the live document.
  * "Save" stores the current state as a new version via the normal form, as before.
+ *
+ * A NEW page uses the same editor alone (no collab base URL): a local Yjs document, no server
+ * session - the page gets one once it exists, from its first save on.
  */
 (function () {
     'use strict';
@@ -25,6 +28,7 @@
     }
 
     var base = mount.dataset.collabBase;
+    var solo = !base; // new page - nothing to share yet
     var csrfHeader = mount.dataset.csrfHeader;
     var csrfParam = mount.dataset.csrfParam;
     var csrfToken = mount.dataset.csrfToken;
@@ -45,6 +49,10 @@
     var snapshotStale = false;
 
     function setStatus(text, kind) {
+        if (!statusEl) {
+            return; // new page: no live status bar
+        }
+
         statusEl.textContent = text;
         statusEl.className = 'wiki-collab-status' + (kind ? ' wiki-collab-status--' + kind : '');
     }
@@ -267,6 +275,11 @@
         clientId = ydoc.clientID;
         awareness = new K.Awareness(ydoc);
 
+        if (solo) {
+            return K.createEditor({ el: mount, ydoc: ydoc, awareness: awareness, initialMarkdown: contentField.value || '' })
+                .then(function (created) { editor = created; });
+        }
+
         ydoc.on('update', function (update, origin) {
             if (origin !== 'remote') {
                 pendingUpdates.push(K.toBase64(update));
@@ -318,7 +331,7 @@
     window.addEventListener('pagehide', function () {
         stopped = true;
 
-        if (clientId && navigator.sendBeacon) {
+        if (!solo && clientId && navigator.sendBeacon) {
             var data = new URLSearchParams();
             data.append('clientId', clientId);
             data.append(csrfParam, csrfToken);

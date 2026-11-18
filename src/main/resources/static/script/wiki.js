@@ -1,9 +1,7 @@
 /*
- * Wiki pages: renders markdown read-only (wiki_page.html) and drives the WYSIWYG editor
- * (wiki_edit.html), both via the same vendored Toast UI Editor bundle already used by the Agentic
- * file browser (see agentic-file-browser.js) - Editor.factory({viewer:true}) is Toast UI's own
- * read-only mode, so this is one rendering codepath and one vendored asset for both views, no new
- * dependency for markdown-to-HTML.
+ * Wiki pages: renders markdown read-only (wiki_page.html) via the vendored Toast UI viewer
+ * (Editor.factory({viewer:true}), also used by the Agentic file browser). Editing - new and
+ * existing pages - is wiki-collab.js (Milkdown, live together on existing pages).
  */
 (function () {
     'use strict';
@@ -79,84 +77,7 @@
         });
     }
 
-    // --- Editor ----------------------------------------------------------------------------------
-    var editorMount = document.getElementById('wikiEditorMount');
-
-    if (editorMount) {
-        var form = document.getElementById('wikiEditForm');
-        var contentField = document.getElementById('wikiEditContent');
-        var saveBtn = document.getElementById('wikiEditSaveBtn');
-        var assetUploadEndpoint = editorMount.dataset.assetUploadEndpoint;
-        var csrfHeader = editorMount.dataset.csrfHeader;
-        var csrfToken = editorMount.dataset.csrfToken;
-        var editor = null;
-
-        // The editor should fill what the viewport has left below the title fields: everything
-        // from the mount's top edge down to the bottom of the window, minus the Save/Cancel row
-        // and the layout's bottom padding. Recomputed on resize; never below the CSS min-height so
-        // a tiny window still gets a usable editor (the page then scrolls, as before).
-        var MIN_EDITOR_HEIGHT = 420;
-
-        function fitEditorHeight() {
-            if (!editor) {
-                return;
-            }
-
-            var actions = document.querySelector('.wiki-edit-actions');
-            var reserved = (actions ? actions.offsetHeight + 14 : 0) + 24;
-            var available = window.innerHeight - editorMount.getBoundingClientRect().top - reserved;
-
-            editor.setHeight(Math.max(MIN_EDITOR_HEIGHT, Math.floor(available)) + 'px');
-        }
-
-        loadToastUiAssets(editorMount.dataset.toastuiJs, editorMount.dataset.toastuiCss).then(function () {
-            editor = new toastui.Editor({
-                el: editorMount,
-                height: MIN_EDITOR_HEIGHT + 'px',
-                initialEditType: 'wysiwyg',
-                previewStyle: 'tab',
-                initialValue: contentField.value,
-                hooks: {
-                    // Toast UI calls this with the pasted/dropped image blob and a callback expecting
-                    // (url, altText) - upload it as a WikiAsset and hand back the URL it's served from
-                    // (WikiController.asset), instead of Toast UI's default of inlining the image as a
-                    // base64 data URL directly into the markdown.
-                    addImageBlobHook: function (blob, callback) {
-                        var formData = new FormData();
-                        formData.append('file', blob, blob.name || 'pasted-image.png');
-
-                        var options = { method: 'POST', headers: {}, body: formData };
-                        options.headers[csrfHeader] = csrfToken;
-
-                        fetch(assetUploadEndpoint, options)
-                            .then(function (response) { return response.json(); })
-                            .then(function (result) { callback(result.url, blob.name || 'image'); })
-                            .catch(function (error) { alert('Image upload failed: ' + error.message); });
-
-                        return false;
-                    }
-                }
-            });
-
-            fitEditorHeight();
-            window.addEventListener('resize', fitEditorHeight);
-        }).catch(function (error) {
-            editorMount.textContent = 'Could not load the editor: ' + error.message;
-        });
-
-        saveBtn.addEventListener('click', function () {
-            if (!form.reportValidity()) {
-                return;
-            }
-
-            contentField.value = editor ? editor.getMarkdown() : contentField.value;
-            form.submit();
-        });
-
-    }
-
-    // Rare action, so hidden by default - see the wiki-move comment in wiki_edit.html. Outside the
-    // Toast UI block: existing pages use the live editor (wiki-collab.js) instead.
+    // Rare action, so hidden by default - see the wiki-move comment in wiki_edit.html.
     var moveToggle = document.getElementById('wikiMoveToggle');
 
     if (moveToggle) {
