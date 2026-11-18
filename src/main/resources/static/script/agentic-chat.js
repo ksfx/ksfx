@@ -84,8 +84,12 @@
     // still-running recording always gets stopped as part of sending, instead of silently
     // continuing to listen in the background until the user remembers to click the mic again.
     var stopVoiceInputIfListening = function () {};
+    // Overridden by the voice block below; a recording in progress must not be lost to an automatic reload.
+    var isVoiceInputListening = function () { return false; };
 
-    var ROLE_LABELS = { user: 'You', assistant: 'Assistant', system: 'System', agent: 'Agent' };
+    // Chat messages are labelled with the sender's first name, not "You" (several members may read
+    // the same chat): live bubbles use the logged-in user's label from the page.
+    var ROLE_LABELS = { user: root.dataset.userLabel || 'User', assistant: 'Assistant', system: 'System', agent: 'Agent' };
 
     var TOOL_ICONS = {
         Bash: 'fa-terminal',
@@ -331,9 +335,17 @@
         inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
     }
 
+    // The composer stays usable while a turn runs: what is sent then waits in the server-side queue
+    // and runs as the next turn (see sendMessage / 'queued' / 'next_turn'). turnBusy only tracks
+    // whether a turn is running in this page; read-only viewers keep their disabled composer.
+    var turnBusy = false;
+
     function setSending(sending) {
-        sendBtn.disabled = sending;
-        inputEl.disabled = sending;
+        turnBusy = sending;
+
+        if (sending) {
+            hiddenDuringTurn = false; // a new turn starts watching from scratch (see recoverBrokenStream)
+        }
     }
 
     // Parses one raw multi-line SSE chunk (from the fetch()+ReadableStream buffer in sendMessage())
@@ -343,37 +355,251 @@
     // this at all - its listeners get eventName/data pre-split by the browser and call applyEvent
     // directly - but both paths end up rendering through the exact same applyEvent, so a live-sent
     // turn and one you reconnect to mid-flight are visually indistinguishable.
-    function handleSseEvent(rawEvent, assistantMessage, userMessage) {
-        var eventName = 'message';
-        var dataLines = [];
+    // ---- Chat queue ---------------------------------------------------------------------------
+    function markQueued(msg, queueId) {
+        msg.root.classList.add('agentic-msg--queued');
+        msg.root.dataset.queueId = queueId;
 
-        rawEvent.split('\n').forEach(function (line) {
-            if (line.indexOf('event:') === 0) {
-                eventName = line.substring(6).trim();
-            } else if (line.indexOf('data:') === 0) {
-                dataLines.push(line.substring(5).trim());
+        var label = msg.root.querySelector('.agentic-role-label');
+
+        if (label && !label.querySelector('.agentic-queued-badge')) {
+            var badge = document.createElement('span');
+            badge.className = 'agentic-queued-badge';
+            badge.textContent = 'wartet';
+            label.appendChild(badge);
+        }
+
+        if (!msg.root.querySelector('.agentic-msg-delete')) {
+            var del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'agentic-msg-delete';
+            del.title = 'Remove from queue';
+            del.innerHTML = '<i class="fa fa-trash-o"></i>';
+            del.dataset.deleteEndpoint = chatEndpoint.replace(/\/$/, '') + '/queued/' + queueId + '/delete';
+            msg.root.insertBefore(del, msg.root.querySelector('.agentic-bubble'));
+        }
+    }
+
+    function unmarkQueued(el) {
+        el.classList.remove('agentic-msg--queued');
+        delete el.dataset.queueId;
+
+        var badge = el.querySelector('.agentic-queued-badge');
+        if (badge) badge.remove();
+
+        // the queue's remove button points at the queue entry, which no longer exists
+        var del = el.querySelector('.agentic-msg-delete');
+        if (del) del.remove();
+    }
+
+    // "next_turn": the queued messages listed in data just became normal messages and run now.
+    // Returns the new answer bubble - placed before any message that is still waiting.
+    function startNextTurn(currentAssistant, data) {
+        if (currentAssistant) {
+            clearTyping(currentAssistant.bubble);
+            renderMarkdown([currentAssistant.bubble]);
+        }
+
+        JSON.parse(data).forEach(function (pair) {
+            var el = messagesEl.querySelector('[data-queue-id="' + pair.queueId + '"]');
+
+            if (el) {
+                unmarkQueued(el);
+                el.dataset.messageId = pair.messageId;
+                return;
+            }
+
+            // An entry this page never saw (queued by another agent, or in another tab): render it,
+            // in order, before anything that is still waiting.
+            var msg = createMessageEl(pair.role === 'agent' ? 'agent' : 'user');
+            if (pair.role === 'agent') {
+                msg.root.querySelector('.agentic-role-label').textContent = 'Agent: ' + (pair.fromAgentName || '?');
+            }
+            if (pair.role !== 'agent' && pair.userLabel) {
+                msg.root.querySelector('.agentic-role-label').textContent = pair.userLabel;
+            }
+            msg.bubble.textContent = pair.content || '';
+            msg.root.dataset.messageId = pair.messageId;
+
+            var waiting = messagesEl.querySelector('.agentic-msg--queued');
+            if (waiting) {
+                messagesEl.insertBefore(msg.root, waiting);
             }
         });
 
-        var data = dataLines.join('\n');
+        var next = createMessageEl('assistant');
+        var stillWaiting = messagesEl.querySelector('.agentic-msg--queued');
 
-        // Specific to this one live send (corrects the user bubble this same sendMessage() call
-        // already rendered optimistically with the raw dictated text) rather than part of
-        // applyEvent's general event vocabulary - the EventSource reconnect path never needs this,
-        // since a reload always re-renders history from the DB, where the cleanup has already
-        // landed by the time this event would have fired.
-        if (eventName === 'voice_cleaned') {
-            if (userMessage) {
-                try {
-                    userMessage.bubble.textContent = JSON.parse(data).content;
-                } catch (parseError) {
-                    // ignore - the raw dictated text stays displayed, a harmless fallback
-                }
-            }
-            return;
+        if (stillWaiting) {
+            messagesEl.insertBefore(next.root, stillWaiting);
         }
 
-        applyEvent(eventName, data, assistantMessage);
+        showTyping(next.bubble);
+
+        return next;
+    }
+
+    // Replaces an answer bubble's content with the server's snapshot of the running turn - sent
+    // first whenever a stream attaches (send, reload, automatic reconnect). The events that follow
+    // continue exactly where the snapshot ends (server-side lock), so this is idempotent.
+    function applySnapshot(message, data) {
+        var snapshot = typeof data === 'string' ? JSON.parse(data) : data;
+
+        message.bubble.textContent = snapshot.text || '';
+
+        if (snapshot.toolActivity && snapshot.toolActivity.length) {
+            var body = ensureToolContainer(message);
+            body.innerHTML = '';
+            snapshot.toolActivity.forEach(function (entry) {
+                renderToolEntry(body, entry);
+            });
+        }
+
+        showTyping(message.bubble);
+        scrollToBottom();
+    }
+
+    // THE live path of the chat (since 2026-11-06): an EventSource on the turn - after sending,
+    // and when a page loads mid-turn. Replaced the former streamed POST response, which proxies
+    // (Edge web isolation) buffered until the turn ended. turn = { assistant: answer bubble }.
+    // ---- Polling fallback for buffering proxies ------------------------------------------------
+    // The server sends the snapshot the moment a stream attaches; normally it arrives within
+    // milliseconds. Edge under web isolation buffers EventSource (and any stream) until it ends -
+    // then nothing arrives, and the chat switches to polling the snapshot every 2 s: short, complete
+    // requests every proxy passes on at once. Remembered per tab, so later turns poll right away.
+    var POLL_MODE_KEY = 'ksfx-chat-poll-mode';
+    var STREAM_WATCHDOG_MS = 3000;
+    var POLL_INTERVAL_MS_TURN = 2000;
+
+    function pollModeRemembered() {
+        try { return sessionStorage.getItem(POLL_MODE_KEY) === '1'; } catch (e) { return false; }
+    }
+
+    function rememberPollMode() {
+        try { sessionStorage.setItem(POLL_MODE_KEY, '1'); } catch (e) { /* storage unavailable */ }
+    }
+
+    function pollTurn(turn) {
+        var lastKey = null;
+
+        function next() {
+            setTimeout(tick, POLL_INTERVAL_MS_TURN);
+        }
+
+        function tick() {
+            fetch(root.dataset.snapshotEndpoint, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                .then(function (response) {
+                    if (response.status === 401) {
+                        reloadKeepingDraft(); // session gone - the reload leads to the login
+                        return null;
+                    }
+
+                    return response.ok ? response.json() : undefined;
+                })
+                .then(function (snapshot) {
+                    if (snapshot === null) {
+                        return;
+                    }
+
+                    if (snapshot === undefined) {
+                        next(); // transient server problem - try again
+                        return;
+                    }
+
+                    // Turn over, or the queue hand-off started the next one: the reload shows the
+                    // final answer (and follows the next turn, polling again) - simplest correct state.
+                    if (!snapshot.running || (lastKey !== null && snapshot.turnKey !== lastKey)) {
+                        reloadKeepingDraft();
+                        return;
+                    }
+
+                    lastKey = snapshot.turnKey;
+                    applySnapshot(turn.assistant, snapshot);
+                    next();
+                })
+                .catch(next);
+        }
+
+        tick();
+    }
+
+    function followTurn(turn) {
+        if (pollModeRemembered()) {
+            pollTurn(turn);
+            return null;
+        }
+
+        var stream = new EventSource(root.dataset.streamEndpoint);
+        var finished = false;
+        var receivedSomething = false;
+
+        // Nothing at all within 3 s (not even the snapshot sent on attach) means something between
+        // here and the server buffers the stream: switch to polling for this tab.
+        var watchdog = setTimeout(function () {
+            if (!receivedSomething && !finished) {
+                finished = true;
+                stream.close();
+                rememberPollMode();
+                pollTurn(turn);
+            }
+        }, STREAM_WATCHDOG_MS);
+
+        stream.addEventListener('snapshot', function (e) {
+            receivedSomething = true;
+            clearTimeout(watchdog);
+            applySnapshot(turn.assistant, e.data);
+        });
+
+        ['text', 'tool_use', 'tool_result', 'model', 'usage', 'generated_files'].forEach(function (name) {
+            stream.addEventListener(name, function (e) {
+                receivedSomething = true;
+                applyEvent(name, e.data, turn.assistant);
+            });
+        });
+
+        // Chat queue hand-off: the queued messages run next on this same stream.
+        stream.addEventListener('next_turn', function (e) {
+            turn.assistant = startNextTurn(turn.assistant, e.data);
+        });
+
+        stream.addEventListener('done', function (e) {
+            clearTimeout(watchdog);
+            finished = true;
+            stream.close();
+            clearTyping(turn.assistant.bubble);
+            renderMarkdown([turn.assistant.bubble]).then(scrollToBottom);
+            setSending(false);
+
+            var info = {};
+            try { info = JSON.parse(e.data); } catch (parseError) { /* plain done */ }
+
+            // The turn was over before this stream attached (very fast turn or early failure):
+            // nothing streamed, so show the persisted result.
+            if (info.notRunning && !receivedSomething) {
+                reloadKeepingDraft();
+            }
+        });
+
+        // Two kinds of 'error' arrive here: the server's error EVENT (carries data - show it), and
+        // EventSource's own connection error (no data). On the latter the browser reconnects by
+        // itself and the fresh snapshot fills in whatever was missed; only if it gave up for good
+        // (CLOSED) does the reload recovery take over.
+        stream.addEventListener('error', function (e) {
+            if (e.data !== undefined) {
+                applyEvent('error', e.data, turn.assistant);
+                return;
+            }
+
+            if (finished) {
+                return;
+            }
+
+            if (stream.readyState === EventSource.CLOSED) {
+                recoverBrokenStream(turn.assistant, 'connection lost');
+            }
+        });
+
+        return stream;
     }
 
     function applyEvent(eventName, data, assistantMessage) {
@@ -402,10 +628,14 @@
             // Re-show the indicator: there's often a gap before the next tool call or the
             // final text while the agent keeps working, and without this it looks hung.
             showTyping(assistantMessage.bubble);
+        } else if (eventName === 'model') {
+            // Arrives just before 'usage' - remembered so the token line can show it, matching
+            // the server-rendered line ("N tokens · model") that a reload would produce.
+            assistantMessage.model = JSON.parse(data);
         } else if (eventName === 'usage') {
             var tokens = document.createElement('div');
             tokens.className = 'agentic-message-tokens';
-            tokens.textContent = JSON.parse(data) + ' tokens';
+            tokens.textContent = JSON.parse(data) + ' tokens' + (assistantMessage.model ? ' \u00b7 ' + assistantMessage.model : '');
             assistantMessage.root.appendChild(tokens);
         } else if (eventName === 'generated_files') {
             var filesDiv = document.createElement('div');
@@ -418,6 +648,91 @@
         }
 
         scrollToBottom();
+    }
+
+    // ---- Recovering a stream that broke because the app went to the background -----------------
+    // Leaving the app (mobile) kills the streaming connection, but the turn keeps running
+    // server-side and ends up persisted either way. A reload is the COMPLETE way back: the chat page
+    // re-renders the partial turn and re-attaches to the rest (see the 'agentRunning' block below) -
+    // re-attaching in place would only receive events from now on and miss what happened meanwhile.
+    // No draft to protect: the composer is disabled while a turn runs (setSending), and a stream can
+    // only break during one.
+    var hiddenDuringTurn = false;
+    var reloadWhenVisible = false;
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden' && turnBusy) {
+            hiddenDuringTurn = true;
+        }
+
+        if (document.visibilityState === 'visible' && reloadWhenVisible) {
+            reloadKeepingDraft();
+        }
+    });
+
+    // Mobile browsers freeze scripts in the background, so the broken fetch often only rejects
+    // AFTER returning - "was the page hidden at some point during this turn" is the reliable test,
+    // not "is it hidden right now".
+    // Since the composer stays open during a turn (chat queue), a reload could hit a half-typed
+    // message: it is parked in sessionStorage (per tab, per agent, never leaves the browser) and
+    // restored after the reload. Chosen files and a running dictation cannot be parked, so with
+    // either pending there is no automatic reload - the error gets the "Neu laden" button instead.
+    var draftKey = 'ksfx-chat-draft:' + chatEndpoint;
+
+    function canReloadSafely() {
+        return pendingFiles.length === 0 && !isVoiceInputListening();
+    }
+
+    function reloadKeepingDraft() {
+        try {
+            if (inputEl.value) {
+                sessionStorage.setItem(draftKey, inputEl.value);
+            }
+        } catch (storageError) {
+            // storage unavailable (private mode quota etc.) - the reload still recovers the turn
+        }
+
+        location.reload();
+    }
+
+    try {
+        var parkedDraft = sessionStorage.getItem(draftKey);
+
+        if (parkedDraft !== null) {
+            sessionStorage.removeItem(draftKey);
+
+            if (!inputEl.value && !inputEl.disabled) {
+                inputEl.value = parkedDraft;
+            }
+        }
+    } catch (storageError) {
+        // nothing parked / storage unavailable
+    }
+
+    function recoverBrokenStream(assistantMessage, error) {
+        if (hiddenDuringTurn && canReloadSafely()) {
+            if (document.visibilityState === 'visible') {
+                reloadKeepingDraft();
+            } else {
+                reloadWhenVisible = true;
+            }
+
+            return;
+        }
+
+        // A real network problem while watching: say so, and offer the same complete way back.
+        clearTyping(assistantMessage.bubble);
+        var errorMessage = createMessageEl('system');
+        errorMessage.bubble.textContent = 'Connection error: ' + error + ' ';
+        var reloadBtn = document.createElement('button');
+        reloadBtn.type = 'button';
+        reloadBtn.className = 'agentic-reload-btn';
+        reloadBtn.textContent = 'Neu laden';
+        reloadBtn.addEventListener('click', function () {
+            reloadKeepingDraft();
+        });
+        errorMessage.bubble.appendChild(reloadBtn);
+        setSending(false);
     }
 
     function sendMessage() {
@@ -457,56 +772,84 @@
             formData.append('files', file);
         });
         clearPendingFiles();
-
         inputEl.value = '';
         autoResize();
-        setSending(true);
 
-        var assistantMessage = createMessageEl('assistant');
-        showTyping(assistantMessage.bubble);
+        // A turn already runs in this page: the server will queue this message, so no answer
+        // bubble yet. Otherwise a normal turn starts.
+        var turn = { assistant: null };
+
+        if (turnBusy) {
+            userMessage.root.classList.add('agentic-msg--queued');
+        } else {
+            setSending(true);
+            turn.assistant = createMessageEl('assistant');
+            showTyping(turn.assistant.bubble);
+        }
 
         // No Content-Type header here - the browser sets multipart/form-data with the correct
         // boundary itself; setting it manually would drop the boundary and break parsing server-side.
         var headers = {};
         headers[csrfHeader] = csrfToken;
 
+        // The POST only sends; it answers at once (started / queued / error). The answer then
+        // streams over followTurn's EventSource.
         fetch(chatEndpoint, {
             method: 'POST',
             headers: headers,
             body: formData
         }).then(function (response) {
-            var reader = response.body.getReader();
-            var decoder = new TextDecoder();
-            var buffer = '';
+            return response.json();
+        }).then(function (result) {
+            if (result.status === 'error') {
+                if (turn.assistant) {
+                    clearTyping(turn.assistant.bubble);
+                    turn.assistant.root.remove();
+                    setSending(false);
+                }
 
-            function pump() {
-                return reader.read().then(function (result) {
-                    if (result.done) {
-                        clearTyping(assistantMessage.bubble);
-                        setSending(false);
-                        return;
-                    }
-
-                    buffer += decoder.decode(result.value, { stream: true });
-
-                    var events = buffer.split('\n\n');
-                    buffer = events.pop();
-
-                    events.forEach(function (rawEvent) {
-                        if (rawEvent.trim()) {
-                            handleSseEvent(rawEvent, assistantMessage, userMessage);
-                        }
-                    });
-
-                    return pump();
-                });
+                userMessage.root.classList.remove('agentic-msg--queued');
+                createMessageEl('system').bubble.textContent = result.error || 'Could not send the message.';
+                return;
             }
 
-            return pump();
+            if (result.status === 'queued') {
+                if (turn.assistant) {
+                    // This page thought the agent was idle, but a turn was running (another tab, a
+                    // schedule, another agent): the reload shows that turn and the queue correctly.
+                    reloadKeepingDraft();
+                    return;
+                }
+
+                markQueued(userMessage, result.queueId);
+
+                if (result.content) {
+                    userMessage.bubble.textContent = result.content;
+                }
+
+                return;
+            }
+
+            // started (voice input: the server returns the cleaned-up text)
+            if (result.content) {
+                userMessage.bubble.textContent = result.content;
+            }
+
+            if (!turn.assistant) {
+                // Sent as "queued", but the previous turn had just ended: it runs right away.
+                unmarkQueued(userMessage.root);
+                setSending(true);
+                turn.assistant = createMessageEl('assistant');
+                showTyping(turn.assistant.bubble);
+            }
+
+            followTurn(turn);
         }).catch(function (error) {
-            clearTyping(assistantMessage.bubble);
-            createMessageEl('system').bubble.textContent = 'Connection error: ' + error;
-            setSending(false);
+            if (turn.assistant) {
+                recoverBrokenStream(turn.assistant, error);
+            } else {
+                createMessageEl('system').bubble.textContent = 'Could not queue the message: ' + error;
+            }
         });
     }
 
@@ -559,6 +902,12 @@
         // handler that always follows it doesn't also try to transparently restart into the same
         // failure - see both handlers below.
         var fatalError = false;
+        // Set when sending ends the recording: everything recognition still delivers afterwards
+        // belongs to a message that is already on its way. Without this, a final result arriving
+        // after the send rewrote the just-cleared input with the whole dictation, and re-set
+        // wasVoiceInput so the NEXT message was wrongly flagged as voice (found 2026-10-29).
+        // Cleared again when the next recording starts.
+        var discardResults = false;
 
         // Two earlier versions of this handler both assumed event.results entries are disjoint
         // chunks that should simply be concatenated - one summed from event.resultIndex onward
@@ -575,6 +924,10 @@
         // what's already there), which is what lets multiple distinct sentences within one
         // continuous session still accumulate correctly.
         recognition.addEventListener('result', function (event) {
+            if (discardResults) {
+                return;
+            }
+
             // Compared against the last committed segment only, not the whole accumulated text -
             // comparing against everything would (and, while building this fix, briefly did) wrongly
             // merge two genuinely separate sentences whenever the second one doesn't happen to start
@@ -690,9 +1043,18 @@
             recognition.stop();
         }
 
+        // Called by sendMessage(): abort() rather than the button's stop() - stop() lets the
+        // recognizer finish the pending audio and deliver one more result, which used to land in
+        // the input AFTER it had been cleared. abort() drops pending results; discardResults guards
+        // against any that still slip through. Nothing is lost: the message sends the text that was
+        // in the field when the button was pressed.
+        isVoiceInputListening = function () { return listening; };
+
         stopVoiceInputIfListening = function () {
             if (listening) {
-                stopListening();
+                discardResults = true;
+                manualStop = true;
+                recognition.abort();
             }
         };
 
@@ -703,6 +1065,7 @@
             }
 
             baseText = inputEl.value.trim();
+            discardResults = false;
             listening = true;
             micBtn.classList.add('agentic-mic-btn--active');
             requestWakeLock();
@@ -718,6 +1081,64 @@
     // attribute is deleted once consumed, so a selector requiring it present can never match
     // something already-hydrated, however many times (page load, then any number of "load older"
     // clicks) this runs over the whole document.
+    // ---- Markdown in agent answers ---------------------------------------------------------------
+    // Finished assistant answers render as Markdown through the same vendored Toast UI viewer the
+    // wiki and the issues use (one renderer, same look; its viewer sanitizes HTML). Lazy-loaded
+    // once. Live text stays plain while it streams - half a table would flicker on every chunk - and
+    // is rendered once its turn ends. If the renderer cannot load, the plain text simply stays.
+    var markdownReady = null;
+
+    function loadMarkdownRenderer() {
+        if (!markdownReady) {
+            markdownReady = new Promise(function (resolve, reject) {
+                if (window.toastui && window.toastui.Editor) {
+                    resolve();
+                    return;
+                }
+
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = root.dataset.toastuiCss;
+                document.head.appendChild(link);
+
+                var script = document.createElement('script');
+                script.src = root.dataset.toastuiJs;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        return markdownReady;
+    }
+
+    // Renders the given answer bubbles; resolves once done (or failed - then they stay plain text).
+    function renderMarkdown(bubbles) {
+        bubbles = Array.prototype.filter.call(bubbles, function (bubble) {
+            return !bubble.classList.contains('agentic-bubble--md') && bubble.textContent.trim() !== '';
+        });
+
+        if (!bubbles.length || !root.dataset.toastuiJs) {
+            return Promise.resolve();
+        }
+
+        return loadMarkdownRenderer().then(function () {
+            bubbles.forEach(function (bubble) {
+                var markdown = bubble.textContent;
+                bubble.textContent = '';
+                bubble.classList.add('agentic-bubble--md');
+                window.toastui.Editor.factory({ el: bubble, viewer: true, initialValue: markdown });
+            });
+        }).catch(function (error) {
+            console.error('Markdown renderer not available', error);
+        });
+    }
+
+    // The persisted answers on the page (they carry a message id; live and in-progress ones do not).
+    function renderHistoryMarkdown() {
+        return renderMarkdown(document.querySelectorAll('.agentic-msg--assistant[data-message-id] > .agentic-bubble'));
+    }
+
     function hydrateHistory() {
         document.querySelectorAll('.agentic-attachments[data-attachments]').forEach(function (el) {
             try {
@@ -754,9 +1175,17 @@
 
             delete body.dataset.toolActivity;
         });
+
+        return renderHistoryMarkdown();
     }
 
-    hydrateHistory();
+    hydrateHistory().then(function () {
+        // Rendered Markdown is taller than the plain text was - stay at the bottom unless the user
+        // has scrolled in the meantime (pinUntil is 0 then, see pinToBottom below).
+        if (pinUntil) {
+            scrollToBottom();
+        }
+    });
 
     // Exposed globally so agentic-search.js can reuse this exact rendering logic for the message
     // bubbles it injects into the search-context view (see its loadContext()), instead of
@@ -778,9 +1207,8 @@
             ? {
                 root: inProgressEl,
                 bubble: inProgressEl.querySelector('.agentic-bubble'),
-                // Already populated by hydrateHistory() above if the server sent partial
-                // tool activity - reusing it here (instead of leaving toolBody unset) stops
-                // ensureToolContainer from creating a second, empty <details> block alongside it.
+                // Reuse the server-rendered tool block (hydrateHistory) so the snapshot refills it
+                // instead of ensureToolContainer creating a second one.
                 toolBody: inProgressEl.querySelector('.agentic-tool-activity-body')
             }
             : createMessageEl('assistant');
@@ -788,28 +1216,9 @@
         showTyping(assistantMessage.bubble);
         setSending(true);
 
-        // GET, unlike the send flow's POST - EventSource can't do POST, but that's fine here since
-        // this connection only ever subscribes to an already-running turn, never starts one.
-        var stream = new EventSource(root.dataset.streamEndpoint);
-
-        ['text', 'tool_use', 'tool_result', 'usage', 'generated_files'].forEach(function (name) {
-            stream.addEventListener(name, function (e) {
-                applyEvent(name, e.data, assistantMessage);
-            });
-        });
-
-        // EventSource's own 'error' fires both for a genuine connection problem and for the normal
-        // "server closed the stream" case (how a completed/failed turn ends this connection) - either
-        // way there's nothing more coming, so just stop showing busy and let the next page load (or
-        // the already-persisted AgentMessage on a future reload) reflect the final state. Not
-        // attempting to special-case a real mid-turn error here (unlike the send flow's own 'error'
-        // SSE event, which does): the SYSTEM error message is already persisted server-side by
-        // executeTurn regardless, this connection existing purely to catch up on an in-flight turn.
-        stream.addEventListener('error', function () {
-            clearTyping(assistantMessage.bubble);
-            setSending(false);
-            stream.close();
-        });
+        // Same live path as after sending; the snapshot it starts with supersedes the partial text
+        // the server rendered into the page.
+        followTurn({ assistant: assistantMessage });
     }
 
     // Per-message delete (the small trash icon revealed on hover, see .agentic-msg-delete in
@@ -874,12 +1283,17 @@
                     var fetchedCount = container.querySelectorAll('.agentic-msg').length;
 
                     loadOlderBtn.insertAdjacentHTML('afterend', html);
-                    hydrateHistory();
 
                     // Prepending content above the current scroll position shoves everything below
                     // it down by the same amount - without this, the view visibly jumps and whatever
-                    // you were reading scrolls out of view instead of staying put.
-                    messagesEl.scrollTop = previousScrollTop + (messagesEl.scrollHeight - previousScrollHeight);
+                    // you were reading scrolls out of view instead of staying put. Again once the
+                    // new answers are rendered as Markdown (asynchronously, and taller).
+                    function keepPosition() {
+                        messagesEl.scrollTop = previousScrollTop + (messagesEl.scrollHeight - previousScrollHeight);
+                    }
+
+                    hydrateHistory().then(keepPosition);
+                    keepPosition();
 
                     if (fetchedCount < MESSAGE_PAGE_SIZE) {
                         loadOlderBtn.remove();
@@ -893,7 +1307,27 @@
         });
     }
 
-    scrollToBottom();
+    // Keep the chat at the bottom for a moment after the page loads: in Edge under web isolation the
+    // page is rendered remotely and the layout settles late - even after 'load' when CSS and fonts
+    // come from the cache (switching agents) - so a single scroll can land at the top. Pinned on every
+    // frame until 2 s after 'load', and released at once when the user scrolls, taps or types.
+    var pinUntil = Date.now() + 2000;
+    function pinToBottom() {
+        if (Date.now() > pinUntil) return;
+        scrollToBottom();
+        requestAnimationFrame(pinToBottom);
+    }
+    function releasePin() { pinUntil = 0; }
+    ['wheel', 'touchstart', 'mousedown', 'keydown'].forEach(function (type) {
+        window.addEventListener(type, releasePin, { passive: true, once: true });
+    });
+    window.addEventListener('load', function () {
+        if (!pinUntil) return;
+        var running = Date.now() <= pinUntil;
+        pinUntil = Date.now() + 2000;
+        if (!running) pinToBottom();
+    });
+    pinToBottom();
     autoResize();
 })();
 
@@ -966,7 +1400,16 @@
 
     function poll() {
         fetch(statusEndpoint)
-            .then(function (response) { return response.ok ? response.json() : {}; })
+            .then(function (response) {
+                if (response.status === 401) {
+                    // Session expired: stop polling (the server answers background requests with a
+                    // clean 401 now, see WebSecurityConfig) - the next real navigation goes to the
+                    // login page anyway, and a dead poll must not keep overwriting anything.
+                    clearInterval(pollTimer);
+                    return {};
+                }
+                return response.ok ? response.json() : {};
+            })
             .then(applyStatuses)
             .catch(function () {
                 // transient polling error - just wait for the next tick
@@ -993,5 +1436,5 @@
     });
 
     poll();
-    setInterval(poll, POLL_INTERVAL_MS);
+    var pollTimer = setInterval(poll, POLL_INTERVAL_MS);
 })();

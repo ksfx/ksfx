@@ -1,5 +1,9 @@
 package ch.ksfx.controller.issues;
 
+import java.util.List;
+import ch.ksfx.services.issues.IssueAssigneeService;
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import java.util.ArrayList;
 import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
@@ -43,6 +47,12 @@ import java.util.*;
 @RequestMapping("/issues")
 public class IssueController
 {
+    @org.springframework.beans.factory.annotation.Autowired
+    private IssueAssigneeService issueAssigneeService;
+
+    @Autowired
+    private UserScope userScope;
+
     private final IssueTrackerDAO issueTrackerDAO;
     private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
@@ -108,6 +118,7 @@ public class IssueController
             return "redirect:/issues/none";
         }
 
+        userScope.requireManage(projectContextService.current()); // a whole tracker is an OWNER thing
         IssueTracker tracker = new IssueTracker();
         tracker.setProject(projectContextService.current()); // created inside the current project
         tracker.setName(name.trim());
@@ -121,7 +132,9 @@ public class IssueController
     @PostMapping("/{trackerId}/delete")
     public String deleteTracker(@PathVariable Long trackerId)
     {
-        issueTrackerDAO.deleteIssueTracker(requireTracker(trackerId));
+        IssueTracker tracker = requireTracker(trackerId);
+        userScope.requireManage(tracker.getProject());
+        issueTrackerDAO.deleteIssueTracker(tracker);
 
         return "redirect:/issues/";
     }
@@ -222,6 +235,16 @@ public class IssueController
         issue.setPriority(priority);
         issue.setStatus(status);
         issue.setLabels(issueService.resolveLabelsByIds(trackerId, labelIds));
+        String currentAssignee = issue.getAssigneeUser() != null ? "user:" + issue.getAssigneeUser().getId()
+                : issue.getAssigneeAgent() != null ? "agent:" + issue.getAssigneeAgent().getId() : "";
+
+        // Unchanged assignee is always fine; a new one must be eligible for this project (#15).
+        if (!assignee.equals(currentAssignee) && !issueAssigneeService.isAllowed(tracker.getProject(), assignee, userScope.currentUser())) {
+            redirectAttributes.addFlashAttribute("resultError", true);
+            redirectAttributes.addFlashAttribute("resultMessage", "This assignee is not available in this project.");
+            return isNew ? "redirect:/issues/" + trackerId + "/issue/new" : "redirect:/issues/" + trackerId + "/issue/" + issueNumber + "/edit";
+        }
+
         applyAssignee(issue, assignee);
 
         if (isNew) {
@@ -301,6 +324,7 @@ public class IssueController
                                @RequestParam(defaultValue = IssueService.DEFAULT_LABEL_COLOR) String color,
                                RedirectAttributes redirectAttributes)
     {
+        userScope.requireManage(requireTracker(trackerId).getProject()); // labels are tracker configuration
         IssueTracker tracker = requireTracker(trackerId);
 
         if (name == null || name.trim().isEmpty()) {
@@ -325,6 +349,7 @@ public class IssueController
     public String updateLabel(@PathVariable Long trackerId, @PathVariable Long labelId,
                                @RequestParam String name, @RequestParam String color, RedirectAttributes redirectAttributes)
     {
+        userScope.requireManage(requireTracker(trackerId).getProject()); // labels are tracker configuration
         IssueLabel label = requireLabel(trackerId, labelId);
 
         if (name != null && !name.trim().isEmpty()) {
@@ -339,6 +364,7 @@ public class IssueController
     @PostMapping("/{trackerId}/labels/{labelId}/delete")
     public String deleteLabel(@PathVariable Long trackerId, @PathVariable Long labelId)
     {
+        userScope.requireManage(requireTracker(trackerId).getProject()); // labels are tracker configuration
         issueLabelDAO.deleteIssueLabel(requireLabel(trackerId, labelId));
 
         return "redirect:/issues/" + trackerId + "/labels";
@@ -349,6 +375,7 @@ public class IssueController
     @ResponseBody
     public Map<String, Object> uploadAsset(@RequestParam("file") MultipartFile file) throws IOException
     {
+        userScope.requireWrite(projectContextService.current());
         IssueAsset asset = buildAsset(file, null);
         issueAssetDAO.saveIssueAsset(asset);
 
@@ -394,6 +421,10 @@ public class IssueController
 
         if (asset == null || asset.getContent() == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        if (asset.getIssue() != null) { // inline images carry no issue and so no project
+            userScope.requireRead(asset.getIssue().getIssueTracker().getProject());
         }
 
         MediaType mediaType = asset.getContentType() != null
@@ -458,8 +489,22 @@ public class IssueController
         model.addAttribute("isNew", issue == null);
         model.addAttribute("issue", issue);
         model.addAttribute("selectedLabelIds", selectedLabelIds);
-        model.addAttribute("allUsers", userDAO.getAllUsers());
-        model.addAttribute("allAgents", agentDAO.getAllAgents());
+        // Only people/agents of this project, sorted by name (KSFX issues #15, #16). The CURRENT
+        // assignee stays in the list even if no longer eligible, so editing never drops it.
+        User viewer = userScope.currentUser();
+        List<User> users = new java.util.ArrayList<>(issueAssigneeService.userCandidates(tracker.getProject()));
+        List<Agent> agents = new java.util.ArrayList<>(issueAssigneeService.agentCandidates(tracker.getProject(), viewer));
+
+        if (issue != null && issue.getAssigneeUser() != null && users.stream().noneMatch(u -> u.getId().equals(issue.getAssigneeUser().getId()))) {
+            users.add(0, issue.getAssigneeUser());
+        }
+
+        if (issue != null && issue.getAssigneeAgent() != null && agents.stream().noneMatch(a -> a.getId().equals(issue.getAssigneeAgent().getId()))) {
+            agents.add(0, issue.getAssigneeAgent());
+        }
+
+        model.addAttribute("allUsers", users);
+        model.addAttribute("allAgents", agents);
         model.addAttribute("allStatuses", IssueStatus.values());
         model.addAttribute("allPriorities", IssuePriority.values());
     }
@@ -472,6 +517,8 @@ public class IssueController
             throw new IllegalArgumentException("Tracker not found");
         }
 
+        userScope.requireAccess(tracker.getProject()); // read for GET, write for POST (step 2)
+
         return tracker;
     }
 
@@ -483,6 +530,8 @@ public class IssueController
             throw new IllegalArgumentException("Issue not found");
         }
 
+        userScope.requireAccess(issue.getIssueTracker().getProject());
+
         return issue;
     }
 
@@ -493,6 +542,8 @@ public class IssueController
         if (label == null || !label.getIssueTracker().getId().equals(trackerId)) {
             throw new IllegalArgumentException("Label not found");
         }
+
+        userScope.requireAccess(label.getIssueTracker().getProject());
 
         return label;
     }

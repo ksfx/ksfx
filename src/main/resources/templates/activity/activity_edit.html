@@ -83,7 +83,7 @@
             </t:if>
             -->
 
-            <button type="submit" class="btn btn-primary">Submit</button>
+            <button th:if="${@projectContextService.canWrite()}" type="submit" class="btn btn-primary">Submit</button>
             <a th:href="@{/activity/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
             <!--  <div class="box-foot form-foot">
                 <button type="submit">Save</button>

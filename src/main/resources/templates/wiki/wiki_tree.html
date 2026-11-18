@@ -35,10 +35,10 @@
                 <span class="wiki-tree-folder-label"><i class="fa fa-folder-o"></i> <span th:text="${folder.name}"></span></span>
             </span>
             <span class="wiki-tree-folder-actions">
-                <button type="button" th:data-folder-newpage="${folder.folderId}" title="New page here" aria-label="New page here"><i class="fa fa-file-o"></i></button>
-                <button type="button" th:data-folder-newfolder="${folder.folderId}" title="New subfolder" aria-label="New subfolder"><i class="fa fa-folder-o"></i></button>
-                <button type="button" th:data-folder-rename="${folder.folderId}" th:data-folder-rename-name="${folder.name}" title="Rename" aria-label="Rename"><i class="fa fa-pencil"></i></button>
-                <button type="button" th:data-folder-delete="${folder.folderId}" th:data-folder-delete-name="${folder.name}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
+                <button th:if="${@projectContextService.canWrite()}" type="button" th:data-folder-newpage="${folder.folderId}" title="New page here" aria-label="New page here"><i class="fa fa-file-o"></i></button>
+                <button th:if="${@projectContextService.canWrite()}" type="button" th:data-folder-newfolder="${folder.folderId}" title="New subfolder" aria-label="New subfolder"><i class="fa fa-folder-o"></i></button>
+                <button th:if="${@projectContextService.canWrite()}" type="button" th:data-folder-rename="${folder.folderId}" th:data-folder-rename-name="${folder.name}" title="Rename" aria-label="Rename"><i class="fa fa-pencil"></i></button>
+                <button th:if="${@projectContextService.canWrite()}" type="button" th:data-folder-delete="${folder.folderId}" th:data-folder-delete-name="${folder.name}" title="Delete" aria-label="Delete"><i class="fa fa-trash-o"></i></button>
             </span>
         </div>
         <div th:replace="~{wiki/wiki_tree :: treeChildren(node=${folder})}"></div>
@@ -71,7 +71,7 @@
             </a>
         </span>
         <span class="wiki-tree-page-actions">
-            <button type="button" th:data-page-newsubpage="${pn.page.id}" title="New subpage" aria-label="New subpage"><i class="fa fa-file-o"></i></button>
+            <button th:if="${@projectContextService.canWrite()}" type="button" th:data-page-newsubpage="${pn.page.id}" title="New subpage" aria-label="New subpage"><i class="fa fa-file-o"></i></button>
         </span>
     </div>
     <ul class="wiki-tree-list" th:if="${not #lists.isEmpty(pn.children)}">
@@ -93,11 +93,11 @@
         <option th:each="w : ${allWikis}" th:value="${w.id}" th:text="${w.name}"
                 th:selected="${currentWiki != null and w.id == currentWiki.id}"></option>
     </select>
-    <button type="button" id="wikiSwitcherNewBtn" class="wiki-switcher-new-btn" title="New wiki" aria-label="New wiki"><i class="fa fa-plus"></i></button>
+    <button th:if="${@projectContextService.canManage()}" type="button" id="wikiSwitcherNewBtn" class="wiki-switcher-new-btn" title="New wiki" aria-label="New wiki"><i class="fa fa-plus"></i></button>
     <!-- Deletes the whole CURRENT wiki - rare and maximally destructive, so wiki.js guards it with
          a confirm() plus typing the wiki's name (a plain confirm is too easy to click through for
          "everything in this wiki is gone"). -->
-    <button type="button" id="wikiDeleteBtn" class="wiki-switcher-new-btn wiki-switcher-delete-btn" title="Delete this wiki" aria-label="Delete this wiki"
+    <button th:if="${@projectContextService.canManage()}" type="button" id="wikiDeleteBtn" class="wiki-switcher-new-btn wiki-switcher-delete-btn" title="Delete this wiki" aria-label="Delete this wiki"
             th:data-wiki-name="${currentWiki.name}"><i class="fa fa-trash-o"></i></button>
     <form id="wikiCreateForm" th:action="@{/wiki/create}" method="post" hidden="hidden">
         <input type="hidden" id="wikiCreateNameInput" name="name" />
@@ -126,8 +126,8 @@
         <div class="wiki-sidebar-header">
             <span>Pages</span>
             <span class="wiki-sidebar-header-actions">
-                <button type="button" data-folder-newpage="" title="New page" aria-label="New page"><i class="fa fa-file-o"></i></button>
-                <button type="button" data-folder-newfolder="" title="New folder" aria-label="New folder"><i class="fa fa-folder-o"></i></button>
+                <button th:if="${@projectContextService.canWrite()}" type="button" data-folder-newpage="" title="New page" aria-label="New page"><i class="fa fa-file-o"></i></button>
+                <button th:if="${@projectContextService.canWrite()}" type="button" data-folder-newfolder="" title="New folder" aria-label="New folder"><i class="fa fa-folder-o"></i></button>
             </span>
         </div>
         <!-- th:insert (not th:replace) - keeps this wrapping div (and its padding) instead of being

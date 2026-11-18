@@ -14,7 +14,7 @@
 
 <div th:if="${gitSyncActive != null and !gitSyncActive}" class="alert alert-secondary">Git-Sync ist nicht aktiv - Änderungen werden nur in der Datenbank gespeichert.</div>
 <div th:if="${gitSyncWarning}" class="alert alert-warning" th:text="${gitSyncWarning}"></div>
-<div style="float:right"><a th:href="@{/publishing/publishingconfigurationedit}" class="fa fa-plus fa-2x" title="Add Publishing Configuration" alt="Add Publishing Configuration"></a>&nbsp;&nbsp;&nbsp;</div>
+<div style="float:right"><a th:if="${@projectContextService.canWrite()}" th:href="@{/publishing/publishingconfigurationedit}" class="fa fa-plus fa-2x" title="Add Publishing Configuration" alt="Add Publishing Configuration"></a>&nbsp;&nbsp;&nbsp;</div>
 <div th:if="${publishingConfigurationsPage.totalPages  > 0}">
     <div th:replace="components/pagination :: pagination(path='/publishing', page=${publishingConfigurationsPage})"></div>
 
@@ -43,12 +43,12 @@
             <td><a href="#" onclick="$('#console-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/console/publishingConfiguration/{id}(id=${publishingConfiguration.id})}" data-toggle="modal" data-target="#consoleModal" class="fa fa-terminal"></a></td>
             <td>
                 <th:block th:if="${!#strings.isEmpty(publishingConfiguration.cronSchedule)}">
-                    <span th:if="${publishingConfiguration.cronScheduleEnabled}"><a th:href="@{/publishing/publishingconfigurationdeleteschedule/{id}(id=${publishingConfiguration.id})}" class="fa fa-stop" alt="Disable Scheduling" title="Disable Scheduling"></a></span>
-                    <span th:unless="${publishingConfiguration.cronScheduleEnabled}"><a th:href="@{/publishing/publishingconfigurationschedule/{id}(id=${publishingConfiguration.id})}" class="fa fa-clock-o" alt="Enable Scheduling" title="Enable Scheduling"></a></span>
+                    <span th:if="${publishingConfiguration.cronScheduleEnabled}"><a th:if="${@projectContextService.canWrite()}" th:href="@{/publishing/publishingconfigurationdeleteschedule/{id}(id=${publishingConfiguration.id})}" class="fa fa-stop" alt="Disable Scheduling" title="Disable Scheduling"></a></span>
+                    <span th:unless="${publishingConfiguration.cronScheduleEnabled}"><a th:if="${@projectContextService.canWrite()}" th:href="@{/publishing/publishingconfigurationschedule/{id}(id=${publishingConfiguration.id})}" class="fa fa-clock-o" alt="Enable Scheduling" title="Enable Scheduling"></a></span>
                 </th:block>
             </td>
             <td><a th:href="@{/publishing/publishingconfigurationedit/{id}(id=${publishingConfiguration.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
-            <td><a th:attr="data-href=@{/publishing/publishingconfigurationdelete/{id}(id=${publishingConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+            <td><a th:if="${@projectContextService.canWrite()}" th:attr="data-href=@{/publishing/publishingconfigurationdelete/{id}(id=${publishingConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>
         </tbody>
     </table>

@@ -8,7 +8,7 @@
         <meta name="author" content="Kejo Starosta" />
         <link rel="icon" type="image/svg+xml" th:href="@{/images/ksfx-logo.svg}" />
         <meta name="description" content="KSFX Data Analysis: Information Retrieval, Sentiment Analysis, Data-Science" />
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" />
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
         <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" /> -->
         <!-- <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script> -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
@@ -79,9 +79,10 @@
              time via the bean, not from a @ModelAttribute: those are computed before the handler
              runs, and a handler that follows a deep link into another project
              (ProjectContextService#follow) would otherwise still show the old project here.
-             Switching returns to the current page, or to the area's root if the page belonged to
-             a specific entity of the old project (ProjectSwitchController). -->
-        <li th:fragment="project-crumb" class="breadcrumb-item ksfx-project-crumb" th:with="currentProject=${@projectContextService.current()}" sec:authorize="isAuthenticated()">
+             Switching always lands on the new project's dashboard (KSFX issue #20) - no returnTo, so
+             ProjectSwitchController falls back to /dashboard/. -->
+        <th:block th:fragment="project-crumb" th:with="currentProject=${@projectContextService.current()}">
+        <li class="breadcrumb-item ksfx-project-crumb" sec:authorize="isAuthenticated()">
             <th:block th:if="${currentProject != null}">
                 <div class="dropdown">
                     <!-- Initial badge instead of an icon (decided 2026-10-11): a project is a context,
@@ -92,7 +93,7 @@
                     </a>
                     <div class="dropdown-menu" aria-labelledby="projectSwitcher">
                         <a th:each="p : ${allProjects}" class="dropdown-item" th:classappend="${p.id == currentProject.id} ? ' active' : ''"
-                           th:href="@{/projects/switch/{id}(id=${p.id},returnTo=${#httpServletRequest.requestURI})}">
+                           th:href="@{/projects/switch/{id}(id=${p.id})}">
                             <span class="ksfx-project-badge" th:text="${#strings.toUpperCase(#strings.substring(p.name, 0, 1))}">P</span> <span th:text="${p.name}"></span>
                         </a>
                         <div class="dropdown-divider"></div>
@@ -101,8 +102,82 @@
                 </div>
             </th:block>
         </li>
+        <!-- The project's published ports (Docker-isolated projects only), right-aligned via CSS
+             order - emitted by the SAME fragment as the project badge, so every breadcrumb gets it
+             without touching the pages. DOM position stays next to the badge (keeps Bootstrap's
+             .breadcrumb-item + .breadcrumb-item::before separators intact for the items after it);
+             its own separator is suppressed in CSS. The listen dots are fetched ONLY when the
+             dropdown opens (see site-footer script + ProjectPortsController) - rendering never
+             knocks. -->
+        <li class="breadcrumb-item ksfx-ports-crumb" sec:authorize="isAuthenticated()"
+            th:if="${currentProject != null and currentProject.dockerIsolationEnabled}"
+            th:with="portLinks=${@projectPortsService.currentProjectPortLinks()}">
+            <div class="dropdown">
+                <a href="#" id="ksfxPortsToggle" class="ksfx-ports-toggle dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                   th:title="|Published ports of ${currentProject.name}|"
+                   th:data-status-url="@{/agentic/projects/{id}/ports/status(id=${currentProject.id})}">
+                    <i class="fa fa-rocket"></i><span class="ksfx-port-dot"
+                        th:classappend="${currentProject.dockerContainerStatus != null and currentProject.dockerContainerStatus.name() == 'RUNNING'} ? 'ksfx-port-dot-green' : 'ksfx-port-dot-grey'"
+                        th:title="|Container: ${currentProject.dockerContainerStatus}|"></span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="ksfxPortsToggle">
+                    <h6 class="dropdown-header" th:text="|Published ports - container ${currentProject.dockerContainerStatus}|">Published ports</h6>
+                    <a th:each="l : ${portLinks}" class="dropdown-item ksfx-port-link" target="_blank" rel="noopener"
+                       th:href="${l.url}" th:data-host-port="${l.hostPort}">
+                        <span class="ksfx-port-dot ksfx-port-dot-unknown" data-port-dot=""></span>
+                        <span th:text="|:${l.containerPort}|">:8080</span> <i class="fa fa-long-arrow-right"></i>
+                        <span th:text="${l.label}">host:18160</span>
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <small class="dropdown-header">Green = a process listens on the host port (checked when this menu opens).</small>
+                </div>
+            </div>
+        </li>
+        </th:block>
 
         <footer th:fragment="site-footer" th:remove="tag">
+            <script>
+                // Login dropdown: open by itself on the login page (redirect target of every
+                // unauthenticated request, and where a failed attempt comes back) and focus the
+                // first empty field.
+                $(function () {
+                    var toggle = document.getElementById('loginDropdown');
+                    if (!toggle || !/\/login\/?$/.test(location.pathname)) return;
+                    $(toggle).dropdown('toggle');
+                    setTimeout(function () {
+                        var user = document.getElementById('email');
+                        (user && !user.value ? user : document.getElementById('password')).focus();
+                    }, 50);
+                });
+            </script>
+            <script>
+                // Fills every listen dot ([data-host-port] element with a [data-port-dot] child) from
+                // the project's ports status endpoint - shared by the breadcrumb dropdown (knocks when
+                // it opens) and the project dashboard's services block (knocks right after load, the
+                // page was opened on purpose). Never during rendering: see ProjectPortsService.
+                window.ksfxApplyPortStatus = function (statusUrl) {
+                    if (!statusUrl) return;
+                    fetch(statusUrl, { credentials: 'same-origin' })
+                        .then(function (r) { return r.ok ? r.json() : {}; })
+                        .then(function (status) {
+                            document.querySelectorAll('[data-host-port]').forEach(function (el) {
+                                var dot = el.querySelector('[data-port-dot]');
+                                if (!dot) return;
+                                dot.classList.remove('ksfx-port-dot-unknown', 'ksfx-port-dot-green', 'ksfx-port-dot-grey');
+                                var listening = status[el.dataset.hostPort];
+                                dot.classList.add(listening ? 'ksfx-port-dot-green' : 'ksfx-port-dot-grey');
+                                dot.title = listening ? 'A process listens on this port' : 'Nothing listens on this port';
+                            });
+                        })
+                        .catch(function () { /* dots stay unknown */ });
+                };
+                $(function () {
+                    $(document).on('shown.bs.dropdown', '.ksfx-ports-crumb .dropdown', function () {
+                        var toggle = document.getElementById('ksfxPortsToggle');
+                        if (toggle) window.ksfxApplyPortStatus(toggle.dataset.statusUrl);
+                    });
+                });
+            </script>
             <br />
             <br />
             <br />
@@ -242,7 +317,7 @@
                                 <a class="dropdown-item" href="#">Report Categories</a>
                             </div>
                         </li>
-                        <li th:class="${#strings.contains(#httpServletRequest.requestURI, 'admin') or #strings.contains(#httpServletRequest.requestURI, 'dataexplorer') or #strings.contains(#httpServletRequest.requestURI, 'informationretrieval')} ? 'nav-item dropdown active' : 'nav-item dropdown'">
+                        <li sec:authorize="hasAuthority('ADMIN')" th:class="${#strings.contains(#httpServletRequest.requestURI, 'admin') or #strings.contains(#httpServletRequest.requestURI, 'dataexplorer') or #strings.contains(#httpServletRequest.requestURI, 'informationretrieval')} ? 'nav-item dropdown active' : 'nav-item dropdown'">
                             <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Admin</a>
                             <div class="dropdown-menu" aria-labelledby="dropdown04">
                                 <a class="dropdown-item" href="#">Admin</a>
@@ -254,10 +329,11 @@
                                 <a class="dropdown-item" th:href="@{/admin/scheduler/}">Scheduler</a>
                                 <a class="dropdown-item" th:href="@{/admin/homepagemanager/}">Homepage Manager</a>
                                 <a class="dropdown-item" th:href="@{/admin/dashboardmanager/}">Dashboard Manager</a>
+                                <a class="dropdown-item" th:href="@{/admin/agentic/}">Agentic Configuration</a>
+                                <a class="dropdown-item" th:href="@{/admin/mail/}">Mail</a>
                                 <a class="dropdown-item" th:href="@{/agentic/projects/}">Projects</a>
                                 <a class="dropdown-item" th:href="@{/apiclients/}">API Clients</a>
                                 <a class="dropdown-item" th:href="@{/admin/usermanagement/}">User Management</a>
-                                <a class="dropdown-item" th:href="@{/admin/user/changepassword}">Change Password</a>
                                 <!-- End-of-life features, parked here instead of cluttering the top
                                      bar (Bootstrap 4 has no nested dropdowns, so a labeled section
                                      is the two-stage menu) - kept reachable until they're actually
@@ -274,27 +350,48 @@
                     </ul>
 
                     <!-- form-inline my-2 my-md-0 navbar-form navbar-right -->
-                    <form class="navbar-nav ml-auto" th:action="@{/login}" method="post" sec:authorize="!isAuthenticated()">
-                        <div class="input-group input-group-lg">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="fa fa-user"></i></span>
+                    <!-- Login behind a dropdown, like the user menu once logged in (2026-11-03) - the
+                         inline username/password row filled the whole bar. Opens by itself on the
+                         login page (where every unauthenticated request lands, see site-footer
+                         script). Clicks inside must not close it (checkbox label, etc.). -->
+                    <ul class="navbar-nav ml-auto" sec:authorize="!isAuthenticated()">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="loginDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="ksfx-user-badge"><i class="fa fa-user"></i></span> Anmelden</a>
+                            <div class="dropdown-menu dropdown-menu-right ksfx-login-menu" aria-labelledby="loginDropdown" onclick="event.stopPropagation()">
+                                <form th:action="@{/login}" method="post">
+                                    <div th:if="${param.error}" class="alert alert-danger ksfx-login-error">Benutzername oder Passwort falsch.</div>
+                                    <div class="form-group">
+                                        <input id="email" type="text" class="form-control" name="username" value="" placeholder="Username" autocomplete="username" />
+                                    </div>
+                                    <div class="form-group">
+                                        <input id="password" type="password" class="form-control" name="password" value="" placeholder="Password" autocomplete="current-password" />
+                                    </div>
+                                    <!-- On by default: KSFX is mostly used on personal devices, and a restart/deploy
+                                         otherwise logs everybody out (sessions live in memory only). -->
+                                    <div class="form-check ksfx-remember-me">
+                                        <input class="form-check-input" type="checkbox" id="rememberMe" name="remember-me" checked="checked" />
+                                        <label class="form-check-label" for="rememberMe" title="Bleibt 30 Tage angemeldet, auch über Neustarts hinweg - jede Nutzung verlängert das">Angemeldet bleiben</label>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                                </form>
                             </div>
-                            <input id="email" type="text" class="form-control" name="username" value="" placeholder="Username" />
-                        </div>
+                        </li>
+                    </ul>
 
-                        <div class="input-group input-group-lg">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="fa fa-lock"></i></span>
+                    <ul class="navbar-nav ml-auto" sec:authorize="isAuthenticated()">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" th:inline="text"><span class="ksfx-user-badge"><i class="fa fa-user"></i></span> [[${#httpServletRequest.remoteUser}]]</a>
+                            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+                                <a class="dropdown-item" th:href="@{/user/profile}"><i class="fa fa-id-card-o"></i> Profile</a>
+                                <a class="dropdown-item" th:href="@{/user/changepassword}"><i class="fa fa-key"></i> Change Password</a>
+                                <div class="dropdown-divider"></div>
+                                <!-- Sign-out must stay a POST (Spring Security's LogoutFilter + CSRF), hence a form around a dropdown-item button. -->
+                                <form th:action="@{/logout}" method="post" style="margin:0">
+                                    <button type="submit" class="dropdown-item"><i class="fa fa-sign-out"></i> Sign Out</button>
+                                </form>
                             </div>
-                            <input id="password" type="password" class="form-control" name="password" value="" placeholder="Password" />
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Login</button>
-                    </form>
-
-                    <form class="navbar-nav ml-auto" th:action="@{/logout}" method="post" sec:authorize="isAuthenticated()">
-                        <span th:inline="text" style="margin:auto">Logged in as [[${#httpServletRequest.remoteUser}]] &nbsp;</span><input style="float:right" type="submit" value="Sign Out" class="btn btn-primary"/>
-                    </form>
+                        </li>
+                    </ul>
                     <!-- </div> -->
                 </div>
             </nav>

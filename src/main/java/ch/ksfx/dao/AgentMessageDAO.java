@@ -31,10 +31,26 @@ public interface AgentMessageDAO
 
     public List<AgentMessage> getAssistantMessagesWithUsage();
 
+    public List<AgentMessage> getAssistantMessagesWithUsageForProject(Long projectId);
+
+    /** One agent's answers (incl. internal voice-cleanup rows) that carry token usage, newest first. */
+    public List<AgentMessage> getAssistantMessagesWithUsageForAgent(Long agentId);
+
+    public String getLatestModelForAgent(Long agentId);
+
     /**
      * Up to {@code limit} messages (across every agent, not just one) whose content contains
      * {@code term}, most recent first. Backs the cross-agent search overlay - see
      * AgenticSearchController.
      */
     public List<AgentMessage> searchMessages(String term, int limit);
+
+    /**
+     * The {@code limit} most recent tasks (USER and AGENT rows - what a human, a schedule or another
+     * agent asked) across all agents of a project, newest first. Backs the dashboard's task feed.
+     */
+    public List<AgentMessage> getRecentTasksForProject(Long projectId, int limit);
+
+    /** What followed a task: the first ASSISTANT or SYSTEM row after it (its answer, or the error), or null while none yet. */
+    public AgentMessage getOutcomeAfter(Long agentId, Long afterMessageId);
 }

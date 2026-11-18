@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - No project</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<div class="container" style="margin-top:60px;max-width:640px">
+    <h3>No project assigned</h3>
+    <p>Your account is active, but it is not a member of any project yet, so there is nothing to show. Ask an administrator to add you to a project.</p>
+    <form th:action="@{/logout}" method="post"><button type="submit" class="btn btn-secondary">Sign out</button></form>
+</div>
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

@@ -131,7 +131,7 @@ public class EbeanActivityDAO implements ActivityDAO
             }
         }
 
-        Page<Activity> page = new PageImpl<Activity>(expressionList.findList(), pageable, Ebean.find(Activity.class).findCount());
+        Page<Activity> page = new PageImpl<Activity>(expressionList.findList(), pageable, expressionList.findCount());
 
         return page;
     }

@@ -76,7 +76,7 @@ public class EbeanSpideringConfigurationDAO implements SpideringConfigurationDAO
             }
         }
 
-        Page<SpideringConfiguration> page = new PageImpl<SpideringConfiguration>(expressionList.findList(), pageable, Ebean.find(SpideringConfiguration.class).findCount());
+        Page<SpideringConfiguration> page = new PageImpl<SpideringConfiguration>(expressionList.findList(), pageable, expressionList.findCount());
 
         return page;
     }

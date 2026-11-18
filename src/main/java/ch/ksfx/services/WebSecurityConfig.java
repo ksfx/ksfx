@@ -1,5 +1,10 @@
 package ch.ksfx.services;
 
+import ch.ksfx.services.security.EbeanPersistentTokenRepository;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
+import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 
 import ch.ksfx.dao.ApiClientDAO;
 import ch.ksfx.services.security.ApiClientAuthenticationProvider;
@@ -27,12 +32,36 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @EnableWebSecurity
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter
 {
+    /** "Angemeldet bleiben" lasts 30 days - and is renewed on every use, so a daily user is never logged out. */
+    static final int REMEMBER_ME_SECONDS = 30 * 24 * 60 * 60;
+
+    // Only ties the RememberMeAuthenticationToken to its provider inside this JVM; the persistent
+    // tokens are validated against the database, so a fresh value per start is fine (restarts keep working).
+    private static final String REMEMBER_ME_KEY = java.util.UUID.randomUUID().toString();
+
+    @Autowired
+    private KsfxUserDetailsService ksfxUserDetailsService;
+
+    @Autowired
+    private EbeanPersistentTokenRepository persistentTokenRepository;
+
+    // Derived from the session cookie's name, so instances on the same domain (e.g. KSFX_TEST vs
+    // production) do not overwrite each other's remember-me cookie.
+    @org.springframework.beans.factory.annotation.Value("${server.servlet.session.cookie.name:JSESSIONID}")
+    private String sessionCookieName;
+
     @Override
     protected void configure(HttpSecurity http) throws Exception
     {
         http
                 .authorizeRequests()
-                .antMatchers("/", "/home","/toggledisplaymode", "/images/**", "/styles/**", "/script/**", "/publishing/publicationviewer/**", "/agentic/api/**").permitAll()
+                .antMatchers("/", "/home","/toggledisplaymode", "/images/**", "/styles/**", "/script/**", "/publishing/publicationviewer/**", "/agentic/api/**", "/ports/ask").permitAll()
+                // Project-level admin pages (code libs, dashboard) stay open to every
+                // member - the controllers apply the membership level; the personal pages (profile,
+                // password) live under /user/** outside /admin. Everything else under the
+                // Admin menu is an instance concern: role ADMIN only (membership concept, step 2).
+                .antMatchers("/admin/codelib/**", "/admin/dashboardmanager/**").authenticated()
+                .antMatchers("/admin/**", "/dataexplorer/**", "/informationretrieval/**", "/apiclients/**", "/noteviewer/**").hasAuthority("ADMIN")
                 .anyRequest().authenticated()
                 .and()
                 .formLogin()
@@ -54,6 +83,21 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
                 .csrf()
                 .ignoringAntMatchers("/agentic/api/**", "/api/**")
                 .and()
+                // Only real page navigations (GET with Accept: text/html) enter the saved-request
+                // cache. Background requests - the chat sidebar polls /agentic/status every 2.5s,
+                // plus ports status, SSE streams, favicon - used to overwrite the cache while the
+                // session was expired, so the post-login redirect landed on a raw JSON endpoint
+                // instead of the page the user actually wanted.
+                .requestCache()
+                .requestCache(htmlNavigationRequestCache())
+                .and()
+                // "Angemeldet bleiben": sessions die with every restart/deploy; the persistent
+                // remember-me cookie re-authenticates silently (checkbox on the login form, on by
+                // default). Logout removes the user's tokens via the same services.
+                .rememberMe()
+                .key(REMEMBER_ME_KEY)
+                .rememberMeServices(rememberMeServices())
+                .and()
                 .exceptionHandling()
                 // Explicit catch-all as well as the /api/** mapping - registering ANY mapping here
                 // replaces the implicit default (normally auto-derived from formLogin's login page)
@@ -63,6 +107,11 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
                 // /login. Order matters - DelegatingAuthenticationEntryPoint uses the first matching
                 // entry, so the specific /api/** mapping must come before this catch-all.
                 .defaultAuthenticationEntryPointFor(apiUnauthorizedEntryPoint(), new AntPathRequestMatcher("/api/**"))
+                // Non-navigation requests (no text/html in Accept - XHR polls, fetches, SSE) get a
+                // clean 401 instead of the redirect-to-login HTML, so client scripts can detect the
+                // expired session (agentic-chat.js stops its poll) rather than choking on a login
+                // page served as JSON.
+                .defaultAuthenticationEntryPointFor(apiUnauthorizedEntryPoint(), new NegatedRequestMatcher(HTML_NAVIGATION))
                 .defaultAuthenticationEntryPointFor(loginUrlAuthenticationEntryPoint(), new AntPathRequestMatcher("/**"))
                 .and()
                 .addFilterBefore(new ApiTokenAuthenticationFilter(authenticationManagerBean()), UsernamePasswordAuthenticationFilter.class);
@@ -102,6 +151,33 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
     public ApiClientAuthenticationProvider apiClientAuthenticationProvider(ApiClientDAO apiClientDAO)
     {
         return new ApiClientAuthenticationProvider(apiClientDAO);
+    }
+
+    /** A browser navigating to a page - as opposed to XHR/fetch/SSE/image requests. */
+    private static final RequestMatcher HTML_NAVIGATION = request -> {
+        String accept = request.getHeader("Accept");
+
+        return "GET".equalsIgnoreCase(request.getMethod()) && accept != null && accept.contains("text/html");
+    };
+
+    @Bean
+    public PersistentTokenBasedRememberMeServices rememberMeServices()
+    {
+        PersistentTokenBasedRememberMeServices services = new PersistentTokenBasedRememberMeServices(REMEMBER_ME_KEY, ksfxUserDetailsService, persistentTokenRepository);
+        services.setTokenValiditySeconds(REMEMBER_ME_SECONDS);
+        services.setCookieName(sessionCookieName + "_REMEMBER");
+        services.setParameter("remember-me");
+
+        return services;
+    }
+
+    @Bean
+    public HttpSessionRequestCache htmlNavigationRequestCache()
+    {
+        HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
+        requestCache.setRequestMatcher(HTML_NAVIGATION);
+
+        return requestCache;
     }
 
     @Bean

@@ -1,5 +1,7 @@
 package ch.ksfx.controller.agentic;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.AgentScheduleDAO;
 import ch.ksfx.model.Agent;
@@ -33,6 +35,9 @@ import java.util.Date;
 @RequestMapping("/agentic/schedules")
 public class AgenticScheduleOverlayController
 {
+    @Autowired
+    private UserScope userScope;
+
     private final AgentScheduleDAO agentScheduleDAO;
     private final AgentDAO agentDAO;
     private final SchedulerService schedulerService;
@@ -47,12 +52,16 @@ public class AgenticScheduleOverlayController
     @GetMapping("/{agentId}/list")
     public String list(@PathVariable Long agentId, Model model)
     {
+        userScope.requireManage(agentDAO.getAgentForId(agentId).getProject()); // schedules are agent configuration
+
         return renderList(agentId, model);
     }
 
     @GetMapping("/{agentId}/edit")
     public String edit(@PathVariable Long agentId, @RequestParam(required = false) Long id, Model model)
     {
+        userScope.requireManage(agentDAO.getAgentForId(agentId).getProject()); // schedules are agent configuration
+
         AgentSchedule schedule = id != null ? agentScheduleDAO.getAgentScheduleForId(id) : new AgentSchedule();
 
         model.addAttribute("agent", agentDAO.getAgentForId(agentId));
@@ -66,6 +75,8 @@ public class AgenticScheduleOverlayController
                        @Valid @ModelAttribute("agentSchedule") AgentSchedule agentSchedule,
                        BindingResult bindingResult, Model model) throws SchedulerException
     {
+        userScope.requireManage(agentDAO.getAgentForId(agentId).getProject()); // schedules are agent configuration
+
         Agent agent = agentDAO.getAgentForId(agentId);
         agentSchedule.setAgent(agent);
 
@@ -98,6 +109,8 @@ public class AgenticScheduleOverlayController
     @PostMapping("/{agentId}/delete/{id}")
     public String delete(@PathVariable Long agentId, @PathVariable Long id, Model model) throws SchedulerException
     {
+        userScope.requireManage(agentDAO.getAgentForId(agentId).getProject()); // schedules are agent configuration
+
         schedulerService.deleteJob("AgentSchedule" + id, "AgentSchedules");
 
         AgentSchedule schedule = agentScheduleDAO.getAgentScheduleForId(id);

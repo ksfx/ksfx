@@ -61,6 +61,18 @@ public class AgentMessageApiController
 
         AgentTriggeredTurnResult result = claudeCliSessionService.runAgentTriggeredTurn(body.targetAgentId, caller, body.message);
 
+        if (result.isQueued()) {
+            // Target busy: queued instead of bouncing (was 409). Its answer arrives later as a
+            // new incoming message - see ClaudeCliSessionService.startQueuedTurn / deliverReply.
+            AgentMessageApiDto queued = new AgentMessageApiDto();
+            queued.targetAgentId = target.getId();
+            queued.targetAgentName = target.getName();
+            queued.queued = true;
+            queued.queueId = result.getQueueId();
+            queued.info = target.getName() + " is busy. Your message is queued; the answer will be delivered to you automatically as a new message. Do not resend.";
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(queued);
+        }
+
         if (result.isSkipped()) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(errorBody("Target agent is already busy with another turn."));
         }
@@ -126,5 +138,8 @@ public class AgentMessageApiController
         public String message;
         public String targetAgentName;
         public String reply;
+        public Boolean queued;
+        public Long queueId;
+        public String info;
     }
 }

@@ -1,5 +1,7 @@
 package ch.ksfx.controller.admin.codelib;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
@@ -25,6 +27,9 @@ import java.util.Set;
 @RequestMapping("/admin/codelib")
 public class CodeLibController
 {
+    @Autowired
+    private UserScope userScope;
+
     private final CodeLibDAO codeLibDAO;
     private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
@@ -63,6 +68,10 @@ public class CodeLibController
     @GetMapping({"/edit", "/edit/{id}"})
     public String edit(@PathVariable(value = "id", required = false) Long codeLibId, Model model)
     {
+        if (codeLibId == null) {
+            userScope.requireWrite(projectContextService.current());
+        }
+
         CodeLib codeLib = new CodeLib();
 
         if (codeLibId != null) {
@@ -96,6 +105,7 @@ public class CodeLibController
         // No project on the form (see ActivityController.activitySubmit) - keep the stored one on edit, default on create.
         CodeLib previousCodeLib = codeLib.getId() != null ? codeLibDAO.getCodeLibForId(codeLib.getId()) : null;
         codeLib.setProject(previousCodeLib != null && previousCodeLib.getProject() != null ? previousCodeLib.getProject() : projectContextService.current());
+        userScope.requireWrite(codeLib.getProject());
 
         // Names are unique per project (the loader resolves libs by project + name).
         CodeLib sameName = codeLibDAO.getCodeLibForProjectAndName(codeLib.getProject().getId(), codeLib.getName());
@@ -155,7 +165,7 @@ public class CodeLibController
     public String delete(@PathVariable(value = "id", required = true) Long codeLibId, RedirectAttributes redirectAttributes)
     {
         CodeLib codeLib = codeLibDAO.getCodeLibForId(codeLibId);
-
+        userScope.requireWrite(codeLib.getProject());
         if (ActivityGitRepositoryService.hasGitPath(codeLib.getGitPath()) && activityGitRepositoryService.isActive(codeLib.getProject())) {
             try {
                 activityGitRepositoryService.deleteAndPush(codeLib.getProject(), codeLib.getGitPath(), "Delete code lib: " + codeLib.getName());
@@ -173,6 +183,8 @@ public class CodeLibController
     @PostMapping("/migratesqlwriter")
     public String migrateSqlWriter(RedirectAttributes redirectAttributes)
     {
+        userScope.requireAdmin();
+
         try {
             String result = codeLibMigrationService.migrateSqlWriterFromNoteFile();
             redirectAttributes.addFlashAttribute("resultMessage", result);

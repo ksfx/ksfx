@@ -254,12 +254,20 @@ public class ProjectAssignmentService
             item.notes.add(target.getDockerIsolationEnabled() ? "target project runs agents in Docker - applies from the next turn" : "target project runs agents without Docker");
         }
 
+        if (agent.getAgenticAccess() != null) {
+            item.notes.add("its access '" + agent.getAgenticAccess().getName() + "' stays behind - choose an access of the target project on the agent's edit page before it can run again");
+        }
+
         if (execute) {
+            agent.setAgenticAccess(null); // accesses are project-bound
+
             if (config != null) {
                 Path oldWorkspace = agentWorkspaceService.resolveWorkspace(agent, config);
+                Path oldProviderDir = agentWorkspaceService.resolveProviderDir(agent, config);
                 agent.setProject(target);
                 Path newWorkspace = agentWorkspaceService.resolveWorkspace(agent, config);
                 agentWorkspaceService.moveWorkspaceIfNeeded(oldWorkspace, newWorkspace);
+                agentWorkspaceService.moveWorkspaceIfNeeded(oldProviderDir, agentWorkspaceService.resolveProviderDir(agent, config)); // CLI state travels with the agent
                 agent.setWorkspacePath(newWorkspace.toString());
             } else {
                 agent.setProject(target);

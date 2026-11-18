@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Access</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/{id}/settings/(id=${project.id})}">Agentic Settings</a></li>
+        <li class="breadcrumb-item active" th:text="${access.id != null} ? ${access.name} : 'New access'">Access</li>
+    </ol>
+</nav>
+
+<div class="container">
+    <p class="text-muted">An access is one account the agents of <strong th:text="${project.name}"></strong> can run on. Each agent picks one on its edit page; agents without a choice use the project's default access.</p>
+
+    <form th:action="@{/agentic/projects/{id}/accesses/save(id=${project.id})}" method="post">
+        <input type="hidden" name="id" th:value="${access.id}" th:if="${access.id != null}" />
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" class="form-control" id="name" name="name" th:value="${access.name}" th:classappend="${nameError} ? 'is-invalid' : ''"
+                   placeholder="e.g. Company API key, Kejo's Max subscription" maxlength="128" required="required" />
+            <div class="invalid-feedback" th:if="${nameError}" th:text="${nameError}"></div>
+        </div>
+        <div class="form-group">
+            <label>Auth Mode</label>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="authMode" value="API_KEY" id="authModeApiKey" th:checked="${access.authMode == null or access.authMode.name() == 'API_KEY'}" />
+                <label class="form-check-label" for="authModeApiKey">API Key (Anthropic Console, pay per token)</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="authMode" value="SETUP_TOKEN" id="authModeSetupToken" th:checked="${access.authMode != null and access.authMode.name() == 'SETUP_TOKEN'}" />
+                <label class="form-check-label" for="authModeSetupToken">Setup Token (output of `claude setup-token`, subscription-based)</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="authMode" value="OAUTH" id="authModeOauth" th:checked="${access.authMode != null and access.authMode.name() == 'OAUTH'}" />
+                <label class="form-check-label" for="authModeOauth">OAuth (host login)</label>
+            </div>
+            <small class="form-text text-muted">OAuth uses the credentials of the host's one interactive `claude login` - every OAuth access, in every project, is that same account. A key or setup token is genuinely this access's own.</small>
+        </div>
+        <div class="form-group">
+            <label for="apiKey">API Key / Setup Token</label>
+            <input type="text" class="form-control" id="apiKey" name="apiKey" th:value="${access.apiKey}" placeholder="Anthropic API Key or claude setup-token output - not needed for OAuth" autocomplete="off" />
+        </div>
+        <h6 class="ksfx-access-form-section">Defaults for the agents on this access</h6>
+        <div class="form-group">
+            <label for="defaultModel">Default Model</label>
+            <input type="text" class="form-control" id="defaultModel" name="defaultModel" th:value="${access.defaultModel}" placeholder="sonnet / opus / fable / claude-sonnet-5 - empty = provider's own default" />
+            <small class="form-text text-muted">Used by every agent on this access that has no own model set.</small>
+        </div>
+        <div class="form-group">
+            <label for="defaultPermissionMode">Default Permission Mode</label>
+            <input type="text" class="form-control" id="defaultPermissionMode" name="defaultPermissionMode" th:value="${access.defaultPermissionMode}" placeholder="default / acceptEdits / bypassPermissions / plan" />
+            <small class="form-text text-muted">Used by every agent on this access that has no own permission mode set.</small>
+        </div>
+        <div class="form-group form-check">
+            <input type="checkbox" class="form-check-input" id="enabled" name="enabled" value="true" th:checked="${access.enabled}" />
+            <label class="form-check-label" for="enabled">Enabled - agents on this access may run</label>
+            <small class="form-text text-muted">Switch an account off (blocked, over budget) and exactly its agents stop, with a clear message in their chat.</small>
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a th:href="@{/agentic/projects/{id}/settings/(id=${project.id})}" class="btn btn-danger">Cancel</a>
+    </form>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

@@ -1,5 +1,7 @@
 package ch.ksfx.controller.activity;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
@@ -38,6 +40,9 @@ import java.util.stream.Collectors;
 @RequestMapping("/activity")
 public class ActivityController
 {
+    @Autowired
+    private UserScope userScope;
+
     private ActivityDAO activityDAO;
     private final ProjectContextService projectContextService;
     private final ProjectDAO projectDAO;
@@ -125,6 +130,10 @@ public class ActivityController
     @GetMapping({"/activityedit", "/activityedit/{id}"})
     public String activityEdit(@PathVariable(value = "id", required = false) Long activityId, Model model)
     {
+        if (activityId == null) {
+            userScope.requireWrite(projectContextService.current()); // a new activity is a write into the current project
+        }
+
         Activity activity = new Activity();
 
         if (activityId != null) {
@@ -188,6 +197,7 @@ public class ActivityController
         // which writes into the project's repository.
         Activity previousActivity = activity.getId() != null ? activityDAO.getActivityForId(activity.getId()) : null;
         activity.setProject(previousActivity != null && previousActivity.getProject() != null ? previousActivity.getProject() : projectContextService.current());
+        userScope.requireWrite(activity.getProject());
 
         if (activityGitRepositoryService.isActive(activity.getProject())) {
             try {
@@ -255,6 +265,7 @@ public class ActivityController
     {
         ActivityInstance activityInstance = new ActivityInstance();
         activityInstance.setActivity(activityDAO.getActivityForId(activityId));
+        userScope.requireWrite(activityInstance.getActivity().getProject());
 
         activityInstanceDAO.saveOrUpdateActivityInstance(activityInstance);
 
@@ -267,6 +278,7 @@ public class ActivityController
     public String activitySchedule(@PathVariable(value = "id", required = true) Long activityId)
     {
         Activity activity = activityDAO.getActivityForId(activityId);
+        userScope.requireWrite(activity.getProject());
         activity.setCronScheduleEnabled(true);
 
         activityDAO.saveOrUpdateActivity(activity);
@@ -280,6 +292,7 @@ public class ActivityController
     public String activityDeleteSchedule(@PathVariable(value = "id", required = true) Long activityId) throws SchedulerException
     {
         Activity activity = activityDAO.getActivityForId(activityId);
+        userScope.requireWrite(activity.getProject());
         activity.setCronScheduleEnabled(false);
 
         schedulerService.deleteJob("Activity" + activity.getId().toString(),"Activities");
@@ -293,7 +306,7 @@ public class ActivityController
     public String activityDelete(@PathVariable(value = "id", required = true) Long activityId, RedirectAttributes redirectAttributes)
     {
         Activity activity = activityDAO.getActivityForId(activityId);
-
+        userScope.requireWrite(activity.getProject());
         if (ActivityGitRepositoryService.hasGitPath(activity.getGitPath()) && activityGitRepositoryService.isActive(activity.getProject())) {
             try {
                 activityGitRepositoryService.deleteAndPush(activity.getProject(), activity.getGitPath(), "Delete activity: " + activity.getName());
@@ -313,6 +326,7 @@ public class ActivityController
         if (request.getSession().getAttribute("activityInstance") == null || ((ActivityInstance) request.getSession().getAttribute("activityInstance")).getActivity().getId() != activityId) {
             ActivityInstance activityInstance = new ActivityInstance();
             activityInstance.setActivity(activityDAO.getActivityForId(activityId));
+        userScope.requireWrite(activityInstance.getActivity().getProject());
 
             request.getSession().setAttribute("activityInstance", activityInstance);
         }
@@ -326,6 +340,9 @@ public class ActivityController
     @PostMapping({"/activityrunwithparameters/","/activityrunwithparameters/{activityid}"})
     public String activityRunWithParametersSubmit(@PathVariable(value = "activityid", required = false) Long activityId, @Valid @ModelAttribute ActivityInstance activityInstance, BindingResult bindingResult, Model model, HttpServletRequest request)
     {
+        Long targetActivityId = activityInstance.getActivity() != null && activityInstance.getActivity().getId() != null ? activityInstance.getActivity().getId() : activityId;
+        userScope.requireWrite(activityDAO.getActivityForId(targetActivityId).getProject());
+
         activityInstanceDAO.saveOrUpdateActivityInstance(activityInstance);
 
         System.out.println(activityInstance.getActivity());
@@ -351,6 +368,8 @@ public class ActivityController
     @GetMapping({"/activityinstanceparameteradd/{activityid}"})
     public String activityRunWithParametersAddParameter(@PathVariable(value = "activityid", required = true) Long activityId, HttpServletRequest request)
     {
+        userScope.requireWrite(activityDAO.getActivityForId(activityId).getProject());
+
         if (request.getSession().getAttribute("activityInstance") == null) {
             request.getSession().setAttribute("activityInstance", new ActivityInstance());
         }
@@ -372,7 +391,7 @@ public class ActivityController
     public String activityInstanceDelete(@PathVariable(value = "activityInstanceId", required = true) Long activityInstanceId)
     {
         ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
-
+        userScope.requireWrite(activityInstance.getActivity().getProject());
         activityInstanceDAO.deleteActivityInstance(activityInstance);
 
         return "redirect:/activity/activityinstances/" + activityInstance.getActivity().getId();
@@ -382,7 +401,7 @@ public class ActivityController
     public String activityInstanceTerminate(@PathVariable(value = "activityInstanceId", required = true) Long activityInstanceId)
     {
         ActivityInstance activityInstance = activityInstanceDAO.getActivityInstanceForId(activityInstanceId);
-
+        userScope.requireWrite(activityInstance.getActivity().getProject());
         activityInstanceRunner.terminateActivity(activityInstance);
 
         return "redirect:/activity/activityinstances/" + activityInstance.getActivity().getId();

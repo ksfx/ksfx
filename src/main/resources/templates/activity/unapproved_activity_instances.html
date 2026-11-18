@@ -23,8 +23,8 @@
         <tr th:each="activityInstance : ${unapprovedActivityInstancesPage.content}">
             <td th:text="${activityInstance.id}"></td>
             <td th:text="${activityInstance.activity.name}"></td>
-            <td><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/activity/approval/activityinstanceapprove/{id}(id=${activityInstance.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-terminal"></a></td>
-            <td><a th:attr="data-href=@{/activity/activityinstancedelete/{id}(id=${activityInstance.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+            <td><a th:if="${@projectContextService.canWrite()}" href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/activity/approval/activityinstanceapprove/{id}(id=${activityInstance.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-terminal"></a></td>
+            <td><a th:if="${@projectContextService.canWrite()}" th:attr="data-href=@{/activity/activityinstancedelete/{id}(id=${activityInstance.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>
         </tbody>
     </table>

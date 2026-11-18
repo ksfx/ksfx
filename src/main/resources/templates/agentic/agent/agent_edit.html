@@ -29,10 +29,11 @@
                 <input type="text" class="form-control" id="description" th:field="*{description}" />
             </div>
             <div class="form-group">
-                <label for="project">Project</label>
-                <select class="form-control" id="project" th:field="*{project.id}">
-                                        <option th:each="p : ${allProjects}" th:value="${p.id}" th:text="${p.name}"></option>
-                </select>
+                <!-- No project select (KSFX issue #19): a new agent is created in the CURRENT project,
+                     an existing one stays in its project. Moving agents between projects is the
+                     Assignments screen's job (Admin -> Projects -> Assignments). -->
+                <label>Project</label>
+                <p class="form-control-plaintext" th:text="${agent.project != null ? agent.project.name : ''}">Project</p>
             </div>
             <div class="form-group">
                 <label for="systemPrompt">System Prompt</label>
@@ -44,13 +45,44 @@
             </div>
             <div class="form-group">
                 <label for="permissionMode">Permission Mode (Override)</label>
-                <input type="text" class="form-control" id="permissionMode" th:field="*{permissionMode}" placeholder="empty = use global default from /agentic/config/" />
-                <small class="form-text text-muted">Optional: default / acceptEdits / bypassPermissions / plan. Leave empty to use the global default.</small>
+                <input type="text" class="form-control" id="permissionMode" th:field="*{permissionMode}" th:placeholder="|empty = default of the access (${effectiveAccess != null and effectiveAccess.defaultPermissionMode != null ? effectiveAccess.defaultPermissionMode : 'default'})|" />
+                <small class="form-text text-muted">Optional: default / acceptEdits / bypassPermissions / plan. Leave empty to use the default of the agent's access.</small>
             </div>
             <div class="form-group">
                 <label for="model">Model (Override)</label>
-                <input type="text" class="form-control" id="model" th:field="*{model}" placeholder="empty = use global default from /agentic/config/" />
-                <small class="form-text text-muted">Optional: alias (sonnet / opus / fable) or full model name. Leave empty to use the global default.</small>
+                <input type="text" class="form-control" id="model" th:field="*{model}" th:placeholder="|empty = default of the access (${effectiveAccess != null and effectiveAccess.defaultModel != null ? effectiveAccess.defaultModel : 'provider default'})|" />
+                <small class="form-text text-muted">Optional: alias (sonnet / opus / fable) or full model name. Leave empty to use the default of the agent's access.</small>
+                <small class="form-text text-muted" th:if="${effectiveModel != null and #strings.contains(effectiveModel.source, 'resumed')}">
+                    Note: a resumed session keeps the model it last ran - clearing overrides does NOT return it to the account default. To change it, set a model explicitly (one turn is enough to re-pin) or reset the session.
+                </small>
+                <small class="form-text" th:if="${effectiveModel != null}">
+                    Effective now: <strong th:text="${effectiveModel.display}">model (source)</strong><th:block th:if="${lastActualModel != null}"> &middot; last turn actually ran: <strong th:text="${lastActualModel}">model</strong></th:block>
+                </small>
+            </div>
+            <div class="form-group">
+                <label for="agenticAccessId">Access</label>
+                <select class="form-control" id="agenticAccessId" name="agenticAccessId" required="required" th:classappend="${accessError} ? 'is-invalid' : ''">
+                    <option value="" disabled="disabled" th:selected="${agent.agenticAccess == null}">– choose the access this agent runs on –</option>
+                    <option th:each="x : ${accesses}" th:value="${x.id}"
+                            th:selected="${agent.agenticAccess != null and agent.agenticAccess.id == x.id}"
+                            th:text="|${x.name} · ${T(ch.ksfx.services.agentic.AgenticAccessService).statusLabel(x)}|">Access</option>
+                </select>
+                <div class="invalid-feedback" th:if="${accessError}" th:text="${accessError}"></div>
+                <small class="form-text text-muted" th:if="${#lists.isEmpty(accesses)}">This project has no access yet - add one on the project's Agentic Settings page first.</small>
+                <small class="form-text text-muted">The account this agent runs on - required, there is no default. Accesses are managed on the project's Agentic Settings page; the status is what the last turn on that access reported.</small>
+            </div>
+            <!-- What this agent has used (AgenticUsageStatsService.usageForAgent) - per period, and
+                 per access when it ran on more than one. -->
+            <div class="form-group ksfx-agent-usage" th:if="${agentUsage != null and agentUsage.allTime.turns + agentUsage.allTime.tokens > 0}">
+                <label>Usage</label>
+                <div class="ksfx-agent-usage-figures">
+                    <div><strong th:text="${#numbers.formatInteger(agentUsage.today.tokens, 1, 'COMMA')}">0</strong><span>tokens today</span><small th:text="|${agentUsage.today.turns} turns|"></small></div>
+                    <div><strong th:text="${#numbers.formatInteger(agentUsage.week.tokens, 1, 'COMMA')}">0</strong><span>last 7 days</span><small th:text="|${agentUsage.week.turns} turns|"></small></div>
+                    <div><strong th:text="${#numbers.formatInteger(agentUsage.allTime.tokens, 1, 'COMMA')}">0</strong><span>all-time</span><small th:text="|${agentUsage.allTime.turns} turns|"></small></div>
+                </div>
+                <small class="form-text text-muted" th:if="${agentUsage.byAccess.size() > 1}">
+                    By access: <th:block th:each="e, st : ${agentUsage.byAccess}"><strong th:text="${e.key}"></strong> <span th:text="|${#numbers.formatInteger(e.value.tokensAllTime, 1, 'COMMA')} tokens (${e.value.turnsAllTime} turns)|"></span><th:block th:unless="${st.last}"> &middot; </th:block></th:block>
+                </small>
             </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="enabled" th:field="*{enabled}" />

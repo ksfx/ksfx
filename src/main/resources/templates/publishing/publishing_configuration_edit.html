@@ -92,13 +92,13 @@
                     <textarea class="form-control" id="publishingStrategy" th:field="*{publishingStrategy}" style="height:600px" />
                 </div>
 
-                <button type="submit" class="btn btn-primary">Submit</button>
+                <button th:if="${@projectContextService.canWrite()}" type="submit" class="btn btn-primary">Submit</button>
                 <a th:href="@{/activity/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
             </form>
             <block th:if="${publishingConfiguration.id != null}">
             <br/><br/><br/>
             <h3>Publishing Resources</h3>
-            <div style="float:right"><a th:href="@{/publishing/publishingresourceedit/{publishingConfigurationId}(publishingConfigurationId=${publishingConfiguration.id})}" class="fa fa-plus fa-2x" title="Add Publishing Resource" alt="Add Publishing Resource"></a>&nbsp;&nbsp;&nbsp;</div>
+            <div style="float:right"><a th:if="${@projectContextService.canWrite()}" th:href="@{/publishing/publishingresourceedit/{publishingConfigurationId}(publishingConfigurationId=${publishingConfiguration.id})}" class="fa fa-plus fa-2x" title="Add Publishing Resource" alt="Add Publishing Resource"></a>&nbsp;&nbsp;&nbsp;</div>
             <table class="table table-striped table-responsive-md">
                 <thead>
                     <tr>
@@ -113,7 +113,7 @@
                         <td th:text="${publishingResource.id}"></td>
                         <td th:text="${publishingResource.title}"></td>
                         <td><a th:href="@{/publishing/publishingresourceedit/{publishingConfigurationId}/{publishingResourceId}(publishingConfigurationId=${publishingConfiguration.id},publishingResourceId=${publishingResource.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
-                        <td><a th:attr="data-href=@{/publishing/publishingresourcedelete/{publishingResourceId}(publishingResourceId=${publishingResource.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+                        <td><a th:if="${@projectContextService.canWrite()}" th:attr="data-href=@{/publishing/publishingresourcedelete/{publishingResourceId}(publishingResourceId=${publishingResource.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
                     </tr>
                 </tbody>
             </table>
@@ -140,13 +140,13 @@
                         <span th:attr="id='closepublishingSharedData' + ${publishingSharedData.id}" style='display:none'> <a href="javascript:void(0);" th:attr="shared-data-id=${publishingSharedData.id}" class='fa fa-minus' onclick="document.getElementById('publishingSharedData' + $(this).attr('shared-data-id')).style.display='none';document.getElementById('openpublishingSharedData' + $(this).attr('shared-data-id')).style.display='inline';document.getElementById('closepublishingSharedData' + $(this).attr('shared-data-id')).style.display='none';"></a></span>
                     </td>
                     <td>
-                        <a th:attr="data-href=@{/publishing/publishingshareddatadelete/{id}(id=${publishingSharedData.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a>
+                        <a th:if="${@projectContextService.canWrite()}" th:attr="data-href=@{/publishing/publishingshareddatadelete/{id}(id=${publishingSharedData.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a>
                     </td>
                 </tr>
                 </tbody>
             </table>
             <div style="float:right">
-                <a th:attr="data-href=@{/publishing/publishingshareddatadeleteall/{id}(id=${publishingConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o fa-2x" alt="Delete all publishing shared datas" title="Delete all publishing shared datas"></a>
+                <a th:if="${@projectContextService.canWrite()}" th:attr="data-href=@{/publishing/publishingshareddatadeleteall/{id}(id=${publishingConfiguration.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o fa-2x" alt="Delete all publishing shared datas" title="Delete all publishing shared datas"></a>
             </div>
             </block>
         </div>

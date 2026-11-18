@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Project Members</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/}">Projects</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/edit/{id}(id=${project.id})}" th:text="${project.name}">Project</a></li>
+        <li class="breadcrumb-item active">Members</li>
+    </ol>
+</nav>
+
+<div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+
+<div class="container">
+    <p class="text-muted">Who may use <strong th:text="${project.name}"></strong> and how: <strong>READER</strong> sees everything and changes nothing, <strong>WRITER</strong> works in the project (wiki, issues, activities, reports, chats with its agents), <strong>OWNER</strong> also configures it (settings, Git, dashboard, agents). Instance administrators see every project regardless.</p>
+
+    <table class="table table-striped table-sm">
+        <thead><tr><th>User</th><th>Name</th><th style="width:200px">Level</th><th style="width:120px"></th></tr></thead>
+        <tbody>
+            <tr th:each="m : ${memberships}">
+                <td th:text="${m.user.username}"></td>
+                <td th:text="${m.user.firstName + ' ' + m.user.lastName}"></td>
+                <td>
+                    <form method="post" th:action="@{/admin/memberships/set}" class="form-inline">
+                        <input type="hidden" name="userId" th:value="${m.user.id}" /><input type="hidden" name="projectId" th:value="${project.id}" /><input type="hidden" name="returnTo" th:value="${returnTo}" />
+                        <select name="level" class="form-control form-control-sm" onchange="this.form.submit()">
+                            <option th:each="l : ${levels}" th:value="${l}" th:text="${l}" th:selected="${l == m.level}"></option>
+                        </select>
+                    </form>
+                </td>
+                <td>
+                    <form method="post" th:action="@{/admin/memberships/remove}" onsubmit="return confirm('Remove this member from the project?');">
+                        <input type="hidden" name="userId" th:value="${m.user.id}" /><input type="hidden" name="projectId" th:value="${project.id}" /><input type="hidden" name="returnTo" th:value="${returnTo}" />
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(memberships)}"><td colspan="4" class="text-muted">No members - only administrators can see this project.</td></tr>
+        </tbody>
+    </table>
+
+    <form method="post" th:action="@{/admin/memberships/set}" class="form-inline" th:if="${not #lists.isEmpty(candidates)}">
+        <input type="hidden" name="projectId" th:value="${project.id}" /><input type="hidden" name="returnTo" th:value="${returnTo}" />
+        <label for="addUser" style="margin-right:6px">Add</label>
+        <select id="addUser" name="userId" class="form-control form-control-sm" style="margin-right:6px">
+            <option th:each="u : ${candidates}" th:value="${u.id}" th:text="${u.username}"></option>
+        </select>
+        <select name="level" class="form-control form-control-sm" style="margin-right:6px">
+            <option th:each="l : ${levels}" th:value="${l}" th:text="${l}" th:selected="${l.name() == 'WRITER'}"></option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Add member</button>
+    </form>
+    <p class="text-muted" th:if="${#lists.isEmpty(candidates)}">Every user is already a member.</p>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

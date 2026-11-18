@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head th:replace="layout :: site-head">
+    <title>KSFX - Project Agentic Settings</title>
+</head>
+<body>
+<header th:replace="layout :: site-header"/>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li th:replace="layout :: project-crumb"></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/}">Agentic</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/}">Projects</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/agentic/projects/edit/{id}(id=${project.id})}" th:text="${project.name}">Project</a></li>
+        <li class="breadcrumb-item active">Agentic Settings</li>
+    </ol>
+</nav>
+<message th:replace="layout :: message"/>
+
+<div class="container">
+    <p class="text-muted">The accounts of <strong th:text="${project.name}"></strong> and what they were used for - nothing is inherited: what this page shows is exactly what this project's agents run on. Without an enabled access, the project's agents cannot run.</p>
+
+    <div class="alert alert-danger" th:if="${accessError}" th:text="${accessError}">Error</div>
+
+    <!-- Accesses (AgenticAccessController / AgenticAccessService.cardsFor): one card per account -
+         rate-limit status of its last turn, tokens spent on it, and the agents running on it. -->
+    <div class="ksfx-accesses">
+        <div class="ksfx-accesses-head">
+            <h5><i class="fa fa-key"></i> Accesses</h5>
+            <a class="btn btn-sm btn-outline-primary" th:href="@{/agentic/projects/{id}/accesses/new(id=${project.id})}"><i class="fa fa-plus"></i> Add access</a>
+        </div>
+        <p class="text-muted" th:if="${#lists.isEmpty(accessCards)}">No access yet - the project's agents cannot run until one is added.</p>
+        <div class="ksfx-access-card" th:each="c : ${accessCards}" th:classappend="|ksfx-access--${c.access.statusKey}| + (${c.access.enabled} ? '' : ' ksfx-access--disabled')">
+            <div class="ksfx-access-top">
+                <span class="ksfx-access-name" th:text="${c.access.name}">Standard</span>
+                <span class="ksfx-access-meta"><span th:text="${c.access.authModeLabel}">API key</span> &middot; <code th:text="${c.access.maskedKey}">sk-ant-…abcd</code></span>
+                <span class="ksfx-access-off" th:unless="${c.access.enabled}">disabled</span>
+                <span class="ksfx-access-status" th:title="${c.access.claudeRateLimitUsingOverage == true} ? 'Currently using overage capacity' : ''">
+                    <span class="ksfx-access-status-dot"></span><span th:text="${c.statusLabel}">OK</span><th:block th:if="${c.access.claudeRateLimitUsingOverage == true}"> &middot; overage</th:block>
+                </span>
+            </div>
+            <div class="ksfx-access-defaults">
+                <span><i class="fa fa-microchip"></i> <span th:text="${#strings.isEmpty(c.access.defaultModel)} ? 'provider default model' : ${c.access.defaultModel}">opus</span></span>
+                <span><i class="fa fa-shield"></i> <span th:text="${#strings.isEmpty(c.access.defaultPermissionMode)} ? 'default' : ${c.access.defaultPermissionMode}">default</span></span>
+                <span class="text-muted">defaults for its agents</span>
+            </div>
+            <div class="ksfx-access-figures">
+                <span><strong th:text="${#numbers.formatInteger(c.usage.tokensToday, 1, 'COMMA')}">0</strong> tokens today <span class="text-muted" th:text="|(${c.usage.turnsToday} turns)|"></span></span>
+                <span><strong th:text="${#numbers.formatInteger(c.usage.tokensAllTime, 1, 'COMMA')}">0</strong> all-time <span class="text-muted" th:text="|(${c.usage.turnsAllTime} turns)|"></span></span>
+                <span class="text-muted" th:if="${c.snapshotAge != null}">
+                    <th:block th:if="${c.limitLabel != null}" th:text="|${c.limitLabel} · |"></th:block>status <span th:text="${c.snapshotAge}"></span>, updated on every turn
+                </span>
+            </div>
+            <div class="ksfx-access-bottom">
+                <span class="ksfx-access-agents">
+                    <span class="text-muted" th:if="${#lists.isEmpty(c.agents)}">no agent runs on it</span>
+                    <a th:each="a : ${c.agents}" class="ksfx-access-agent" th:href="@{/agentic/chat/{id}(id=${a.id})}" th:title="${a.name}">
+                        <span class="ksfx-access-agent-badge" th:text="${#strings.toUpperCase(#strings.substring(a.name, 0, 1))}">K</span><span th:text="${a.name}">Agent</span>
+                    </a>
+                </span>
+                <span class="ksfx-access-actions">
+                    <a class="btn btn-sm btn-outline-secondary" th:href="@{/agentic/projects/{p}/accesses/{a}/edit(p=${project.id},a=${c.access.id})}"><i class="fa fa-pencil"></i> Edit</a>
+                    <form method="post" th:action="@{/agentic/projects/{p}/accesses/{a}/delete(p=${project.id},a=${c.access.id})}"
+                          onsubmit="return confirm('Delete this access?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" th:disabled="${!#lists.isEmpty(c.agents)}"
+                                th:title="${#lists.isEmpty(c.agents)} ? 'Delete this access' : 'Still used by agents - switch them to another access first'"><i class="fa fa-trash-o"></i></button>
+                    </form>
+                </span>
+            </div>
+        </div>
+        <small class="text-muted">Each agent names its access on its edit page - there is no default, and an access agents still run on cannot be deleted. An agent's own model / permission mode wins over the access defaults. OAuth uses the host's one <code>claude login</code> - every OAuth access is that same account. The status shows what the last turn on that access reported - it is not live.</small>
+    </div>
+
+    <div class="list-group">
+        <div class="list-group-item" th:unless="${#lists.isEmpty(mails)}">
+            <h5>Mails <small class="text-muted">(sent by this project's agents, latest 30)</small></h5>
+            <table th:replace="admin/mail/mail_log :: mailLog"></table>
+        </div>
+
+        <div class="list-group-item" th:if="${totalTurns} > 0">
+            <h5>Usage Statistics (All-Time)</h5>
+            <p>
+                <strong th:text="${totalTurns}"></strong> turns,
+                <strong th:text="${totalInputTokens} + ' / ' + ${totalOutputTokens}"></strong> input/output tokens
+                (of which cache write: <span th:text="${totalCacheCreationTokens}"></span> / cache read: <span th:text="${totalCacheReadTokens}"></span>)
+            </p>
+            <small class="form-text text-muted" style="margin-top:-8px;margin-bottom:8px">Cache write/read are both part of the input side (Anthropic prompt caching) - writing to or reading from a cached prompt prefix - not a separate token category from Input, and unrelated to Output, which is never cached.</small>
+            <p th:if="${totalVoiceCleanupInputTokens} > 0 or ${totalVoiceCleanupOutputTokens} > 0">
+                Of which voice-input cleanup (see the mic button in chat): <strong th:text="${totalVoiceCleanupInputTokens} + ' / ' + ${totalVoiceCleanupOutputTokens}"></strong> input/output tokens - already included in the totals above, broken out here so it doesn't go unnoticed.
+            </p>
+            <table class="table table-sm" th:if="${usageByAgent.size()} > 1">
+                <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th><th>Voice Cleanup Source</th></tr></thead>
+                <tbody>
+                <tr th:each="u : ${usageByAgent}">
+                    <td th:text="${u.agentName}"></td>
+                    <td th:text="${u.turnCount}"></td>
+                    <td th:text="${u.inputTokens}"></td>
+                    <td th:text="${u.outputTokens}"></td>
+                    <td th:text="${u.cacheCreationTokens}"></td>
+                    <td th:text="${u.cacheReadTokens}"></td>
+                    <td th:text="${u.voiceCleanupInputTokens} + ' / ' + ${u.voiceCleanupOutputTokens}"></td>
+                    <td th:text="${u.voiceCleanupCliCount} + ' via CLI / ' + ${u.voiceCleanupApiCount} + ' via API'"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="list-group-item">
+            <h5>Usage Statistics (By Day)</h5>
+            <form action="#" th:action="@{/agentic/projects/{id}/settings/(id=${project.id})}" method="get" class="form-inline">
+                <label for="statsDate" style="margin-right:8px">Day:</label>
+                <input type="date" id="statsDate" name="statsDate" class="form-control form-control-sm"
+                       th:value="${statsDate}" onchange="this.form.submit()" style="margin-right:8px" />
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Show</button>
+            </form>
+            <p th:if="${totalTurnsForDay} == 0" class="text-muted" style="margin-top:10px">No turns on this day.</p>
+            <div th:if="${totalTurnsForDay} > 0" style="margin-top:10px">
+                <p>
+                    <strong th:text="${totalTurnsForDay}"></strong> turns,
+                    <strong th:text="${totalInputTokensForDay} + ' / ' + ${totalOutputTokensForDay}"></strong> input/output tokens
+                    (of which cache write: <span th:text="${totalCacheCreationTokensForDay}"></span> / cache read: <span th:text="${totalCacheReadTokensForDay}"></span>)
+                </p>
+                <p th:if="${totalVoiceCleanupInputTokensForDay} > 0 or ${totalVoiceCleanupOutputTokensForDay} > 0">
+                    Of which voice-input cleanup: <strong th:text="${totalVoiceCleanupInputTokensForDay} + ' / ' + ${totalVoiceCleanupOutputTokensForDay}"></strong> input/output tokens.
+                </p>
+                <table class="table table-sm">
+                    <thead><tr><th>Agent</th><th>Turns</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th><th>Voice Cleanup (In/Out)</th><th>Voice Cleanup Source</th></tr></thead>
+                    <tbody>
+                    <tr th:each="u : ${usageByAgentForDay}">
+                        <td th:text="${u.agentName}"></td>
+                        <td th:text="${u.turnCount}"></td>
+                        <td th:text="${u.inputTokens}"></td>
+                        <td th:text="${u.outputTokens}"></td>
+                        <td th:text="${u.cacheCreationTokens}"></td>
+                        <td th:text="${u.cacheReadTokens}"></td>
+                        <td th:text="${u.voiceCleanupInputTokens} + ' / ' + ${u.voiceCleanupOutputTokens}"></td>
+                        <td th:text="${u.voiceCleanupCliCount} + ' via CLI / ' + ${u.voiceCleanupApiCount} + ' via API'"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="layout :: site-footer" />
+</body>
+</html>

@@ -111,7 +111,7 @@ public class EbeanPublishingConfigurationDAO implements PublishingConfigurationD
             }
         }
 
-        Page<PublishingConfiguration> page = new PageImpl<PublishingConfiguration>(expressionList.findList(), pageable, Ebean.find(PublishingConfiguration.class).findCount());
+        Page<PublishingConfiguration> page = new PageImpl<PublishingConfiguration>(expressionList.findList(), pageable, expressionList.findCount());
 
         return page;
     }

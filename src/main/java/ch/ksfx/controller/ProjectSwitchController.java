@@ -41,9 +41,11 @@ public class ProjectSwitchController
     }
 
     /**
-     * Entity-specific paths would re-follow the OLD project (deep links win, see
-     * ProjectContextService#follow), so they collapse to their area's root; everything else
-     * returns as-is.
+     * Without returnTo - the breadcrumb switcher since KSFX issue #20 - a switch lands on the new
+     * project's dashboard. An explicit returnTo is kept for links that switch AND go somewhere on
+     * purpose (project form: Code Libs, Dashboard Manager). Entity-specific paths would re-follow
+     * the OLD project (deep links win, see ProjectContextService#follow), so they collapse to their
+     * area's root; everything else returns as-is.
      */
     static String areaRoot(String returnTo)
     {

@@ -91,6 +91,26 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
     }
 
     @Override
+    public List<AgentMessage> getAssistantMessagesWithUsageForProject(Long projectId)
+    {
+        return Ebean.find(AgentMessage.class).where().eq("role", AgentMessageRole.ASSISTANT).isNotNull("inputTokens").eq("agent.project.id", projectId).order().desc("createdAt").findList();
+    }
+
+    @Override
+    public List<AgentMessage> getAssistantMessagesWithUsageForAgent(Long agentId)
+    {
+        return Ebean.find(AgentMessage.class).fetch("agenticAccess", "name").where().eq("role", AgentMessageRole.ASSISTANT).isNotNull("inputTokens").eq("agent.id", agentId).order().desc("createdAt").findList();
+    }
+
+    @Override
+    public String getLatestModelForAgent(Long agentId)
+    {
+        AgentMessage message = Ebean.find(AgentMessage.class).where().eq("agent.id", agentId).eq("role", AgentMessageRole.ASSISTANT).isNotNull("model").order().desc("id").setMaxRows(1).findOne();
+
+        return message != null ? message.getModel() : null;
+    }
+
+    @Override
     public List<AgentMessage> searchMessages(String term, int limit)
     {
         return Ebean.find(AgentMessage.class).fetch("agent").fetch("fromAgent")
@@ -98,5 +118,27 @@ public class EbeanAgentMessageDAO implements AgentMessageDAO
                 .order().desc("id")
                 .setMaxRows(limit)
                 .findList();
+    }
+
+    @Override
+    public List<AgentMessage> getRecentTasksForProject(Long projectId, int limit)
+    {
+        return Ebean.find(AgentMessage.class).fetch("agent").fetch("fromAgent").fetch("fromUser")
+                .where().eq("agent.project.id", projectId).eq("internal", false)
+                .in("role", AgentMessageRole.USER, AgentMessageRole.AGENT)
+                .order().desc("id")
+                .setMaxRows(limit)
+                .findList();
+    }
+
+    @Override
+    public AgentMessage getOutcomeAfter(Long agentId, Long afterMessageId)
+    {
+        return Ebean.find(AgentMessage.class)
+                .where().eq("agent.id", agentId).eq("internal", false).gt("id", afterMessageId)
+                .in("role", AgentMessageRole.ASSISTANT, AgentMessageRole.SYSTEM)
+                .order().asc("id")
+                .setMaxRows(1)
+                .findOne();
     }
 }

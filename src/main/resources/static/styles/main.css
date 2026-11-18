@@ -98,6 +98,22 @@ th[data-grid-property="observationTime"]
     margin-right: 2px;
 }
 
+/* The account entry in the navbar - same visual language as the project badge, but round:
+   a person in a circle reads as "this is about me", the square badge as "this is the project". */
+.ksfx-user-badge {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    border-radius: 50%;
+    background: #0b2142;
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+    vertical-align: -3px;
+    margin-right: 2px;
+}
+
 .ksfx-project-crumb .dropdown-item.active .ksfx-project-badge,
 .ksfx-project-crumb .dropdown-item:active .ksfx-project-badge {
     background: #fff;
@@ -108,4 +124,434 @@ th[data-grid-property="observationTime"]
 .ksfx-project-crumb .dropdown-item.active {
     background: #2e77d0;
     color: #fff;
+}
+
+/* Breadcrumb ports dropdown (Docker-isolated projects): emitted next to the project badge by the
+   same fragment, moved to the right edge visually via flex order so the items between keep their
+   DOM-based "/" separators; its own separator is suppressed. */
+.ksfx-ports-crumb {
+    order: 99;
+    margin-left: auto;
+}
+
+.ksfx-ports-crumb::before {
+    display: none !important;
+}
+
+.ksfx-ports-toggle {
+    color: #0b2142;
+}
+
+.ksfx-port-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 4px;
+    margin-right: 4px;
+    vertical-align: 1px;
+    background: #adb5bd;
+}
+
+.ksfx-port-dot-green { background: #28a745; }
+.ksfx-port-dot-grey { background: #adb5bd; }
+.ksfx-port-dot-unknown { background: #dee2e6; }
+
+.agentic-main-model {
+    font-size: 12px;
+    margin-left: 10px;
+    white-space: nowrap;
+}
+
+/* Project dashboard: automatic services block below the custom part. */
+.ksfx-project-services {
+    margin-top: 24px;
+}
+
+.ksfx-services-table td {
+    vertical-align: middle;
+}
+
+/* Accesses (agentic_project_settings.html, AgenticAccessService.cardsFor): one card per account,
+   same visual language as the dashboard task feed - colored left edge and status pill per
+   rate-limit state, translucent neutrals so both themes work. */
+.ksfx-accesses {
+    margin-bottom: 1.5rem;
+}
+
+.ksfx-accesses .text-muted,
+.ksfx-access-table .text-muted {
+    margin: 0; /* the global ".container .text-muted" margin would blow up the card rows */
+}
+
+.ksfx-accesses-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.ksfx-accesses-head h5 {
+    margin: 0;
+}
+
+.ksfx-access-card {
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(128, 128, 128, .22);
+    border-left: 3px solid rgba(128, 128, 128, .35);
+    border-radius: 8px;
+    background: rgba(128, 128, 128, .03);
+}
+
+.ksfx-access--ok { border-left-color: #28a745; }
+.ksfx-access--warning { border-left-color: #e0a800; }
+.ksfx-access--blocked { border-left-color: #dc3545; }
+
+.ksfx-access-top,
+.ksfx-access-bottom,
+.ksfx-access-figures {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+}
+
+.ksfx-access-name {
+    font-weight: 600;
+    font-size: 1.05em;
+}
+
+.ksfx-access-meta {
+    opacity: .7;
+    font-size: .85em;
+}
+
+.ksfx-access-meta code {
+    color: inherit;
+}
+
+.ksfx-access-status {
+    margin-left: auto;
+    padding: 1px 9px;
+    border-radius: 10px;
+    background: rgba(128, 128, 128, .14);
+    font-size: .8em;
+    white-space: nowrap;
+}
+
+.ksfx-access-table .ksfx-access-status {
+    margin-left: 0;
+}
+
+.ksfx-access-status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 5px;
+    border-radius: 50%;
+    vertical-align: 1px;
+    background: #adb5bd;
+}
+
+.ksfx-access--ok .ksfx-access-status { background: rgba(40, 167, 69, .15); color: #28a745; }
+.ksfx-access--ok .ksfx-access-status-dot { background: #28a745; }
+.ksfx-access--warning .ksfx-access-status { background: rgba(224, 168, 0, .18); color: #b38600; }
+.ksfx-access--warning .ksfx-access-status-dot { background: #e0a800; }
+.ksfx-access--blocked .ksfx-access-status { background: rgba(220, 53, 69, .14); color: #dc3545; }
+.ksfx-access--blocked .ksfx-access-status-dot { background: #dc3545; }
+
+.ksfx-access--disabled {
+    opacity: .6;
+}
+
+.ksfx-access-off {
+    padding: 0 7px;
+    border-radius: 9px;
+    background: rgba(128, 128, 128, .25);
+    font-size: .72em;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.ksfx-access-defaults {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 4px;
+    font-size: .85em;
+}
+
+.ksfx-access-defaults .fa {
+    opacity: .55;
+}
+
+.ksfx-access-form-section {
+    margin: 22px 0 12px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(128, 128, 128, .25);
+}
+
+.ksfx-access-figures {
+    margin: 4px 0 8px;
+    font-size: .88em;
+}
+
+.ksfx-access-agents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    font-size: .85em;
+}
+
+.ksfx-access-agent {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 9px 1px 2px;
+    border-radius: 12px;
+    background: rgba(128, 128, 128, .12);
+    color: inherit;
+}
+
+.ksfx-access-agent:hover {
+    color: inherit;
+    text-decoration: none;
+    background: rgba(128, 128, 128, .22);
+}
+
+.ksfx-access-agent-badge {
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    border-radius: 50%;
+    background: #0b2142;
+    color: #fff;
+    font-size: .8em;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ksfx-access-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.ksfx-access-actions form {
+    margin: 0;
+}
+
+/* Agent edit form: usage figures (agent_edit.html, AgenticUsageStatsService.usageForAgent). */
+.ksfx-agent-usage-figures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ksfx-agent-usage-figures > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 130px;
+    padding: 8px 14px;
+    border: 1px solid rgba(128, 128, 128, .22);
+    border-radius: 8px;
+    background: rgba(128, 128, 128, .03);
+}
+
+.ksfx-agent-usage-figures strong {
+    font-size: 1.25em;
+}
+
+.ksfx-agent-usage-figures span,
+.ksfx-agent-usage-figures small {
+    opacity: .65;
+    font-size: .85em;
+}
+
+/* Mail (admin/mail/mail_config.html, mail_log.html). */
+.ksfx-mail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.ksfx-mail-test {
+    display: inline-flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.ksfx-mail-test input {
+    width: 240px;
+}
+
+.ksfx-mail-log td {
+    vertical-align: middle;
+}
+
+.ksfx-mail-to {
+    max-width: 260px;
+    overflow-wrap: anywhere;
+}
+
+.ksfx-mail-status {
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: rgba(128, 128, 128, .14);
+    font-size: .8em;
+}
+
+.ksfx-mail--sent .ksfx-mail-status { background: rgba(40, 167, 69, .15); color: #28a745; }
+.ksfx-mail--failed .ksfx-mail-status,
+.ksfx-mail--blocked .ksfx-mail-status { background: rgba(220, 53, 69, .14); color: #dc3545; }
+
+/* Dashboard task feed (dashboard.html, RecentTasksService): one card per task, agent badge left,
+   who/when/status on top, the task clamped to two lines, the answer's start as one muted line.
+   Dark mode only swaps the Bootstrap sheet (no body class), so text inherits and surfaces are
+   translucent grey - the same rules read in both themes. */
+.ksfx-recent-tasks {
+    margin-bottom: 2rem;
+}
+
+.ksfx-task-feed {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+}
+
+/* Two columns on large screens - read row by row, newest top left. */
+@media (min-width: 1200px) {
+    .ksfx-task-feed {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+}
+
+.ksfx-task {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid rgba(128, 128, 128, .22);
+    border-left: 3px solid rgba(128, 128, 128, .35);
+    border-radius: 8px;
+    background: rgba(128, 128, 128, .03);
+    color: inherit;
+    text-decoration: none;
+    transition: box-shadow .15s, border-color .15s, transform .15s;
+}
+
+.ksfx-task:hover,
+.ksfx-task:focus {
+    color: inherit;
+    text-decoration: none;
+    background: rgba(128, 128, 128, .07);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .10);
+    transform: translateY(-1px);
+}
+
+.ksfx-task--running { border-left-color: #28a745; }
+.ksfx-task--done { border-left-color: #4a6fa5; }
+.ksfx-task--error { border-left-color: #dc3545; }
+.ksfx-task--open { border-left-color: rgba(128, 128, 128, .35); }
+
+.ksfx-task-badge {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    line-height: 34px;
+    border-radius: 50%;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ksfx-task-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0; /* lets the text lines shrink and ellipsize instead of widening the card */
+}
+
+.ksfx-task-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+}
+
+.ksfx-task-meta {
+    opacity: .65;
+    font-size: .85em;
+}
+
+.ksfx-task-status {
+    margin-left: auto;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: rgba(128, 128, 128, .14);
+    font-size: .78em;
+    white-space: nowrap;
+}
+
+.ksfx-task-status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 5px;
+    border-radius: 50%;
+    vertical-align: 1px;
+    background: #adb5bd;
+}
+
+.ksfx-task--done .ksfx-task-status-dot { background: #4a6fa5; }
+.ksfx-task--error .ksfx-task-status { background: rgba(220, 53, 69, .14); color: #dc3545; }
+.ksfx-task--error .ksfx-task-status-dot { background: #dc3545; }
+.ksfx-task--running .ksfx-task-status { background: rgba(40, 167, 69, .15); color: #28a745; }
+.ksfx-task--running .ksfx-task-status-dot {
+    background: #28a745;
+    animation: ksfx-task-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ksfx-task-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, .5); }
+    50% { box-shadow: 0 0 0 4px rgba(40, 167, 69, 0); }
+}
+
+.ksfx-task-text {
+    margin-top: 2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.ksfx-task-answer {
+    margin-top: 3px;
+    opacity: .65;
+    font-size: .85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* Login dropdown in the navbar (not logged in). */
+.ksfx-login-menu {
+    min-width: 280px;
+    padding: 12px 14px;
+}
+
+.ksfx-remember-me {
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.ksfx-login-error {
+    padding: 4px 8px;
+    font-size: 0.85em;
 }

@@ -22,7 +22,7 @@
         <div class="issues-empty" th:if="${#lists.isEmpty(issues)}">
             <p th:if="${filter == 'closed'}">No closed issues.</p>
             <p th:unless="${filter == 'closed'}">No issues here yet.</p>
-            <a th:href="@{/issues/{trackerId}/issue/new(trackerId=${currentTracker.id})}" class="issues-btn issues-btn-primary">Create the first issue</a>
+            <a th:if="${@projectContextService.canWrite()}" th:href="@{/issues/{trackerId}/issue/new(trackerId=${currentTracker.id})}" class="issues-btn issues-btn-primary">Create the first issue</a>
         </div>
 
         <ul class="issues-list" th:unless="${#lists.isEmpty(issues)}">

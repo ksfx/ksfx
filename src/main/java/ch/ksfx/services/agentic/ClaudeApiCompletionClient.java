@@ -1,5 +1,6 @@
 package ch.ksfx.services.agentic;
 
+import ch.ksfx.model.AgenticAccess;
 import ch.ksfx.model.Agent;
 import ch.ksfx.model.AgenticAuthMode;
 import ch.ksfx.model.AgenticConfig;
@@ -60,9 +61,9 @@ public class ClaudeApiCompletionClient implements VoiceCompletionClient
     }
 
     @Override
-    public VoiceCompletionResult complete(String prompt, Agent agent, AgenticConfig config)
+    public VoiceCompletionResult complete(String prompt, Agent agent, AgenticConfig config, AgenticAccess access)
     {
-        if (config.getAuthMode() != AgenticAuthMode.API_KEY && config.getAuthMode() != AgenticAuthMode.SETUP_TOKEN) {
+        if (access.getAuthMode() != AgenticAuthMode.API_KEY && access.getAuthMode() != AgenticAuthMode.SETUP_TOKEN) {
             return null;
         }
 
@@ -84,11 +85,11 @@ public class ClaudeApiCompletionClient implements VoiceCompletionClient
             connection.setRequestProperty("content-type", "application/json");
             connection.setRequestProperty("anthropic-version", ANTHROPIC_VERSION);
 
-            if (config.getAuthMode() == AgenticAuthMode.SETUP_TOKEN) {
-                connection.setRequestProperty("Authorization", "Bearer " + config.getApiKey());
+            if (access.getAuthMode() == AgenticAuthMode.SETUP_TOKEN) {
+                connection.setRequestProperty("Authorization", "Bearer " + access.getApiKey());
                 connection.setRequestProperty("anthropic-beta", OAUTH_BETA_HEADER_VALUE);
             } else {
-                connection.setRequestProperty("x-api-key", config.getApiKey());
+                connection.setRequestProperty("x-api-key", access.getApiKey());
             }
 
             try (OutputStream out = connection.getOutputStream()) {

@@ -33,7 +33,7 @@
 </form>
 </div>
 
-<div style="float:right"><a th:href="@{/activity/activityedit}" class="fa fa-plus fa-2x" title="Add Activity" alt="Add Activity"></a>&nbsp;&nbsp;&nbsp;</div>
+<div style="float:right"><a th:if="${@projectContextService.canWrite()}" th:href="@{/activity/activityedit}" class="fa fa-plus fa-2x" title="Add Activity" alt="Add Activity"></a>&nbsp;&nbsp;&nbsp;</div>
 <div th:if="${activitiesPage.totalPages  > 0}">
     <div th:replace="components/pagination :: pagination(path='/activity', page=${activitiesPage})"></div>
 
@@ -46,20 +46,20 @@
             <td th:text="${activity.id}"></td>
             <td><a th:href="@{/activity/activityinstances/{activityid}/(activityid=${activity.id})}" th:inline="text">[[${activity.name}]]</a></td>
             <td><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/noteviewer/(activityId=${activity.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-info"></a></td>
-            <td><a th:href="@{/activity/activityrun/{id}(id=${activity.id})}" class="fa fa-play" alt="Run" title="Run"></a></td>
-            <td><a href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/activity/activityrunwithparameters/{id}(id=${activity.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-forward"></a></td>
+            <td><a th:if="${@projectContextService.canWrite()}" th:href="@{/activity/activityrun/{id}(id=${activity.id})}" class="fa fa-play" alt="Run" title="Run"></a></td>
+            <td><a th:if="${@projectContextService.canWrite()}" href="#" onclick="$('#standard-modal-iframe').attr('src',$(this).attr('lnk'))" th:attr="lnk=@{/activity/activityrunwithparameters/{id}(id=${activity.id})}" data-toggle="modal" data-target="#standardModal" class="fa fa-forward"></a></td>
             <td>
                 <span th:unless="!${activityInstanceRunner.isActivityRunning(activity)}" th:inline="text" class="fa fa-spinner fa-pulse fa-2x fa-fw"></span>
                 <span th:if="!${activityInstanceRunner.isActivityRunning(activity)}" th:inline="text">-</span>
             </td>
             <td>
                 <th:block th:if="${!#strings.isEmpty(activity.cronSchedule)}">
-                    <span th:if="${activity.cronScheduleEnabled}"><a th:href="@{/activity/activitydeleteschedule/{id}(id=${activity.id})}" class="fa fa-stop" alt="Disable Scheduling" title="Disable Scheduling"></a></span>
-                    <span th:unless="${activity.cronScheduleEnabled}"><a th:href="@{/activity/activityschedule/{id}(id=${activity.id})}" class="fa fa-clock-o" alt="Enable Scheduling" title="Enable Scheduling"></a></span>
+                    <span th:if="${activity.cronScheduleEnabled}"><a th:if="${@projectContextService.canWrite()}" th:href="@{/activity/activitydeleteschedule/{id}(id=${activity.id})}" class="fa fa-stop" alt="Disable Scheduling" title="Disable Scheduling"></a></span>
+                    <span th:unless="${activity.cronScheduleEnabled}"><a th:if="${@projectContextService.canWrite()}" th:href="@{/activity/activityschedule/{id}(id=${activity.id})}" class="fa fa-clock-o" alt="Enable Scheduling" title="Enable Scheduling"></a></span>
                 </th:block>
             </td>
             <td><a th:href="@{/activity/activityedit/{id}(id=${activity.id})}" class="fa fa-pencil" alt="Edit" title="Edit"></a></td>
-            <td><a th:attr="data-href=@{/activity/activitydelete/{id}(id=${activity.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
+            <td><a th:if="${@projectContextService.canWrite()}" th:attr="data-href=@{/activity/activitydelete/{id}(id=${activity.id})}" data-toggle="modal" data-target="#standard-confirm" class="fa fa-trash-o" alt="Delete" title="Delete"></a></td>
         </tr>
         </tbody>
     </table>

@@ -1,6 +1,7 @@
 package ch.ksfx.controller.dashboard;
 
 import ch.ksfx.model.Project;
+import ch.ksfx.services.agentic.RecentTasksService;
 import ch.ksfx.services.project.ProjectContextService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,10 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class DashboardController
 {
     private final ProjectContextService projectContextService;
+    private final RecentTasksService recentTasksService;
 
-    public DashboardController(ProjectContextService projectContextService)
+    public DashboardController(ProjectContextService projectContextService, RecentTasksService recentTasksService)
     {
         this.projectContextService = projectContextService;
+        this.recentTasksService = recentTasksService;
     }
 
     @RequestMapping("/")
@@ -24,6 +27,8 @@ public class DashboardController
         Project project = projectContextService.current();
 
         model.addAttribute("dashboardContent", project != null && project.getDashboardContent() != null ? project.getDashboardContent() : "");
+        model.addAttribute("project", project); // for the automatic services block below the custom part
+        model.addAttribute("recentTasks", recentTasksService.recentTasks(project));
 
         return "dashboard/dashboard";
     }

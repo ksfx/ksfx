@@ -905,3 +905,105 @@ a.agentic-attachment-chip:hover {
     background: #26262e;
     border-color: #3a3a44;
 }
+
+/* "Neu laden" inside a connection-error system message (agentic-chat.js recoverBrokenStream). */
+.agentic-reload-btn {
+    margin-left: 6px;
+    padding: 2px 10px;
+    border: 1px solid currentColor;
+    border-radius: 12px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+/* Chat queue: a message sent while a turn runs waits, dimmed, until that turn ends. */
+.agentic-msg--queued .agentic-bubble {
+    opacity: 0.6;
+}
+
+.agentic-queued-badge {
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 8px;
+    font-size: 0.8em;
+    font-weight: normal;
+    text-transform: none;
+    background: #e9ecef;
+    color: #495057;
+}
+
+/* Assistant answers rendered as Markdown (Toast UI viewer, see renderMarkdown in agentic-chat.js):
+   the viewer brings its own small font, fixed colors and paragraph margins - bring it back in line
+   with the chat, and give tables and code a light frame. */
+.agentic-bubble--md {
+    white-space: normal;
+}
+
+.agentic-bubble--md .toastui-editor-contents {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.55;
+    padding: 0;
+}
+
+.agentic-bubble--md .toastui-editor-contents > *:first-child {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.agentic-bubble--md .toastui-editor-contents p,
+.agentic-bubble--md .toastui-editor-contents li {
+    color: inherit;
+}
+
+.agentic-bubble--md .toastui-editor-contents p {
+    margin: 0 0 10px;
+}
+
+.agentic-bubble--md .toastui-editor-contents h1,
+.agentic-bubble--md .toastui-editor-contents h2,
+.agentic-bubble--md .toastui-editor-contents h3 {
+    border-bottom: none;
+    margin: 18px 0 8px;
+    padding-bottom: 0;
+}
+
+.agentic-bubble--md .toastui-editor-contents h1 { font-size: 1.35em; }
+.agentic-bubble--md .toastui-editor-contents h2 { font-size: 1.2em; }
+.agentic-bubble--md .toastui-editor-contents h3 { font-size: 1.05em; }
+
+.agentic-bubble--md .toastui-editor-contents table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto; /* wide tables scroll inside the bubble instead of widening the chat */
+    margin: 8px 0 12px;
+}
+
+.agentic-bubble--md .toastui-editor-contents table th {
+    background: rgba(128, 128, 128, .18);
+    color: inherit;
+}
+
+.agentic-bubble--md .toastui-editor-contents table td,
+.agentic-bubble--md .toastui-editor-contents table th {
+    border-color: rgba(128, 128, 128, .35);
+    padding: 5px 10px;
+    vertical-align: top;
+}
+
+.agentic-dark .agentic-bubble--md .toastui-editor-contents,
+.agentic-dark .agentic-bubble--md .toastui-editor-contents * {
+    color: #e8e8ef;
+}
+
+.agentic-dark .agentic-bubble--md .toastui-editor-contents pre,
+.agentic-dark .agentic-bubble--md .toastui-editor-contents code {
+    background: #2b2b33;
+}
+
+.agentic-dark .agentic-bubble--md .toastui-editor-contents a {
+    color: #5ea1ee;
+}

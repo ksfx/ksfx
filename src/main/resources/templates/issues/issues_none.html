@@ -18,7 +18,7 @@
 <div th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? ' issues-dark' : ''">
     <div class="issues-empty">
         <p>There are no issue trackers yet.</p>
-        <form th:action="@{/issues/create}" method="post" class="issues-create-first-form">
+        <form th:if="${@projectContextService.canManage()}" th:action="@{/issues/create}" method="post" class="issues-create-first-form">
             <input type="text" name="name" placeholder="e.g. Project Phoenix" required="required" class="issues-create-first-input" />
             <button type="submit" class="issues-btn issues-btn-primary">Create tracker</button>
         </form>

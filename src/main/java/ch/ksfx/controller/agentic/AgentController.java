@@ -1,5 +1,12 @@
 package ch.ksfx.controller.agentic;
 
+import ch.ksfx.services.agentic.EffectiveModelService;
+import ch.ksfx.services.agentic.AgenticAccessService;
+import ch.ksfx.services.agentic.AgenticUsageStatsService;
+import ch.ksfx.dao.AgenticAccessDAO;
+import ch.ksfx.model.AgenticAccess;
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
 import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.AgentMessageDAO;
@@ -48,6 +55,21 @@ import java.util.Map;
 @RequestMapping("/agentic")
 public class AgentController
 {
+    @org.springframework.beans.factory.annotation.Autowired
+    private EffectiveModelService effectiveModelService;
+
+    @Autowired
+    private AgenticAccessService agenticAccessService;
+
+    @Autowired
+    private AgenticAccessDAO agenticAccessDAO;
+
+    @Autowired
+    private AgenticUsageStatsService agenticUsageStatsService;
+
+    @Autowired
+    private UserScope userScope;
+
     private final AgentDAO agentDAO;
     private final ProjectContextService projectContextService;
     private final AgentMessageDAO agentMessageDAO;
@@ -110,30 +132,34 @@ public class AgentController
      * within a project lands in that project instead of "Ungrouped".
      */
     @GetMapping({"/edit", "/edit/{id}"})
-    public String edit(@PathVariable(value = "id", required = false) Long agentId,
-                       @RequestParam(required = false) Long projectId, Model model)
+    public String edit(@PathVariable(value = "id", required = false) Long agentId, Model model)
     {
         Agent agent = agentId != null ? agentDAO.getAgentForId(agentId) : new Agent();
 
-        // A new agent belongs to the current project (same rule as every other create), unless the
-        // caller names one explicitly (the sidebar's "New Agent" passes the project it shows).
+        // A new agent is always created in the CURRENT project (KSFX issue #19) - no project
+        // choice on the form, and no ?projectId= that could name a project the user only reads.
         if (agentId == null) {
-            agent.setProject(projectId != null ? projectDAO.getProjectForId(projectId) : projectContextService.current());
+            agent.setProject(projectContextService.current());
         }
 
+        userScope.requireManage(agent.getProject()); // agents are project configuration (OWNER)
+
         model.addAttribute("agent", agent);
-        model.addAttribute("allProjects", projectDAO.getAllProjects());
         model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
+        model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
+        model.addAttribute("lastActualModel", agent.getId() != null ? effectiveModelService.lastActualModelFor(agent) : null);
+        addAccessChoices(agent, model);
 
         return "agentic/agent/agent_edit";
     }
 
     @PostMapping({"/edit", "/edit/{id}"})
-    public String submit(@PathVariable(value = "id", required = false) Long agentId, @Valid @ModelAttribute Agent agent, BindingResult bindingResult, Model model, RedirectAttributes redirectAttributes)
+    public String submit(@PathVariable(value = "id", required = false) Long agentId, @Valid @ModelAttribute Agent agent, BindingResult bindingResult,
+                         @RequestParam(value = "agenticAccessId", required = false) Long agenticAccessId, Model model, RedirectAttributes redirectAttributes)
     {
         if (bindingResult.hasErrors()) {
-            model.addAttribute("allProjects", projectDAO.getAllProjects());
             model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
+            addAccessChoices(agent.getId() != null ? agentDAO.getAgentForId(agent.getId()) : agent, model);
             return "agentic/agent/agent_edit";
         }
 
@@ -145,18 +171,45 @@ public class AgentController
         Agent previousAgent = isNew ? null : agentDAO.getAgentForId(agent.getId());
 
         if (previousAgent != null) {
+            userScope.requireManage(previousAgent.getProject());
+        }
+
+        // The form carries no project (KSFX issue #19): an existing agent keeps its project - moving
+        // is the Assignments screen's job - and a new one lands in the current project, which the
+        // user must OWN.
+        if (previousAgent != null) {
+            agent.setProject(previousAgent.getProject());
+        } else {
+            agent.setProject(projectContextService.current());
+            userScope.requireManage(agent.getProject());
+        }
+        if (previousAgent != null) {
             agent.setWorkspacePath(previousAgent.getWorkspacePath());
             agent.setClaudeSessionId(previousAgent.getClaudeSessionId());
             agent.setApiToken(previousAgent.getApiToken());
             agent.setCreatedAt(previousAgent.getCreatedAt());
         }
 
-        // Every agent belongs to a project since the project migration (2026-10-10): an unselected
-        // option binds to a stub with a null id (see NoteController's identical NoteCategory
-        // handling), which now means "the default project" rather than "no project".
-        if (agent.getProject() == null || agent.getProject().getId() == null) {
-            agent.setProject(projectDAO.getDefaultProject());
+        // Every agent names its access - there is no default (Kejo, 2026-11-17). Only an access of
+        // the agent's own project counts; without one the form comes back with a clear message.
+        AgenticAccess chosenAccess = agenticAccessId != null ? agenticAccessDAO.getAgenticAccessForId(agenticAccessId) : null;
+        boolean accessValid = chosenAccess != null && agent.getProject() != null && chosenAccess.getProject().getId().equals(agent.getProject().getId());
+
+        if (!accessValid) {
+            agent.setAgenticAccess(null);
+            model.addAttribute("agent", agent);
+            model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
+            model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
+            model.addAttribute("lastActualModel", isNew ? null : effectiveModelService.lastActualModelFor(agent));
+            addAccessChoices(agent, model);
+            model.addAttribute("accessError", agenticAccessService.accessesFor(agent.getProject()).isEmpty()
+                    ? "This project has no access yet - add one on the project's Agentic Settings page first."
+                    : "Please choose the access this agent runs on.");
+
+            return "agentic/agent/agent_edit";
         }
+
+        agent.setAgenticAccess(chosenAccess);
 
         if (isNew) {
             agent.setCreatedAt(new Date());
@@ -186,6 +239,8 @@ public class AgentController
                     Path newWorkspace = agentWorkspaceService.resolveWorkspace(agent, config);
 
                     agentWorkspaceService.moveWorkspaceIfNeeded(oldWorkspace, newWorkspace);
+                    // The CLI state (transcripts, memory) travels with the agent, same rule as the workspace.
+                    agentWorkspaceService.moveWorkspaceIfNeeded(agentWorkspaceService.resolveProviderDir(previousAgent, config), agentWorkspaceService.resolveProviderDir(agent, config));
                     agent.setWorkspacePath(newWorkspace.toString());
                     agentDAO.saveOrUpdateAgent(agent);
                 } catch (IOException e) {
@@ -198,11 +253,20 @@ public class AgentController
         return "redirect:/agentic/edit/" + agent.getId();
     }
 
+    /** The access part of the edit form: the project's accesses, the agent's effective access and its usage. */
+    private void addAccessChoices(Agent agent, Model model)
+    {
+        List<AgenticAccess> accesses = agenticAccessService.accessesFor(agent != null ? agent.getProject() : null);
+        model.addAttribute("accesses", accesses);
+        model.addAttribute("effectiveAccess", agenticAccessService.effectiveAccessFor(agent));
+        model.addAttribute("agentUsage", agent != null && agent.getId() != null ? agenticUsageStatsService.usageForAgent(agent.getId()) : null);
+    }
+
     @GetMapping("/delete/{id}")
     public String delete(@PathVariable(value = "id") Long agentId, RedirectAttributes redirectAttributes) throws SchedulerException
     {
         Agent agent = agentDAO.getAgentForId(agentId);
-
+        userScope.requireManage(agent.getProject());
         // Remove any live Quartz jobs for this agent's schedules before the cascade delete removes
         // their rows, so nothing orphaned lingers in the in-memory scheduler until next restart.
         for (AgentSchedule schedule : agentScheduleDAO.getSchedulesForAgent(agentId)) {
@@ -222,7 +286,7 @@ public class AgentController
     public String resetSession(@PathVariable(value = "id") Long agentId, RedirectAttributes redirectAttributes)
     {
         Agent agent = agentDAO.getAgentForId(agentId);
-
+        userScope.requireManage(agent.getProject());
         if (claudeCliSessionService.isRunning(agentId)) {
             redirectAttributes.addFlashAttribute("resultError", true);
             redirectAttributes.addFlashAttribute("resultMessage", "Agent is currently busy with a turn - try again once it finishes.");
@@ -260,6 +324,9 @@ public class AgentController
         ClaudeCliSessionService.PartialTurn partialTurn = agentRunning ? claudeCliSessionService.getPartialTurn(agentId) : null;
 
         model.addAttribute("agent", agent);
+        model.addAttribute("effectiveModel", effectiveModelService.effectiveModelFor(agent));
+        model.addAttribute("lastActualModel", effectiveModelService.lastActualModelFor(agent));
+        model.addAttribute("effectiveAccess", agenticAccessService.effectiveAccessFor(agent));
         model.addAttribute("messages", messages);
         // A full page (exactly MESSAGE_PAGE_SIZE rows) doesn't *guarantee* there's an older message
         // still to load - the conversation could happen to have exactly that many - but it's the
@@ -268,6 +335,7 @@ public class AgentController
         // on every single chat-page load just to get that one edge case exactly right.
         model.addAttribute("hasMoreOlderMessages", messages.size() == MESSAGE_PAGE_SIZE);
         model.addAttribute("agentRunning", agentRunning);
+        model.addAttribute("queuedMessages", claudeCliSessionService.getQueuedMessages(agentId));
         // Both null (not just agentRunning itself) when nothing's actually running yet - executeTurn
         // registers the RunningTurnState a moment after runningStatus, so there's a brief window
         // where isRunning() is already true but getPartialTurn() is still null; the template/JS
@@ -292,6 +360,7 @@ public class AgentController
     public String olderMessages(@PathVariable(value = "id") Long agentId, @RequestParam Long beforeId, Model model)
     {
         Agent agent = agentDAO.getAgentForId(agentId);
+        userScope.requireRead(agent.getProject());
         List<AgentMessage> messages = agentMessageDAO.getMessagesForAgentBefore(agentId, beforeId, MESSAGE_PAGE_SIZE);
 
         model.addAttribute("agent", agent);
@@ -309,31 +378,54 @@ public class AgentController
      * the fetch()+ReadableStream the send flow needs for POST) works natively for a plain GET SSE
      * stream.
      */
+    /** Polling fallback for buffering proxies - see ClaudeCliSessionService.getTurnSnapshot and agentic-chat.js pollTurn. */
+    @GetMapping(value = "/chat/{id}/snapshot", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, Object> turnSnapshot(@PathVariable(value = "id") Long agentId, javax.servlet.http.HttpServletResponse response)
+    {
+        userScope.requireRead(agentDAO.getAgentForId(agentId).getProject());
+        response.setHeader("Cache-Control", "no-cache, no-store");
+
+        return claudeCliSessionService.getTurnSnapshot(agentId);
+    }
+
     @GetMapping(value = "/chat/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @ResponseBody
-    public SseEmitter attach(@PathVariable(value = "id") Long agentId)
+    public SseEmitter attach(@PathVariable(value = "id") Long agentId, javax.servlet.http.HttpServletResponse response)
     {
+        userScope.requireRead(agentDAO.getAgentForId(agentId).getProject());
+        // The ONE live path of the chat (sending and reloading mid-turn): EventSource GET. Told not
+        // to buffer or transform - proxies (web isolation, inspection, nginx) otherwise may hold the
+        // stream back until it ends.
+        response.setHeader("Cache-Control", "no-cache, no-transform");
+        response.setHeader("X-Accel-Buffering", "no");
         SseEmitter emitter = new SseEmitter(0L);
-
-        if (!claudeCliSessionService.attachToRunningTurn(agentId, emitter)) {
-            emitter.complete();
-        }
-
+        claudeCliSessionService.attachToRunningTurn(agentId, emitter); // sends snapshot, or done/notRunning
         return emitter;
     }
 
-    @PostMapping(value = "/chat/{id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    /**
+     * Sends a chat message and answers right away (JSON): started / queued / error. The browser then
+     * follows the turn over GET /chat/{id}/stream. (Until 2026-11-06 this POST's response WAS the
+     * stream - buffered to the end by web isolation proxies.)
+     */
+    @PostMapping(value = "/chat/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public SseEmitter chatMessage(@PathVariable(value = "id") Long agentId,
-                                   @RequestParam("message") String message,
-                                   @RequestParam(value = "files", required = false) MultipartFile[] files,
-                                   @RequestParam(value = "voiceInput", defaultValue = "false") boolean voiceInput)
+    public Map<String, Object> chatMessage(@PathVariable(value = "id") Long agentId,
+                                           @RequestParam("message") String message,
+                                           @RequestParam(value = "files", required = false) MultipartFile[] files,
+                                           @RequestParam(value = "voiceInput", defaultValue = "false") boolean voiceInput)
     {
-        SseEmitter emitter = new SseEmitter(0L);
+        userScope.requireWrite(agentDAO.getAgentForId(agentId).getProject()); // a chat turn makes the agent act
+        ClaudeCliSessionService.TurnStart start = claudeCliSessionService.runTurn(agentId, message, files, voiceInput, userScope.currentUser());
 
-        claudeCliSessionService.runTurn(agentId, message, files, voiceInput, emitter);
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("status", start.status);
+        if (start.queueId != null) result.put("queueId", start.queueId);
+        if (start.content != null) result.put("content", start.content);
+        if (start.error != null) result.put("error", start.error);
 
-        return emitter;
+        return result;
     }
 
     /**
@@ -355,6 +447,8 @@ public class AgentController
     @ResponseBody
     public Map<String, Boolean> stop(@PathVariable(value = "id") Long agentId)
     {
+        userScope.requireWrite(agentDAO.getAgentForId(agentId).getProject());
+
         return Collections.singletonMap("stopped", claudeCliSessionService.stopTurn(agentId));
     }
 
@@ -364,10 +458,22 @@ public class AgentController
      * transcript. Scoped to the {@code id} in the URL, not just {@code messageId}, so a message
      * can't be deleted by guessing its id while looking at a different agent's chat page.
      */
+    /** Removes a message that is still waiting in the chat queue (it never reached the agent). */
+    @PostMapping("/chat/{id}/queued/{queueId}/delete")
+    @ResponseBody
+    public Map<String, Boolean> deleteQueuedMessage(@PathVariable(value = "id") Long agentId, @PathVariable Long queueId)
+    {
+        userScope.requireWrite(agentDAO.getAgentForId(agentId).getProject());
+
+        return Collections.singletonMap("deleted", claudeCliSessionService.deleteQueuedMessage(agentId, queueId));
+    }
+
     @PostMapping("/chat/{id}/message/{messageId}/delete")
     @ResponseBody
     public Map<String, Boolean> deleteMessage(@PathVariable(value = "id") Long agentId, @PathVariable Long messageId)
     {
+        userScope.requireWrite(agentDAO.getAgentForId(agentId).getProject());
+
         AgentMessage message = agentMessageDAO.getAgentMessageForId(messageId);
 
         if (message == null || message.getAgent() == null || !message.getAgent().getId().equals(agentId)) {
@@ -399,6 +505,7 @@ public class AgentController
         String fileName = new AntPathMatcher().extractPathWithinPattern(bestMatchingPattern, pathWithinHandlerMapping);
 
         Agent agent = agentDAO.getAgentForId(agentId);
+        userScope.requireRead(agent.getProject());
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
 
         if (agent == null || config == null) {

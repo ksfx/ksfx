@@ -178,7 +178,7 @@ public class ProjectDeletionService
                 : "local clone " + gitConfig.getLocalClonePath() + " is deleted; the remote repository " + gitConfig.getRepoUrl() + " is NOT touched");
 
         AgenticConfig config = agenticConfigDAO.getAgenticConfig();
-        summary.put("Workspaces on disk", config != null ? agentWorkspaceService.resolveProjectWorkspace(project, config).toString() + " (deleted)" : "no Agentic configuration - nothing on disk");
+        summary.put("Workspaces on disk", config != null ? agentWorkspaceService.resolveProjectWorkspace(project, config).toString() + " and " + agentWorkspaceService.resolveProjectProviderDir(project, config) + " (deleted)" : "no Agentic configuration - nothing on disk");
         summary.put("Docker container", project.getDockerIsolationEnabled() ? "removed" : "none");
         summary.put("Not touched", "the data layer (time series, data structure) written by this project's activities");
 
@@ -256,6 +256,7 @@ public class ProjectDeletionService
 
         if (config != null) {
             deleteTree(agentWorkspaceService.resolveProjectWorkspace(project, config));
+            deleteTree(agentWorkspaceService.resolveProjectProviderDir(project, config)); // the agents' CLI state (transcripts, memory)
         }
 
         if (project.getDockerIsolationEnabled()) {

@@ -1,5 +1,7 @@
 package ch.ksfx.controller.admin.dashboard;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ch.ksfx.services.project.UserScope;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.model.Project;
 import ch.ksfx.services.project.ProjectContextService;
@@ -15,6 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/admin/dashboardmanager")
 public class DashboardManagerController
 {
+    @Autowired
+    private UserScope userScope;
+
     private final ProjectDAO projectDAO;
     private final ProjectContextService projectContextService;
 
@@ -28,7 +33,7 @@ public class DashboardManagerController
     public String editDashboardContent(Model model)
     {
         Project project = projectContextService.current();
-
+        userScope.requireManage(project);
         model.addAttribute("project", project);
         model.addAttribute("dashboardContent", project.getDashboardContent() != null ? project.getDashboardContent() : "");
 
@@ -39,6 +44,7 @@ public class DashboardManagerController
     public String editDashboardContent(@RequestParam(value = "content", required = true) String content)
     {
         Project project = projectDAO.getProjectForId(projectContextService.current().getId());
+        userScope.requireManage(project);
         project.setDashboardContent(content);
         projectDAO.saveOrUpdateProject(project);
 

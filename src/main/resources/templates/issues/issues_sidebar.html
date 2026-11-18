@@ -15,9 +15,9 @@
                 <option th:each="t : ${allTrackers}" th:value="${t.id}" th:text="${t.name}"
                         th:selected="${currentTracker != null and t.id == currentTracker.id}"></option>
             </select>
-            <button type="button" id="issuesSwitcherNewBtn" class="issues-switcher-btn" title="New tracker" aria-label="New tracker"><i class="fa fa-plus"></i></button>
+            <button th:if="${@projectContextService.canManage()}" type="button" id="issuesSwitcherNewBtn" class="issues-switcher-btn" title="New tracker" aria-label="New tracker"><i class="fa fa-plus"></i></button>
             <!-- Same double guard as deleting a wiki: confirm + type the name - see issues.js. -->
-            <button type="button" id="issuesTrackerDeleteBtn" class="issues-switcher-btn issues-switcher-delete-btn" title="Delete this tracker" aria-label="Delete this tracker"
+            <button th:if="${@projectContextService.canManage()}" type="button" id="issuesTrackerDeleteBtn" class="issues-switcher-btn issues-switcher-delete-btn" title="Delete this tracker" aria-label="Delete this tracker"
                     th:data-tracker-name="${currentTracker.name}"><i class="fa fa-trash-o"></i></button>
             <form id="issuesTrackerCreateForm" th:action="@{/issues/create}" method="post" hidden="hidden">
                 <input type="hidden" id="issuesTrackerCreateNameInput" name="name" />
@@ -25,7 +25,7 @@
             <form id="issuesTrackerDeleteForm" th:action="@{/issues/{trackerId}/delete(trackerId=${currentTracker.id})}" method="post" hidden="hidden"></form>
         </div>
 
-        <a th:href="@{/issues/{trackerId}/issue/new(trackerId=${currentTracker.id})}" class="issues-new-issue-btn"><i class="fa fa-plus"></i> New Issue</a>
+        <a th:if="${@projectContextService.canWrite()}" th:href="@{/issues/{trackerId}/issue/new(trackerId=${currentTracker.id})}" class="issues-new-issue-btn"><i class="fa fa-plus"></i> New Issue</a>
 
         <div class="issues-sidebar-section">
             <div class="issues-sidebar-heading">Filter</div>
@@ -46,7 +46,7 @@
         <div class="issues-sidebar-section">
             <div class="issues-sidebar-heading">
                 Labels
-                <a th:href="@{/issues/{trackerId}/labels(trackerId=${currentTracker.id})}" class="issues-labels-manage" title="Manage labels" aria-label="Manage labels"><i class="fa fa-cog"></i></a>
+                <a th:if="${@projectContextService.canManage()}" th:href="@{/issues/{trackerId}/labels(trackerId=${currentTracker.id})}" class="issues-labels-manage" title="Manage labels" aria-label="Manage labels"><i class="fa fa-cog"></i></a>
             </div>
             <div class="issues-sidebar-labels">
                 <span th:each="l : ${trackerLabels}" class="issues-label-chip" th:style="'background:' + ${l.color}" th:text="${l.name}"></span>

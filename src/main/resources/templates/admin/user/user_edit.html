@@ -60,6 +60,47 @@
                     <label class="form-check-label" th:for="'role' + ${role.id}" th:text="${role.name}"></label>
                 </div>
             </div>
+            <div class="form-group" th:if="${memberships != null}">
+                <label>Projects</label>
+                <small class="form-text text-muted" style="margin-bottom:6px">READER sees, WRITER works, OWNER configures. The ADMIN role above sees every project regardless.</small>
+                <table class="table table-sm" style="max-width:560px">
+                    <tbody>
+                        <tr th:each="m : ${memberships}">
+                            <td th:text="${m.project.name}"></td>
+                            <td style="width:170px">
+                                <select class="form-control form-control-sm" th:attr="data-user=${user.id},data-project=${m.project.id}" onchange="ksfxSetMembership(this)">
+                                    <option th:each="l : ${levels}" th:value="${l}" th:text="${l}" th:selected="${l == m.level}"></option>
+                                </select>
+                            </td>
+                            <td style="width:90px"><button type="button" class="btn btn-outline-danger btn-sm" th:attr="data-user=${user.id},data-project=${m.project.id}" onclick="ksfxRemoveMembership(this)">Remove</button></td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(memberships)}"><td colspan="3" class="text-muted">No projects - this user lands on the "no project" page unless they hold ADMIN.</td></tr>
+                        <tr th:if="${not #lists.isEmpty(otherProjects)}">
+                            <td><select id="ksfxAddProject" class="form-control form-control-sm"><option th:each="p : ${otherProjects}" th:value="${p.id}" th:text="${p.name}"></option></select></td>
+                            <td><select id="ksfxAddLevel" class="form-control form-control-sm"><option th:each="l : ${levels}" th:value="${l}" th:text="${l}" th:selected="${l.name() == 'WRITER'}"></option></select></td>
+                            <td><button type="button" class="btn btn-primary btn-sm" th:attr="data-user=${user.id}" onclick="ksfxAddMembership(this)">Add</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <!-- Memberships are their own rows, not part of the user form: each change posts to
+                     /admin/memberships right away via a form built on the fly (this block sits inside
+                     the user form, and forms cannot nest), and the page returns here. -->
+                <div id="ksfxMembershipCfg" hidden="hidden" th:attr="data-base=@{/admin/memberships/},data-return='/admin/usermanagement/edit/' + ${user.id},data-csrf-name=${_csrf.parameterName},data-csrf=${_csrf.token}"></div>
+                <script>
+                    function ksfxPostMembership(action, userId, projectId, level) {
+                        var cfg = document.getElementById('ksfxMembershipCfg').dataset;
+                        var f = document.createElement('form');
+                        f.method = 'post'; f.action = cfg.base + action; f.hidden = true;
+                        var fields = { userId: userId, projectId: projectId, level: level || '', returnTo: cfg['return'] };
+                        fields[cfg.csrfName] = cfg.csrf;
+                        for (var k in fields) { var i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = fields[k]; f.appendChild(i); }
+                        document.body.appendChild(f); f.submit();
+                    }
+                    function ksfxSetMembership(sel) { ksfxPostMembership('set', sel.dataset.user, sel.dataset.project, sel.value); }
+                    function ksfxRemoveMembership(btn) { if (confirm('Remove this user from the project?')) ksfxPostMembership('remove', btn.dataset.user, btn.dataset.project); }
+                    function ksfxAddMembership(btn) { ksfxPostMembership('set', btn.dataset.user, document.getElementById('ksfxAddProject').value, document.getElementById('ksfxAddLevel').value); }
+                </script>
+            </div>
             <div class="form-group form-check">
                 <input type="checkbox" class="form-check-input" id="enabled" name="enabled" value="true"
                        th:checked="${isNew} ? true : ${user.enabled}" />
