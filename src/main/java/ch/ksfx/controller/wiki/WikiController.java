@@ -439,7 +439,7 @@ public class WikiController
     }
 
     /**
-     * Called by the Toast UI Editor's image-upload hook (see wiki.js) while editing a page - not
+     * Called by the wiki editor when an image is pasted, dropped or picked (see wiki-collab.js) - not
      * tied to any WikiPage or Wiki at upload time (the page itself might still be unsaved), so the
      * asset is a standalone row referenced only by the URL embedded into the markdown, same as
      * pasting an external image URL would be.

@@ -57,6 +57,34 @@
         statusEl.className = 'wiki-collab-status' + (kind ? ' wiki-collab-status--' + kind : '');
     }
 
+    // Images (pasted, dropped, or via the toolbar) are uploaded as wiki assets first - the same
+    // endpoint the old editor used - and only their URL goes into the document.
+    function uploadFile(file) {
+        var formData = new FormData();
+        formData.append('file', file, file.name || 'pasted-image.png');
+
+        var headers = {};
+        headers[csrfHeader] = csrfToken;
+        setStatus('uploading image…', 'warn');
+
+        return fetch(mount.dataset.assetUploadEndpoint, { method: 'POST', credentials: 'same-origin', headers: headers, body: formData })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function (result) {
+                setStatus(solo ? '' : 'live', solo ? '' : 'ok');
+                return result.url;
+            })
+            .catch(function (error) {
+                setStatus('image upload failed', 'error');
+                alert('Image upload failed: ' + error.message);
+                throw error;
+            });
+    }
+
     function loadAssets() {
         return new Promise(function (resolve, reject) {
             var link = document.createElement('link');
@@ -276,7 +304,7 @@
         awareness = new K.Awareness(ydoc);
 
         if (solo) {
-            return K.createEditor({ el: mount, ydoc: ydoc, awareness: awareness, initialMarkdown: contentField.value || '' })
+            return K.createEditor({ el: mount, ydoc: ydoc, awareness: awareness, initialMarkdown: contentField.value || '', uploadFile: uploadFile })
                 .then(function (created) { editor = created; });
         }
 
@@ -300,7 +328,8 @@
                 ydoc: ydoc,
                 awareness: awareness,
                 initialMarkdown: answer.initialize ? (answer.markdown || '') : null,
-                onChange: onMarkdownChange
+                onChange: onMarkdownChange,
+                uploadFile: uploadFile
             });
         }).then(function (created) {
             editor = created;
@@ -314,7 +343,23 @@
 
         if (button && editor) {
             event.preventDefault(); // keep the selection in the editor
-            editor.command(button.dataset.cmd);
+
+            if (button.dataset.cmd === 'image') {
+                imageInput.click();
+            } else {
+                editor.command(button.dataset.cmd);
+            }
+        }
+    });
+
+    var imageInput = document.getElementById('wikiCollabImageInput');
+
+    imageInput.addEventListener('change', function () {
+        var file = imageInput.files[0];
+        imageInput.value = '';
+
+        if (file && editor) {
+            editor.insertImageFile(file).catch(function () { /* reported in uploadFile */ });
         }
     });
 

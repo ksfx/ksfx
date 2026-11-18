@@ -6,11 +6,12 @@ import { Editor, rootCtx, editorViewCtx, editorViewOptionsCtx, remarkStringifyOp
 import {
     commonmark, toggleStrongCommand, toggleEmphasisCommand, toggleInlineCodeCommand, wrapInHeadingCommand,
     wrapInBulletListCommand, wrapInOrderedListCommand, wrapInBlockquoteCommand, createCodeBlockCommand,
-    insertHrCommand, turnIntoTextCommand, toggleLinkCommand
+    insertHrCommand, turnIntoTextCommand, toggleLinkCommand, insertImageCommand
 } from '@milkdown/kit/preset/commonmark';
 import { gfm, insertTableCommand, toggleStrikethroughCommand, remarkGFMPlugin } from '@milkdown/kit/preset/gfm';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { clipboard } from '@milkdown/kit/plugin/clipboard';
+import { upload, uploadConfig } from '@milkdown/kit/plugin/upload';
 import { callCommand, getMarkdown, replaceAll } from '@milkdown/kit/utils';
 import { collab, collabServiceCtx } from '@milkdown/plugin-collab';
 import * as Y from 'yjs';
@@ -65,7 +66,7 @@ function normalizeMarkdown(markdown) {
  * only applied when this client was told to initialize the shared document (exactly one client per
  * session - see WikiCollabService), otherwise the content arrives as Yjs updates.
  */
-async function createEditor({ el, ydoc, awareness, initialMarkdown, onChange }) {
+async function createEditor({ el, ydoc, awareness, initialMarkdown, onChange, uploadFile }) {
     const editor = await Editor.make()
         .config((ctx) => {
             ctx.set(rootCtx, el);
@@ -75,6 +76,25 @@ async function createEditor({ el, ydoc, awareness, initialMarkdown, onChange }) 
             ctx.update(remarkStringifyOptionsCtx, (prev) => ({ ...prev, bullet: '-', emphasis: '*', strong: '*', rule: '-', fence: '`' }));
             // Compact tables like Toast UI / the agents write them - no column padding.
             ctx.set(remarkGFMPlugin.options.key, { tablePipeAlign: false });
+            // Pasted / dropped images go to the server first (uploadFile -> URL); only the image node
+            // with that URL enters the document - so a live session shares a reference, never the file.
+            ctx.update(uploadConfig.key, (prev) => ({
+                ...prev,
+                uploader: async (files, schema) => {
+                    const nodes = [];
+
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files.item(i);
+
+                        if (file && file.type.startsWith('image/') && uploadFile) {
+                            const src = await uploadFile(file);
+                            nodes.push(schema.nodes.image.createAndFill({ src, alt: imageAlt(file) }));
+                        }
+                    }
+
+                    return nodes;
+                }
+            }));
             ctx.get(listenerCtx).markdownUpdated((_ctx, markdown, prevMarkdown) => {
                 if (onChange && markdown !== prevMarkdown) {
                     onChange(normalizeMarkdown(markdown));
@@ -85,6 +105,7 @@ async function createEditor({ el, ydoc, awareness, initialMarkdown, onChange }) 
         .use(gfm)
         .use(listener)
         .use(clipboard)
+        .use(upload)
         .use(collab)
         .create();
 
@@ -103,6 +124,11 @@ async function createEditor({ el, ydoc, awareness, initialMarkdown, onChange }) 
         // No "flush": a flush builds a new editor state and would cut the Yjs binding - a plain
         // transaction goes through y-prosemirror to everybody else.
         replaceAll: (markdown) => editor.action(replaceAll(markdown)),
+        // The toolbar's image button: upload, then insert at the cursor.
+        insertImageFile: async (file) => {
+            const src = await uploadFile(file);
+            editor.action(callCommand(insertImageCommand.key, { src, alt: imageAlt(file) }));
+        },
         command: (name) => {
             const make = COMMANDS[name];
             const args = make ? make() : null;
@@ -114,6 +140,10 @@ async function createEditor({ el, ydoc, awareness, initialMarkdown, onChange }) 
         },
         destroy: () => editor.destroy()
     };
+}
+
+function imageAlt(file) {
+    return (file.name || 'image').replace(/\.[a-z0-9]+$/i, '');
 }
 
 /**

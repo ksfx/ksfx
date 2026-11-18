@@ -76,12 +76,15 @@
                 <button type="button" data-cmd="quote" title="Quote"><i class="fa fa-quote-left"></i></button>
                 <button type="button" data-cmd="codeblock" title="Code block"><i class="fa fa-file-code-o"></i></button>
                 <button type="button" data-cmd="table" title="Table"><i class="fa fa-table"></i></button>
+                <button type="button" data-cmd="image" title="Image (or simply paste / drop one into the text)"><i class="fa fa-picture-o"></i></button>
+                <input type="file" id="wikiCollabImageInput" accept="image/*" hidden="hidden" />
                 <button type="button" data-cmd="hr" title="Horizontal line">—</button>
             </div>
             <div id="wikiCollabMount" class="wiki-collab-mount"
                  th:data-collab-js="@{/vendor/collab-editor/collab-editor.min.js}"
                  th:data-collab-css="@{/vendor/collab-editor/collab-editor.min.css}"
                  th:data-collab-base="${isNew} ? '' : @{/wiki/{wikiId}/page/{pageId}/collab(wikiId=${currentWiki.id},pageId=${pageId})}"
+                 th:data-asset-upload-endpoint="@{/wiki/asset/upload}"
                  th:data-csrf-header="${_csrf.headerName}"
                  th:data-csrf-param="${_csrf.parameterName}"
                  th:data-csrf-token="${_csrf.token}"></div>

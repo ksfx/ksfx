@@ -1025,6 +1025,15 @@
     background: rgba(128, 128, 128, .12);
 }
 
+.wiki-collab-mount .ksfx-collab-prose img {
+    max-width: 100%;
+    height: auto;
+}
+
+.wiki-collab-mount .ksfx-collab-prose img.ProseMirror-selectednode {
+    outline: 2px solid #1971c2;
+}
+
 .wiki-collab-mount .ksfx-collab-prose blockquote {
     margin-left: 0;
     padding-left: 12px;
