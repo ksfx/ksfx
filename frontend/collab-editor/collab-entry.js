@@ -8,7 +8,7 @@ import {
     wrapInBulletListCommand, wrapInOrderedListCommand, wrapInBlockquoteCommand, createCodeBlockCommand,
     insertHrCommand, turnIntoTextCommand, toggleLinkCommand
 } from '@milkdown/kit/preset/commonmark';
-import { gfm, insertTableCommand, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm';
+import { gfm, insertTableCommand, toggleStrikethroughCommand, remarkGFMPlugin } from '@milkdown/kit/preset/gfm';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { clipboard } from '@milkdown/kit/plugin/clipboard';
 import { callCommand, getMarkdown, replaceAll } from '@milkdown/kit/utils';
@@ -42,6 +42,25 @@ const COMMANDS = {
 };
 
 /**
+ * Milkdown does not know the wiki's own syntax, so its Markdown output needs two corrections:
+ * - [[wikilinks]] come out escaped (\[\[Setup]] - remark guards "[" in plain text), which the
+ *   wiki would no longer resolve: the escapes inside a [[...]] are removed again;
+ * - bare URLs come out as <https://...> autolinks: back to the bare form the wiki and the agents
+ *   write (GFM links them either way), so saving does not rewrite untouched lines;
+ * - table delimiters come out as ":-" (left-aligned, the default anyway): back to "---".
+ * Remaining harmless differences: remark escapes some characters in plain text (2\*3, \[x]) - they
+ * render exactly the same.
+ */
+function normalizeMarkdown(markdown) {
+    return markdown
+        .replace(/\\\[\\\[((?:[^\]\n]|\\\])+?)\\?\]\\?\]/g, (match, inner) => '[[' + inner.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>])/g, '$1') + ']]')
+        .replace(/<(https?:\/\/[^>\s]+)>/g, '$1')
+        // Table delimiter rows: Milkdown marks every column left-aligned (":-"); left is the default,
+        // so write the plain "---" the wiki and the agents use.
+        .replace(/^\|(?: *:?-+:? *\|)+ *$/gm, (row) => row.replace(/(\| *):-( *)(?=\|)/g, '$1---$2'));
+}
+
+/**
  * Creates a collaborative editor in `el`, bound to `ydoc` and `awareness`. `initialMarkdown` is
  * only applied when this client was told to initialize the shared document (exactly one client per
  * session - see WikiCollabService), otherwise the content arrives as Yjs updates.
@@ -54,9 +73,11 @@ async function createEditor({ el, ydoc, awareness, initialMarkdown, onChange }) 
             // Write Markdown the way the wiki (Toast UI) and the agents do - "-" bullets, "*"
             // emphasis - so saving through this editor does not rewrite untouched lines.
             ctx.update(remarkStringifyOptionsCtx, (prev) => ({ ...prev, bullet: '-', emphasis: '*', strong: '*', rule: '-', fence: '`' }));
+            // Compact tables like Toast UI / the agents write them - no column padding.
+            ctx.set(remarkGFMPlugin.options.key, { tablePipeAlign: false });
             ctx.get(listenerCtx).markdownUpdated((_ctx, markdown, prevMarkdown) => {
                 if (onChange && markdown !== prevMarkdown) {
-                    onChange(markdown);
+                    onChange(normalizeMarkdown(markdown));
                 }
             });
         })
@@ -78,7 +99,7 @@ async function createEditor({ el, ydoc, awareness, initialMarkdown, onChange }) 
     });
 
     return {
-        getMarkdown: () => editor.action(getMarkdown()),
+        getMarkdown: () => normalizeMarkdown(editor.action(getMarkdown())),
         // No "flush": a flush builds a new editor state and would cut the Yjs binding - a plain
         // transaction goes through y-prosemirror to everybody else.
         replaceAll: (markdown) => editor.action(replaceAll(markdown)),
@@ -132,5 +153,5 @@ function fromBase64(text) {
 
 window.KsfxCollab = {
     Y, Awareness, encodeAwarenessUpdate, applyAwarenessUpdate, removeAwarenessStates,
-    createEditor, mergeMarkdown, toBase64, fromBase64
+    createEditor, mergeMarkdown, normalizeMarkdown, toBase64, fromBase64
 };
