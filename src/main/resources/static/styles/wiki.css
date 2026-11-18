@@ -903,3 +903,203 @@
     }
 }
 
+
+/* ---- Live editing (wiki-collab.js, branch multiwiki) ----------------------------------------- */
+.wiki-collab-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin: 6px 0 8px;
+    font-size: .85em;
+}
+
+.wiki-collab-status {
+    padding: 1px 9px;
+    border-radius: 10px;
+    background: rgba(128, 128, 128, .14);
+}
+
+.wiki-collab-status--ok { background: rgba(40, 167, 69, .15); color: #28a745; }
+.wiki-collab-status--warn { background: rgba(224, 168, 0, .18); color: #b38600; }
+.wiki-collab-status--error { background: rgba(220, 53, 69, .14); color: #dc3545; }
+
+.wiki-collab-people {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.wiki-collab-person {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 9px 0 6px;
+    border: 1px solid;
+    border-radius: 12px;
+}
+
+.wiki-collab-person--me {
+    opacity: .7;
+}
+
+.wiki-collab-person-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.wiki-collab-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 6px;
+    border: 1px solid rgba(128, 128, 128, .3);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    background: rgba(128, 128, 128, .06);
+}
+
+.wiki-collab-toolbar button {
+    min-width: 30px;
+    height: 28px;
+    padding: 0 7px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font-size: .85em;
+    font-weight: 600;
+}
+
+.wiki-collab-toolbar button:hover {
+    border-color: rgba(128, 128, 128, .35);
+    background: rgba(128, 128, 128, .12);
+}
+
+.wiki-collab-toolbar .sep {
+    width: 1px;
+    height: 18px;
+    margin: 0 4px;
+    background: rgba(128, 128, 128, .35);
+}
+
+.wiki-collab-mount {
+    min-height: 420px;
+    padding: 14px 20px;
+    border: 1px solid rgba(128, 128, 128, .3);
+    border-radius: 0 0 6px 6px;
+    overflow-wrap: anywhere;
+}
+
+.wiki-collab-mount .ksfx-collab-prose {
+    min-height: 390px;
+    outline: none;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.wiki-collab-mount .ksfx-collab-prose h1 { font-size: 1.8em; margin: .6em 0 .4em; }
+.wiki-collab-mount .ksfx-collab-prose h2 { font-size: 1.45em; margin: 1em 0 .4em; }
+.wiki-collab-mount .ksfx-collab-prose h3 { font-size: 1.2em; margin: 1em 0 .3em; }
+.wiki-collab-mount .ksfx-collab-prose p { margin: 0 0 .7em; }
+.wiki-collab-mount .ksfx-collab-prose li > p { margin: 0; }
+.wiki-collab-mount .ksfx-collab-prose ul,
+.wiki-collab-mount .ksfx-collab-prose ol { margin: 0 0 .7em; padding-left: 1.6em; }
+
+.wiki-collab-mount .ksfx-collab-prose table {
+    border-collapse: collapse;
+    margin: 8px 0;
+}
+
+.wiki-collab-mount .ksfx-collab-prose th,
+.wiki-collab-mount .ksfx-collab-prose td {
+    border: 1px solid rgba(128, 128, 128, .4);
+    padding: 4px 10px;
+}
+
+.wiki-collab-mount .ksfx-collab-prose pre {
+    padding: 10px;
+    border-radius: 4px;
+    background: rgba(128, 128, 128, .12);
+}
+
+.wiki-collab-mount .ksfx-collab-prose blockquote {
+    margin-left: 0;
+    padding-left: 12px;
+    border-left: 3px solid rgba(128, 128, 128, .4);
+    opacity: .85;
+}
+
+/* Remote cursors from y-prosemirror (class names are y-prosemirror's own). */
+.ProseMirror-yjs-cursor {
+    position: relative;
+    margin-left: -1px;
+    margin-right: -1px;
+    border-left: 1px solid;
+    border-right: 1px solid;
+    word-break: normal;
+    pointer-events: none;
+}
+
+.ProseMirror-yjs-cursor > div {
+    position: absolute;
+    top: -1.15em;
+    left: -1px;
+    padding: 0 4px;
+    border-radius: 3px 3px 3px 0;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: normal;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.wiki-collab-note {
+    margin: 0 0 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(25, 113, 194, .12);
+    font-size: .88em;
+}
+
+.wiki-live-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 10px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(40, 167, 69, .1);
+    font-size: .9em;
+}
+
+.wiki-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #28a745;
+    animation: wiki-live-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes wiki-live-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, .5); }
+    50% { box-shadow: 0 0 0 4px rgba(40, 167, 69, 0); }
+}
+
+/* Dark mode for the live editor - same colours as the Toast UI viewer's dark overrides above. */
+.wiki-dark .wiki-collab-mount .ksfx-collab-prose,
+.wiki-dark .wiki-collab-mount .ksfx-collab-prose * {
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-collab-mount .ksfx-collab-prose a {
+    color: #5ea1ee;
+}
+
+.wiki-dark .ProseMirror-yjs-cursor > div,
+.wiki-dark .ProseMirror-yjs-cursor > div * {
+    color: #fff;
+}

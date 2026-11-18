@@ -81,6 +81,28 @@ public class WikiService
     }
 
     /**
+     * A new version of the page's content only - used by the live editing session
+     * (WikiCollabService) when it persists what was written collaboratively.
+     */
+    public void saveContent(WikiPage page, String content, User editedByUser, Agent editedByAgent)
+    {
+        page.setUpdatedAt(new Date());
+        wikiPageDAO.saveOrUpdateWikiPage(page);
+        appendVersion(page, content, editedByUser, editedByAgent);
+    }
+
+    /** Title / folder / parent only, no new version - an agent's write into a live editing session (see WikiCollabService). */
+    public WikiPage updatePageMeta(WikiPage page, WikiFolder folder, WikiPage parentPage, String title)
+    {
+        page.setFolder(folder);
+        page.setParentPage(parentPage);
+        page.setTitle(title);
+        page.setUpdatedAt(new Date());
+        wikiPageDAO.saveOrUpdateWikiPage(page);
+        return page;
+    }
+
+    /**
      * The one invariant that lets "subpages" coexist with the folder tree without becoming a second,
      * independent hierarchy: a page's parent must always live in the exact same folder as the page
      * itself (both null - both top-level - counts as "the same"). Returns a plain error message, or

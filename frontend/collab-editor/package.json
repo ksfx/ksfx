@@ -1,0 +1,21 @@
+{
+  "name": "ksfx-collab-editor",
+  "version": "1.0.0",
+  "description": "Collaborative wiki editor bundle (Milkdown + Yjs) - vendored as src/main/resources/static/vendor/collab-editor",
+  "scripts": {
+    "build": "node build.mjs && cp dist/collab-editor.min.js dist/collab-editor.min.css dist/collab-editor.min.js.LEGAL.txt ../../src/main/resources/static/vendor/collab-editor/"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@milkdown/kit": "^7.23.0",
+    "@milkdown/plugin-collab": "^7.23.0",
+    "esbuild": "^0.28.2",
+    "node-diff3": "^4.0.0",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.33"
+  },
+  "private": true
+}

@@ -53,7 +53,41 @@
             </div>
             <p class="wiki-edit-hint" th:if="${isNew}">The page's filename is generated automatically from the title.</p>
 
-            <div id="wikiEditorMount" class="wiki-editor-mount"
+            <!-- Existing pages are edited live together (WikiCollabService, wiki-collab.js): the
+                 collaborative Milkdown editor replaces Toast UI there. New pages keep Toast UI - a
+                 page only gets a live session once it exists. -->
+            <div th:if="${!isNew}" class="wiki-collab-bar" id="wikiCollabBar">
+                <span class="wiki-collab-status" id="wikiCollabStatus">connecting…</span>
+                <span class="wiki-collab-people" id="wikiCollabPeople"></span>
+            </div>
+            <div th:if="${!isNew}" class="wiki-collab-toolbar" id="wikiCollabToolbar">
+                <button type="button" data-cmd="h1" title="Heading 1">H1</button>
+                <button type="button" data-cmd="h2" title="Heading 2">H2</button>
+                <button type="button" data-cmd="h3" title="Heading 3">H3</button>
+                <button type="button" data-cmd="paragraph" title="Normal text">¶</button>
+                <span class="sep"></span>
+                <button type="button" data-cmd="bold" title="Bold"><i class="fa fa-bold"></i></button>
+                <button type="button" data-cmd="italic" title="Italic"><i class="fa fa-italic"></i></button>
+                <button type="button" data-cmd="strike" title="Strikethrough"><i class="fa fa-strikethrough"></i></button>
+                <button type="button" data-cmd="code" title="Inline code"><i class="fa fa-code"></i></button>
+                <button type="button" data-cmd="link" title="Link"><i class="fa fa-link"></i></button>
+                <span class="sep"></span>
+                <button type="button" data-cmd="bullet" title="Bullet list"><i class="fa fa-list-ul"></i></button>
+                <button type="button" data-cmd="ordered" title="Numbered list"><i class="fa fa-list-ol"></i></button>
+                <button type="button" data-cmd="quote" title="Quote"><i class="fa fa-quote-left"></i></button>
+                <button type="button" data-cmd="codeblock" title="Code block"><i class="fa fa-file-code-o"></i></button>
+                <button type="button" data-cmd="table" title="Table"><i class="fa fa-table"></i></button>
+                <button type="button" data-cmd="hr" title="Horizontal line">—</button>
+            </div>
+            <div th:if="${!isNew}" id="wikiCollabMount" class="wiki-collab-mount"
+                 th:data-collab-js="@{/vendor/collab-editor/collab-editor.min.js}"
+                 th:data-collab-css="@{/vendor/collab-editor/collab-editor.min.css}"
+                 th:data-collab-base="@{/wiki/{wikiId}/page/{pageId}/collab(wikiId=${currentWiki.id},pageId=${pageId})}"
+                 th:data-csrf-header="${_csrf.headerName}"
+                 th:data-csrf-param="${_csrf.parameterName}"
+                 th:data-csrf-token="${_csrf.token}"></div>
+
+            <div th:if="${isNew}" id="wikiEditorMount" class="wiki-editor-mount"
                  th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
                  th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"
                  th:data-asset-upload-endpoint="@{/wiki/asset/upload}"
@@ -87,5 +121,6 @@
 
 <footer th:replace="layout :: site-footer" />
 <script th:src="@{/script/wiki.js}"></script>
+<script th:if="${!isNew}" th:src="@{/script/wiki-collab.js}"></script>
 </body>
 </html>

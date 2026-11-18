@@ -153,16 +153,18 @@
             form.submit();
         });
 
-        // Rare action, so hidden by default - see the wiki-move comment in wiki_edit.html.
-        var moveToggle = document.getElementById('wikiMoveToggle');
+    }
 
-        if (moveToggle) {
-            moveToggle.addEventListener('click', function (event) {
-                event.preventDefault();
-                moveToggle.hidden = true;
-                document.getElementById('wikiMoveField').hidden = false;
-            });
-        }
+    // Rare action, so hidden by default - see the wiki-move comment in wiki_edit.html. Outside the
+    // Toast UI block: existing pages use the live editor (wiki-collab.js) instead.
+    var moveToggle = document.getElementById('wikiMoveToggle');
+
+    if (moveToggle) {
+        moveToggle.addEventListener('click', function (event) {
+            event.preventDefault();
+            moveToggle.hidden = true;
+            document.getElementById('wikiMoveField').hidden = false;
+        });
     }
 
     // --- Page attachments (see wiki_page.html's wiki-attachments section) ------------------------
