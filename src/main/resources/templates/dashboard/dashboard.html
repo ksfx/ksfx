@@ -15,6 +15,32 @@
     <!-- Custom part (Dashboard Manager) on top, only if there is any. -->
     <th:block th:if="${!#strings.isEmpty(dashboardContent)}" th:utext="${dashboardContent}"></th:block>
 
+    <!-- Automatic part, first: the latest tasks of the project's agents (RecentTasksService) - who
+         asked which agent what, and what came of it. Each card opens that agent's chat; two columns
+         on large screens. Plain server rendering, no script: reload the dashboard for a fresh state. -->
+    <div class="container ksfx-recent-tasks" th:if="${!#lists.isEmpty(recentTasks)}">
+        <h5><i class="fa fa-comments-o"></i> Recent tasks</h5>
+        <div class="ksfx-task-feed">
+            <a class="ksfx-task" th:each="t : ${recentTasks}" th:href="@{/agentic/chat/{id}(id=${t.agentId})}" th:classappend="|ksfx-task--${t.status}|">
+                <span class="ksfx-task-badge" th:style="|background:${t.agentColor}|" th:text="${t.agentInitial}">K</span>
+                <span class="ksfx-task-main">
+                    <span class="ksfx-task-head">
+                        <strong class="ksfx-task-agent" th:text="${t.agentName}">Agent</strong>
+                        <span class="ksfx-task-meta">
+                            <i class="fa" th:classappend="${t.senderIcon}"></i> <span th:text="${t.senderLabel}">Kejo</span>
+                            &middot; <span th:title="${t.whenExact}" th:text="${t.when}">5 min ago</span>
+                        </span>
+                        <span class="ksfx-task-status">
+                            <span class="ksfx-task-status-dot"></span><span th:text="${t.statusLabel}">12 s</span>
+                        </span>
+                    </span>
+                    <span class="ksfx-task-text" th:text="${t.text}">Task</span>
+                    <span class="ksfx-task-answer" th:if="${!#strings.isEmpty(t.answer)}"><i class="fa fa-reply"></i> <span th:text="${t.answer}">Answer</span></span>
+                </span>
+            </a>
+        </div>
+    </div>
+
     <!-- Automatic part: the project's services - Docker-isolated projects only. Links come from the
          same ProjectPortsService as the breadcrumb dropdown (one truth, incl. the port link
          template); the listen dots are filled right after load by ksfxApplyPortStatus (site-footer
@@ -45,32 +71,6 @@
                 if (block && window.ksfxApplyPortStatus) window.ksfxApplyPortStatus(block.dataset.statusUrl);
             });
         </script>
-    </div>
-
-    <!-- Automatic part: the latest tasks of the project's agents (RecentTasksService) - who asked
-         which agent what, and what came of it. Each card opens that agent's chat. Plain server
-         rendering, no script: reload the dashboard for a fresh state. -->
-    <div class="container ksfx-recent-tasks" th:if="${!#lists.isEmpty(recentTasks)}">
-        <h5><i class="fa fa-comments-o"></i> Recent tasks</h5>
-        <div class="ksfx-task-feed">
-            <a class="ksfx-task" th:each="t : ${recentTasks}" th:href="@{/agentic/chat/{id}(id=${t.agentId})}" th:classappend="|ksfx-task--${t.status}|">
-                <span class="ksfx-task-badge" th:style="|background:${t.agentColor}|" th:text="${t.agentInitial}">K</span>
-                <span class="ksfx-task-main">
-                    <span class="ksfx-task-head">
-                        <strong class="ksfx-task-agent" th:text="${t.agentName}">Agent</strong>
-                        <span class="ksfx-task-meta">
-                            <i class="fa" th:classappend="${t.senderIcon}"></i> <span th:text="${t.senderLabel}">Kejo</span>
-                            &middot; <span th:title="${t.whenExact}" th:text="${t.when}">5 min ago</span>
-                        </span>
-                        <span class="ksfx-task-status">
-                            <span class="ksfx-task-status-dot"></span><span th:text="${t.statusLabel}">12 s</span>
-                        </span>
-                    </span>
-                    <span class="ksfx-task-text" th:text="${t.text}">Task</span>
-                    <span class="ksfx-task-answer" th:if="${!#strings.isEmpty(t.answer)}"><i class="fa fa-reply"></i> <span th:text="${t.answer}">Answer</span></span>
-                </span>
-            </a>
-        </div>
     </div>
 
     <footer th:replace="layout :: site-footer" />

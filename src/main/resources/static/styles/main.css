@@ -413,14 +413,21 @@ th[data-grid-property="observationTime"]
    Dark mode only swaps the Bootstrap sheet (no body class), so text inherits and surfaces are
    translucent grey - the same rules read in both themes. */
 .ksfx-recent-tasks {
-    margin-top: 1.5rem;
     margin-bottom: 2rem;
 }
 
 .ksfx-task-feed {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
+}
+
+/* Two columns on large screens - read row by row, newest top left. */
+@media (min-width: 1200px) {
+    .ksfx-task-feed {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
 }
 
 .ksfx-task {
