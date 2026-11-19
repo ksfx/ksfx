@@ -32,6 +32,29 @@ body > .container {
 #footer > .container {
   padding-right: 15px;
   padding-left: 15px;
+  /* One line that never wraps (the footer has a fixed height): dark mode on the right keeps its
+     room, the left part is cut with an ellipsis when the window gets narrow. */
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 100%;
+}
+
+#footer .ksfx-footer-left,
+#footer .ksfx-footer-right {
+  margin: 0; /* not the ".container .text-muted" margin */
+  white-space: nowrap;
+}
+
+#footer .ksfx-footer-left {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#footer .ksfx-footer-right {
+  flex: 0 0 auto;
 }
 
 code {

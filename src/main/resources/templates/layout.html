@@ -184,8 +184,10 @@
             <br />
             <div id="footer">
                 <div class="container">
-                    <div class="text-muted" style="float:left;"><a target="_blank" href="http://www.github.com/ksfx" style="color:inherit">Version 2.0.0-DEVELOPMENT</a> &copy; Kejo Starosta <a th:href="@{/publishing/publicationviewer/0/contact}" class="fa fa-envelope-o" title="Contact"></a></div>
-                    <div class="text-muted" style="float:right;text-align:right">
+                    <!-- One line, never wrapping: the right part (dark mode) keeps its room, the left part
+                         is cut with an ellipsis when it gets tight (see #footer in main.css). -->
+                    <div class="text-muted ksfx-footer-left"><a target="_blank" href="http://www.github.com/ksfx" style="color:inherit">Version 2.0.0-DEVELOPMENT</a> &copy; Kejo Starosta <a th:href="@{/publishing/publicationviewer/0/contact}" class="fa fa-envelope-o" title="Contact"></a></div>
+                    <div class="text-muted ksfx-footer-right">
 
                         <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
                             <th:block th:if="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
