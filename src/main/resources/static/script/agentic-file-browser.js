@@ -18,8 +18,6 @@
     var filesEndpoint = overlay.dataset.filesEndpoint;
     var csrfHeader = overlay.dataset.csrfHeader;
     var csrfToken = overlay.dataset.csrfToken;
-    var toastuiJs = overlay.dataset.toastuiJs;
-    var toastuiCss = overlay.dataset.toastuiCss;
 
     var body = document.getElementById('agenticFileBrowserBody');
     var openBtn = document.getElementById('agenticFilesBtn');
@@ -188,33 +186,6 @@
         createMarkdownFile(fileName);
     });
 
-    // Lazily loads the vendored (see static/vendor/toastui-editor/) WYSIWYG markdown editor only
-    // when a .md file is actually opened - most file-browser sessions never touch it, no reason to
-    // ship ~500KB on every chat page load. Cached as a promise so re-opening a second file doesn't
-    // re-fetch/re-inject the same <link>/<script> tags.
-    var toastuiReady = null;
-
-    function loadToastUiAssets() {
-        if (toastuiReady) {
-            return toastuiReady;
-        }
-
-        var link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = toastuiCss;
-        document.head.appendChild(link);
-
-        toastuiReady = new Promise(function (resolve, reject) {
-            var script = document.createElement('script');
-            script.src = toastuiJs;
-            script.onload = resolve;
-            script.onerror = function () { reject(new Error('Could not load the markdown editor.')); };
-            document.head.appendChild(script);
-        });
-
-        return toastuiReady;
-    }
-
     // Creates an empty file via the same /write endpoint Save already uses (it creates-or-
     // overwrites unconditionally - nameExistsInCurrentListing's check above is what actually
     // prevents this from clobbering an existing file), then jumps straight into the editor for it
@@ -237,12 +208,13 @@
         var filePath = dirPath ? dirPath + '/' + name : name;
         var downloadUrl = filesEndpoint + '/download?root=' + encodeURIComponent(root) + '&path=' + encodeURIComponent(filePath);
 
-        Promise.all([loadToastUiAssets(), fetch(downloadUrl).then(function (r) {
+        // The general Markdown editor (ksfx-markdown-editor.js - the same as in the wiki and the
+        // issues), loaded only when a .md file is actually opened. Its "Markdown" toggle edits the
+        // raw source; YAML front matter (common in agent files) is kept apart and put back as is.
+        fetch(downloadUrl).then(function (r) {
             if (!r.ok) { return failWithBody(r); }
             return r.text();
-        })]).then(function (results) {
-            var content = results[1];
-
+        }).then(function (content) {
             body.innerHTML = '';
 
             var toolbar = document.createElement('div');
@@ -272,15 +244,22 @@
             body.appendChild(toolbar);
             body.appendChild(mount);
 
-            activeEditor = new toastui.Editor({
-                el: mount,
-                height: '420px',
-                initialEditType: 'wysiwyg',
-                previewStyle: 'tab',
-                initialValue: content
+            mount.dataset.editorJs = overlay.dataset.editorJs;
+            mount.dataset.editorCss = overlay.dataset.editorCss;
+            saveBtn.disabled = true;
+
+            KsfxMarkdownEditor.create(mount, { initialMarkdown: content, minHeight: 380 }).then(function (created) {
+                activeEditor = created;
+                saveBtn.disabled = false;
+            }).catch(function (error) {
+                showError(error.message);
             });
 
             saveBtn.addEventListener('click', function () {
+                if (!activeEditor) {
+                    return;
+                }
+
                 var markdown = activeEditor.getMarkdown();
                 activeEditor = null;
                 postAction('write', { root: root, path: dirPath, name: name, content: markdown });

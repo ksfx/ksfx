@@ -20,6 +20,8 @@ import { diff3Merge } from 'node-diff3';
 
 import '@milkdown/kit/prose/view/style/prosemirror.css';
 import '@milkdown/kit/prose/tables/style/tables.css';
+import './editor.css';
+import { mountStandalone } from './standalone.js';
 
 const COMMANDS = {
     bold: () => [toggleStrongCommand.key],
@@ -53,12 +55,14 @@ const COMMANDS = {
  * render exactly the same.
  */
 function normalizeMarkdown(markdown) {
-    return markdown
+    // Fenced code blocks are left exactly as they are - only the text around them is corrected.
+    return markdown.split(/(^```[^\n]*\n[\s\S]*?^```[ \t]*$)/m).map((part, i) => i % 2 === 1 ? part : part
         .replace(/\\\[\\\[((?:[^\]\n]|\\\])+?)\\?\]\\?\]/g, (match, inner) => '[[' + inner.replace(/\\([\\`*_{}\[\]()#+\-.!|~<>])/g, '$1') + ']]')
         .replace(/<(https?:\/\/[^>\s]+)>/g, '$1')
         // Table delimiter rows: Milkdown marks every column left-aligned (":-"); left is the default,
         // so write the plain "---" the wiki and the agents use.
-        .replace(/^\|(?: *:?-+:? *\|)+ *$/gm, (row) => row.replace(/(\| *):-( *)(?=\|)/g, '$1---$2'));
+        .replace(/^\|(?: *:?-+:? *\|)+ *$/gm, (row) => row.replace(/(\| *):-( *)(?=\|)/g, '$1---$2'))
+    ).join('');
 }
 
 /**
@@ -183,5 +187,6 @@ function fromBase64(text) {
 
 window.KsfxCollab = {
     Y, Awareness, encodeAwarenessUpdate, applyAwarenessUpdate, removeAwarenessStates,
-    createEditor, mergeMarkdown, normalizeMarkdown, toBase64, fromBase64
+    createEditor, mergeMarkdown, normalizeMarkdown, toBase64, fromBase64,
+    mountStandalone: (container, options) => mountStandalone(container, options, createEditor)
 };

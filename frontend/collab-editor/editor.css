@@ -1,0 +1,29 @@
+/* The general Markdown editor (standalone.js) - neutral, translucent colours so it fits the light
+   and the dark theme of every page without own dark-mode rules; text colour is inherited. */
+.ksfx-md-editor { border: 1px solid rgba(128,128,128,.3); border-radius: 6px; }
+.ksfx-md-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid rgba(128,128,128,.3); background: rgba(128,128,128,.06); border-radius: 6px 6px 0 0; }
+.ksfx-md-toolbar button { min-width: 30px; height: 28px; padding: 0 7px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: inherit; font-size: .85em; font-weight: 600; }
+.ksfx-md-toolbar button:hover:not(:disabled) { border-color: rgba(128,128,128,.35); background: rgba(128,128,128,.12); }
+.ksfx-md-toolbar button:disabled { opacity: .35; }
+.ksfx-md-toolbar .ksfx-md-source-toggle { margin-left: auto; font-weight: 500; }
+.ksfx-md-toolbar .ksfx-md-source-toggle.active { border-color: rgba(128,128,128,.45); background: rgba(128,128,128,.2); }
+.ksfx-md-sep { width: 1px; height: 18px; margin: 0 4px; background: rgba(128,128,128,.35); }
+.ksfx-md-frontmatter { padding: 6px 12px; border-bottom: 1px dashed rgba(128,128,128,.35); }
+.ksfx-md-frontmatter-label { font-size: .75em; opacity: .6; margin-bottom: 2px; }
+.ksfx-md-frontmatter textarea, .ksfx-md-source { display: block; width: 100%; box-sizing: border-box; border: none; outline: none; resize: vertical; background: transparent; color: inherit; font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; }
+.ksfx-md-source { padding: 12px 16px; }
+.ksfx-md-prose-mount { padding: 10px 16px; overflow-wrap: anywhere; }
+.ksfx-md-prose-mount .ksfx-collab-prose { min-height: inherit; outline: none; font-size: 15px; line-height: 1.6; color: inherit; }
+.ksfx-md-prose-mount .ksfx-collab-prose h1 { font-size: 1.6em; margin: .5em 0 .4em; }
+.ksfx-md-prose-mount .ksfx-collab-prose h2 { font-size: 1.35em; margin: .9em 0 .4em; }
+.ksfx-md-prose-mount .ksfx-collab-prose h3 { font-size: 1.15em; margin: .9em 0 .3em; }
+.ksfx-md-prose-mount .ksfx-collab-prose p { margin: 0 0 .6em; }
+.ksfx-md-prose-mount .ksfx-collab-prose li > p { margin: 0; }
+.ksfx-md-prose-mount .ksfx-collab-prose ul, .ksfx-md-prose-mount .ksfx-collab-prose ol { margin: 0 0 .6em; padding-left: 1.6em; }
+.ksfx-md-prose-mount .ksfx-collab-prose table { border-collapse: collapse; margin: 8px 0; }
+.ksfx-md-prose-mount .ksfx-collab-prose th, .ksfx-md-prose-mount .ksfx-collab-prose td { border: 1px solid rgba(128,128,128,.4); padding: 4px 10px; }
+.ksfx-md-prose-mount .ksfx-collab-prose pre { padding: 10px; border-radius: 4px; background: rgba(128,128,128,.12); }
+.ksfx-md-prose-mount .ksfx-collab-prose code { background: rgba(128,128,128,.14); padding: 1px 4px; border-radius: 3px; }
+.ksfx-md-prose-mount .ksfx-collab-prose blockquote { margin-left: 0; padding-left: 12px; border-left: 3px solid rgba(128,128,128,.4); opacity: .85; }
+.ksfx-md-prose-mount .ksfx-collab-prose img { max-width: 100%; height: auto; }
+.ksfx-md-prose-mount .ksfx-collab-prose a { color: #2e77d0; }

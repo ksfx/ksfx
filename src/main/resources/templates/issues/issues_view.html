@@ -115,8 +115,8 @@
 
             <form th:if="${@projectContextService.canWrite()}" id="issuesCommentForm" th:action="@{/issues/{trackerId}/issue/{issueNumber}/comment(trackerId=${currentTracker.id},issueNumber=${issue.number})}" method="post" onsubmit="return false;">
                 <div id="issuesCommentEditorMount" class="issues-comment-editor"
-                     th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
-                     th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}"
+                     th:data-editor-js="@{/vendor/collab-editor/collab-editor.min.js}"
+                     th:data-editor-css="@{/vendor/collab-editor/collab-editor.min.css}"
                      th:data-asset-upload-endpoint="@{/issues/asset/upload}"
                      th:data-csrf-header="${_csrf.headerName}"
                      th:data-csrf-token="${_csrf.token}"></div>
@@ -130,6 +130,7 @@
 </div>
 
 <footer th:replace="layout :: site-footer" />
+<script th:src="@{/script/ksfx-markdown-editor.js}"></script>
 <script th:src="@{/script/issues.js}"></script>
 </body>
 </html>
