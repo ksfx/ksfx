@@ -86,8 +86,8 @@
                   th:title="|Runs on the access '${effectiveAccess.name}' - ${T(ch.ksfx.services.agentic.AgenticAccessService).statusLabel(effectiveAccess)}|"><i class="fa fa-key"></i> <span th:text="${effectiveAccess.name}">access</span></span>
             <span class="agentic-main-model text-danger" th:if="${effectiveAccess == null}" title="Pick an access on the agent's edit page - until then it cannot run"><i class="fa fa-key"></i> no access chosen</span>
             <span class="agentic-toolbar-actions">
-                <button type="button" id="agenticFilesBtn" class="agentic-toolbar-action" title="Browse workspace files"><i class="fa fa-folder-open-o"></i> Files</button>
-                <button type="button" id="agenticScheduleBtn" class="agentic-toolbar-action" title="Schedules"><i class="fa fa-clock-o"></i> Schedules</button>
+                <button type="button" id="agenticFilesBtn" class="agentic-toolbar-action" title="Browse workspace files"><i class="fa fa-folder-open-o"></i><span class="agentic-toolbar-label"> Files</span></button>
+                <button type="button" id="agenticScheduleBtn" class="agentic-toolbar-action" title="Schedules"><i class="fa fa-clock-o"></i><span class="agentic-toolbar-label"> Schedules</span></button>
             </span>
         </div>
 

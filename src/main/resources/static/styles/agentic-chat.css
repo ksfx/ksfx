@@ -88,6 +88,21 @@ body:has(> .agentic-layout) {
         min-height: 240px; /* see sizeAgenticPanes - phones get a lower minimum */
     }
 
+    /* Phones: the toolbar keeps the agent's name and the actions as icons; model and access are
+       on the agent's edit page. */
+    .agentic-toolbar .agentic-main-model,
+    .agentic-toolbar-label {
+        display: none;
+    }
+
+    .agentic-toolbar-actions {
+        margin-left: auto;
+    }
+
+    .agentic-toolbar {
+        padding-right: 16px; /* in line with the chat's right margin */
+    }
+
     .agentic-layout {
         display: block;
     }
@@ -346,6 +361,30 @@ body:has(> .agentic-layout) {
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
+    /* Never wider than the chat: a toolbar that sticks out makes a phone zoom the whole page out,
+       which also inflates the window height the page is sized to (the chat then gets too tall). */
+    min-width: 0;
+    overflow: hidden;
+}
+
+.agentic-toolbar .agentic-main-title,
+.agentic-toolbar .agentic-toolbar-actions,
+.agentic-toolbar .agentic-sidebar-toggle {
+    flex: none;
+}
+
+/* Model and access give way first: cut with an ellipsis when it gets tight. */
+.agentic-toolbar .agentic-main-model {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Safety net: the agent page is sized to the window - it must never get wider than the screen. */
+html:has(body > .agentic-layout),
+body:has(> .agentic-layout) {
+    overflow-x: hidden;
 }
 
 .agentic-main-title {
