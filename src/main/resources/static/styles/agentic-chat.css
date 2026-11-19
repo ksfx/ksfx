@@ -121,6 +121,7 @@ body:has(> .agentic-layout) {
         width: 82vw;
         max-width: 300px;
         border-radius: 0;
+        margin: 0; /* not the desktop strip's negative margins - they pushed the menu out of the screen */
         transform: translateX(-100%);
         transition: transform 0.2s ease;
         /* Overrides agentic-chat.js's inline height (sizeAgenticPanes skips this element once it's
