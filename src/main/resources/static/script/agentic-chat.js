@@ -42,24 +42,37 @@
     // forcing the whole page to scroll just to reach the composer. Capped at maxHeight so a very
     // tall monitor doesn't turn this into a mostly-empty giant panel either.
     function sizeAgenticPanes() {
-        var bottomBreathingRoom = 24;
-        var minHeight = 420;
-        var maxHeight = 820;
-
-        document.querySelectorAll('.agentic-sidebar, .agentic-chat-wrapper').forEach(function (el) {
+        var minHeight = window.innerWidth < 768 ? 240 : 360; // phones: header and footer take a larger share
+        var maxHeight = 900;
+        var panes = Array.prototype.filter.call(document.querySelectorAll('.agentic-sidebar, .agentic-chat-wrapper'), function (el) {
             // Below the mobile breakpoint .agentic-sidebar becomes a fixed-position slide-in overlay
             // sized by CSS (top:0/bottom:0, see agentic-chat.css) - leave it alone here, an inline
-            // height clamped to [420,820]px would either fight that or (on a short phone screen)
-            // just be wrong, since this clamp is tuned for the two-pane desktop layout.
-            if (getComputedStyle(el).position === 'fixed') {
-                return;
+            // height clamped for the two-pane desktop layout would only fight that.
+            return getComputedStyle(el).position !== 'fixed';
+        });
+
+        // First guess: from the pane's top to the bottom of the window...
+        panes.forEach(function (el) {
+            var top = el.getBoundingClientRect().top + window.pageYOffset;
+            el.style.height = Math.floor(Math.min(maxHeight, Math.max(minHeight, window.innerHeight - top))) + 'px';
+        });
+
+        // ...then take off exactly what the page still sticks out below the window - the footer and
+        // all the margins, whatever their size right now - so header, chat and footer fit together
+        // and the page itself never scrolls.
+        // A few rounds: fractional pixels (zoom, high-DPI) can leave a 1px rest - and a page that
+        // scrolls by one pixel still wobbles.
+        for (var round = 0; round < 3; round++) {
+            var overflow = Math.ceil(document.documentElement.scrollHeight - window.innerHeight);
+
+            if (overflow <= 0) {
+                break;
             }
 
-            var top = el.getBoundingClientRect().top;
-            var height = Math.min(maxHeight, Math.max(minHeight, window.innerHeight - top - bottomBreathingRoom));
-
-            el.style.height = height + 'px';
-        });
+            panes.forEach(function (el) {
+                el.style.height = Math.floor(Math.max(minHeight, parseFloat(el.style.height) - overflow)) + 'px';
+            });
+        }
     }
 
     sizeAgenticPanes();

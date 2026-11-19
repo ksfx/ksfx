@@ -10,6 +10,19 @@
     gap: 20px;
 }
 
+/* The shared site footer starts with a few <br> as spacing - on the agent page that is ~100px the
+   chat could use (the page is sized to fit the window exactly, see sizeAgenticPanes). */
+.agentic-layout ~ br {
+    display: none;
+}
+
+/* The site footer has a fixed height; on a phone its two parts wrap onto two lines and stick out
+   of it - out of reach for the page sizing. Here it may grow with its content instead. */
+.agentic-layout ~ #footer {
+    height: auto;
+    min-height: 60px;
+}
+
 .agentic-sidebar {
     flex: 0 0 240px;
     display: flex;
@@ -20,7 +33,7 @@
        which varies with the test-instance banner, viewport width (nav wrapping), etc. - it either
        wastes space (guessed too large) or clips content (too small). This min-height is only the
        fallback for the brief moment before that JS runs (or if it's disabled). */
-    min-height: 420px;
+    min-height: 360px;
     border: 1px solid #e4e4e9;
     border-radius: 12px;
     background: #fafafb;
@@ -56,6 +69,10 @@
    opens it, tapping the backdrop or Escape closes it - see agentic-chat.js) rather than a
    permanently visible column eating most of the screen. */
 @media (max-width: 768px) {
+    .agentic-chat-wrapper {
+        min-height: 240px; /* see sizeAgenticPanes - phones get a lower minimum */
+    }
+
     .agentic-layout {
         display: block;
     }
@@ -305,7 +322,7 @@
     display: flex;
     flex-direction: column;
     /* See .agentic-sidebar's comment - same JS-measured height, same fallback. */
-    min-height: 420px;
+    min-height: 360px;
 }
 
 .agentic-toolbar {
