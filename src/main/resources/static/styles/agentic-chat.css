@@ -26,8 +26,6 @@
    content instead, as tall as its content - the page sizing then accounts for it. */
 .agentic-layout ~ #footer {
     position: static;
-    height: auto;
-    min-height: 60px;
 }
 
 body:has(> .agentic-layout) {

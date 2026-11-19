@@ -184,25 +184,18 @@
             <br />
             <div id="footer">
                 <div class="container">
-                    <!-- One line, never wrapping: the right part (dark mode) keeps its room, the left part
-                         is cut with an ellipsis when it gets tight (see #footer in main.css). -->
-                    <div class="text-muted ksfx-footer-left"><a target="_blank" href="http://www.github.com/ksfx" style="color:inherit">Version 2.0.0-DEVELOPMENT</a> &copy; Kejo Starosta <a th:href="@{/publishing/publicationviewer/0/contact}" class="fa fa-envelope-o" title="Contact"></a></div>
-                    <div class="text-muted ksfx-footer-right">
-
-                        <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
-                            <th:block th:if="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                                <a th:href="@{/toggledisplaymode}" style="color:inherit;text-decoration: none;" class="fa fa-toggle-on"></a> Dark mode
-                            </th:block>
-                        </th:block>
-                        <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
-                            <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                                <a th:href="@{/toggledisplaymode}" style="color:inherit;text-decoration: none;" class="fa fa-toggle-off"></a> Dark mode
-                            </th:block>
-                        </th:block>
-                        <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode')}" >
-                                <a th:href="@{/toggledisplaymode}" style="color:inherit;text-decoration: none;" class="fa fa-toggle-off"></a> Dark mode
-                        </th:block>
+                    <!-- One slim line, never wrapping: the right part (dark mode) keeps its room, the
+                         left part is cut with an ellipsis when it gets tight (see #footer in main.css). -->
+                    <div class="ksfx-footer-left">
+                        <span class="ksfx-footer-brand">KSFX</span>
+                        <a class="ksfx-footer-version" target="_blank" href="http://www.github.com/ksfx" title="KSFX on GitHub">v2.0.0-DEVELOPMENT</a>
+                        <span class="ksfx-footer-sep">&middot;</span>
+                        <span>&copy; Kejo Starosta</span>
+                        <a class="ksfx-footer-mail fa fa-envelope-o" th:href="@{/publishing/publicationviewer/0/contact}" title="Contact" aria-label="Contact"></a>
                     </div>
+                    <a class="ksfx-footer-right" th:href="@{/toggledisplaymode}" title="Switch light / dark">
+                        <i class="fa" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? 'fa-toggle-on' : 'fa-toggle-off'"></i> Dark mode
+                    </a>
                 </div>
             </div>
 
