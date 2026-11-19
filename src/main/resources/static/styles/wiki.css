@@ -1130,3 +1130,23 @@
 .wiki-dark .ProseMirror-yjs-cursor > div * {
     color: #fff;
 }
+
+/* Editor toolbar stays at the top of the window while scrolling through a long page - otherwise the
+   formatting buttons and Save are out of reach. The layout's own overflow (hidden / auto) would make
+   it a scroll container and keep the toolbar from sticking to the window, so on the editor page it
+   only clips. Opaque background (the page colour, slightly tinted) so text does not show through. */
+.wiki-layout:has(.wiki-collab-toolbar),
+.wiki-layout:has(.wiki-collab-toolbar) .wiki-main {
+    overflow: clip;
+}
+
+.wiki-collab-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #f6f6f8;
+}
+
+.wiki-dark .wiki-collab-toolbar {
+    background: #30343a;
+}

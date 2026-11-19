@@ -786,3 +786,21 @@
 .issues-dark .issues-md-viewer .toastui-editor-contents a {
     color: #5ea1ee !important;
 }
+
+/* Same as in the wiki: the editor toolbar sticks to the top of the window while scrolling through a
+   long description or comment (see wiki.css). */
+.issues-layout:has(.ksfx-md-editor),
+.issues-layout:has(.ksfx-md-editor) .issues-main {
+    overflow: clip;
+}
+
+.issues-layout .ksfx-md-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #f6f6f8;
+}
+
+.issues-dark .ksfx-md-toolbar {
+    background: #30343a;
+}
