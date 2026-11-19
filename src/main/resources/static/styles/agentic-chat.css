@@ -8,6 +8,9 @@
     display: flex;
     align-items: flex-start;
     gap: 20px;
+    /* Breathing room above the footer - the page is sized to fit the window exactly (see
+       sizeAgenticPanes, which takes this margin off the chat height by itself). */
+    margin-bottom: 18px;
 }
 
 /* The shared site footer starts with a few <br> as spacing - on the agent page that is ~100px the
@@ -16,11 +19,19 @@
     display: none;
 }
 
-/* The site footer has a fixed height; on a phone its two parts wrap onto two lines and stick out
-   of it - out of reach for the page sizing. Here it may grow with its content instead. */
+/* The site footer is a "sticky footer" (main.css): absolutely positioned at the bottom of the page,
+   over a 60px body margin, with a fixed height. On the agent page, which is sized to fit the window
+   exactly, that overlapped the chat's input box and swallowed the margin above it (and on phones,
+   where the footer wraps onto more lines, it covered even more). Here the footer simply follows the
+   content instead, as tall as its content - the page sizing then accounts for it. */
 .agentic-layout ~ #footer {
+    position: static;
     height: auto;
     min-height: 60px;
+}
+
+body:has(> .agentic-layout) {
+    margin-bottom: 0;
 }
 
 .agentic-sidebar {
