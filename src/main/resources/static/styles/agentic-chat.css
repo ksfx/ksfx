@@ -45,8 +45,14 @@ body:has(> .agentic-layout) {
        wastes space (guessed too large) or clips content (too small). This min-height is only the
        fallback for the brief moment before that JS runs (or if it's disabled). */
     min-height: 360px;
-    border: 1px solid #e4e4e9;
-    border-radius: 12px;
+    /* A plain strip from the breadcrumb bar down to the footer, flush with the left edge - no
+       rounded card. The negative margins pull it over the breadcrumb's bottom margin and the
+       layout's margin above the footer; sizeAgenticPanes sizes it to reach the footer. */
+    margin-top: -1rem;
+    margin-bottom: -18px;
+    border: none;
+    border-right: 1px solid #e4e4e9;
+    border-radius: 0;
     background: #fafafb;
     overflow: hidden;
 }
@@ -332,6 +338,7 @@ body:has(> .agentic-layout) {
 .agentic-chat-wrapper {
     display: flex;
     flex-direction: column;
+    margin-right: 16px; /* the input box should not touch the window edge */
     /* See .agentic-sidebar's comment - same JS-measured height, same fallback. */
     min-height: 360px;
 }

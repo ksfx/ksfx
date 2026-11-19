@@ -44,24 +44,22 @@
     function sizeAgenticPanes() {
         var minHeight = window.innerWidth < 768 ? 240 : 360; // phones: header and footer take a larger share
         var maxHeight = 900;
-        var panes = Array.prototype.filter.call(document.querySelectorAll('.agentic-sidebar, .agentic-chat-wrapper'), function (el) {
-            // Below the mobile breakpoint .agentic-sidebar becomes a fixed-position slide-in overlay
-            // sized by CSS (top:0/bottom:0, see agentic-chat.css) - leave it alone here, an inline
-            // height clamped for the two-pane desktop layout would only fight that.
-            return getComputedStyle(el).position !== 'fixed';
-        });
+        var chat = document.querySelector('.agentic-chat-wrapper');
+        var sidebar = document.querySelector('.agentic-sidebar');
+        var layout = document.querySelector('.agentic-layout');
 
-        // First guess: from the pane's top to the bottom of the window...
-        panes.forEach(function (el) {
-            var top = el.getBoundingClientRect().top + window.pageYOffset;
-            el.style.height = Math.floor(Math.min(maxHeight, Math.max(minHeight, window.innerHeight - top))) + 'px';
-        });
+        if (!chat) {
+            return;
+        }
+
+        // First guess for the chat: from its top to the bottom of the window...
+        var top = chat.getBoundingClientRect().top + window.pageYOffset;
+        chat.style.height = Math.floor(Math.min(maxHeight, Math.max(minHeight, window.innerHeight - top))) + 'px';
 
         // ...then take off exactly what the page still sticks out below the window - the footer and
         // all the margins, whatever their size right now - so header, chat and footer fit together
-        // and the page itself never scrolls.
-        // A few rounds: fractional pixels (zoom, high-DPI) can leave a 1px rest - and a page that
-        // scrolls by one pixel still wobbles.
+        // and the page itself never scrolls. A few rounds: fractional pixels (zoom, high-DPI) can
+        // leave a 1px rest - and a page that scrolls by one pixel still wobbles.
         for (var round = 0; round < 3; round++) {
             var overflow = Math.ceil(document.documentElement.scrollHeight - window.innerHeight);
 
@@ -69,9 +67,16 @@
                 break;
             }
 
-            panes.forEach(function (el) {
-                el.style.height = Math.floor(Math.max(minHeight, parseFloat(el.style.height) - overflow)) + 'px';
-            });
+            chat.style.height = Math.floor(Math.max(minHeight, parseFloat(chat.style.height) - overflow)) + 'px';
+        }
+
+        // The sidebar is a strip from the breadcrumb bar to the footer: from its own top (pulled up
+        // over the breadcrumb's margin) down to the chat's bottom plus the layout's margin. Below the
+        // mobile breakpoint it is a fixed slide-in overlay sized by CSS - left alone.
+        if (sidebar && getComputedStyle(sidebar).position !== 'fixed') {
+            var chatBottom = chat.getBoundingClientRect().bottom;
+            var layoutMargin = layout ? parseFloat(getComputedStyle(layout).marginBottom) || 0 : 0;
+            sidebar.style.height = Math.ceil(chatBottom + layoutMargin - sidebar.getBoundingClientRect().top) + 'px';
         }
     }
 
