@@ -6,7 +6,13 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <meta name="author" content="Kejo Starosta" />
-        <link rel="icon" type="image/svg+xml" th:href="@{/images/ksfx-logo.svg}" />
+        <!-- Icons from the KSFX logo package (X-Icon, the rocket in the X), white on the CI Deep Navy -
+             same navy as the header logo. SVG for modern browsers, ICO (16/32/48) as fallback, the PNGs
+             for home screens. -->
+        <link rel="icon" type="image/svg+xml" th:href="@{/images/favicon.svg}" />
+        <link rel="icon" sizes="any" th:href="@{/images/favicon.ico}" />
+        <link rel="apple-touch-icon" th:href="@{/images/apple-touch-icon.png}" />
+        <link rel="manifest" th:href="@{/images/site.webmanifest}" />
         <meta name="description" content="KSFX Data Analysis: Information Retrieval, Sentiment Analysis, Data-Science" />
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
         <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" /> -->
@@ -277,7 +283,7 @@
                      dark mode too (bootstrap-dark only darkens the page body), so one variant serves
                      both themes. Replaces the badge mark + "KSFX" text. -->
                 <a th:href="@{/}" class="navbar-brand ksfx-brand-logo" style="margin-right:14px">
-                    <img th:src="@{/images/ksfx-logo-header.svg}" alt="KSFX - Humans · Agents · One Platform" style="height:56px" />
+                    <img th:src="@{/images/ksfx-logo-header.svg}" alt="KSFX - human. agents. autonomous enterprise." style="height:56px" />
                 </a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample03" aria-controls="navbarsExample03" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
