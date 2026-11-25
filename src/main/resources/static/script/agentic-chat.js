@@ -1394,6 +1394,56 @@
         });
     }
 
+    // Units: every unit group can be collapsed; open by default. The collapsed units are remembered
+    // per browser (localStorage, unit ids), the open agent's unit always starts open so the active
+    // entry is never hidden.
+    var UNITS_KEY = 'ksfx-agent-units-collapsed';
+
+    function collapsedUnits() {
+        try {
+            return JSON.parse(localStorage.getItem(UNITS_KEY)) || [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function setUnitCollapsed(unit, collapsed) {
+        unit.classList.toggle('agentic-sidebar-unit--collapsed', collapsed);
+        unit.querySelector('.agentic-sidebar-unit-head').setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+
+    var initiallyCollapsed = collapsedUnits();
+
+    sidebar.querySelectorAll('.agentic-sidebar-unit').forEach(function (unit) {
+        if (initiallyCollapsed.indexOf(unit.dataset.unitId) >= 0 && !unit.classList.contains('agentic-sidebar-unit--current')) {
+            setUnitCollapsed(unit, true);
+        }
+    });
+
+    sidebar.addEventListener('click', function (e) {
+        var head = e.target.closest('.agentic-sidebar-unit-head');
+
+        if (!head) {
+            return;
+        }
+
+        var unit = head.closest('.agentic-sidebar-unit');
+        var collapse = !unit.classList.contains('agentic-sidebar-unit--collapsed');
+        var stored = collapsedUnits().filter(function (id) { return id !== unit.dataset.unitId; });
+
+        if (collapse) {
+            stored.push(unit.dataset.unitId);
+        }
+
+        setUnitCollapsed(unit, collapse);
+
+        try {
+            localStorage.setItem(UNITS_KEY, JSON.stringify(stored));
+        } catch (err) {
+            // private mode / storage full - the unit just won't stay collapsed across pages
+        }
+    });
+
     var statusEndpoint = sidebar.dataset.statusEndpoint;
     var csrfHeader = sidebar.dataset.csrfHeader;
     var csrfToken = sidebar.dataset.csrfToken;
@@ -1413,6 +1463,14 @@
                 item.classList.remove('agentic-sidebar-item--running');
                 statusEl.title = '';
             }
+        });
+
+        // A collapsed unit still shows that something runs in it (CSS shows this only while collapsed).
+        sidebar.querySelectorAll('.agentic-sidebar-unit').forEach(function (unit) {
+            var running = unit.querySelectorAll('.agentic-sidebar-item--running').length;
+
+            unit.classList.toggle('agentic-sidebar-unit--running', running > 0);
+            unit.querySelector('.agentic-sidebar-unit-running-text').textContent = running > 0 ? running + ' running' : '';
         });
     }
 

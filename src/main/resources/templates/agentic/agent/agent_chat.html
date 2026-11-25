@@ -38,21 +38,22 @@
         </div>
         <div class="agentic-sidebar-list">
             <div class="agentic-sidebar-project">
-                <div th:each="a : ${sidebarAgents}"
-                     th:data-agent-id="${a.id}"
-                     class="agentic-sidebar-item" th:classappend="${a.id == agent.id} ? ' agentic-sidebar-item--active' : ''">
-                    <span class="agentic-sidebar-item-status" title=""></span>
-                    <a th:href="@{/agentic/chat/{id}(id=${a.id})}" class="agentic-sidebar-item-link">
-                        <span class="agentic-sidebar-item-text">
-                            <span class="agentic-sidebar-item-name" th:text="${a.name}"></span>
-                            <span th:if="${not #strings.isEmpty(a.description)}" class="agentic-sidebar-item-description" th:text="${a.description}"></span>
-                        </span>
-                        <span th:unless="${a.enabled}" class="agentic-sidebar-item-badge">off</span>
-                    </a>
-                    <button type="button" class="agentic-sidebar-item-icon agentic-sidebar-item-stop" th:data-stop-endpoint="@{/agentic/chat/{id}/stop(id=${a.id})}" title="Stop" aria-label="Stop"><i class="fa fa-stop"></i></button>
-                    <span class="agentic-sidebar-item-actions">
-                        <a th:if="${@projectContextService.canManage()}" th:href="@{/agentic/edit/{id}(id=${a.id})}" class="agentic-sidebar-item-icon" title="Edit Agent" aria-label="Edit Agent"><i class="fa fa-pencil"></i></a>
-                    </span>
+                <!-- Agents without a unit on top, as before units existed; then one collapsible group
+                     per unit (AgentUnitService.sidebarFor, Kejo 2026-11-25). Open by default; what
+                     the user collapsed is remembered per browser (agentic-chat.js), the open agent's
+                     unit always starts open. -->
+                <th:block th:each="a : ${sidebar.ungrouped}"><div th:replace="~{::sidebarItem(${a})}"></div></th:block>
+                <div th:each="g : ${sidebar.groups}" class="agentic-sidebar-unit" th:data-unit-id="${g.unit.id}"
+                     th:classappend="${agent.agentUnit != null and agent.agentUnit.id == g.unit.id} ? ' agentic-sidebar-unit--current' : ''">
+                    <button type="button" class="agentic-sidebar-unit-head" aria-expanded="true">
+                        <i class="fa fa-chevron-down agentic-sidebar-unit-chevron" aria-hidden="true"></i>
+                        <span class="agentic-sidebar-unit-name" th:text="${g.unit.name}">Unit</span>
+                        <span class="agentic-sidebar-unit-count" th:text="${#lists.size(g.agents)}">3</span>
+                        <span class="agentic-sidebar-unit-running" title="Agents running in this unit"><span class="agentic-sidebar-unit-running-dot"></span><span class="agentic-sidebar-unit-running-text"></span></span>
+                    </button>
+                    <div class="agentic-sidebar-unit-body">
+                        <th:block th:each="a : ${g.agents}"><div th:replace="~{::sidebarItem(${a})}"></div></th:block>
+                    </div>
                 </div>
             </div>
         </div>
@@ -198,5 +199,24 @@
 <script th:src="@{/script/agentic-file-browser.js}"></script>
 <script th:src="@{/script/agentic-schedule.js}"></script>
 <script th:src="@{/script/agentic-search.js}"></script>
+<!-- One agent in the sidebar - used for the agents without a unit and inside every unit group. -->
+<th:block th:if="false">
+                <div th:fragment="sidebarItem(a)"
+                     th:data-agent-id="${a.id}"
+                     class="agentic-sidebar-item" th:classappend="${a.id == agent.id} ? ' agentic-sidebar-item--active' : ''">
+                    <span class="agentic-sidebar-item-status" title=""></span>
+                    <a th:href="@{/agentic/chat/{id}(id=${a.id})}" class="agentic-sidebar-item-link">
+                        <span class="agentic-sidebar-item-text">
+                            <span class="agentic-sidebar-item-name" th:text="${a.name}"></span>
+                            <span th:if="${not #strings.isEmpty(a.description)}" class="agentic-sidebar-item-description" th:text="${a.description}"></span>
+                        </span>
+                        <span th:unless="${a.enabled}" class="agentic-sidebar-item-badge">off</span>
+                    </a>
+                    <button type="button" class="agentic-sidebar-item-icon agentic-sidebar-item-stop" th:data-stop-endpoint="@{/agentic/chat/{id}/stop(id=${a.id})}" title="Stop" aria-label="Stop"><i class="fa fa-stop"></i></button>
+                    <span class="agentic-sidebar-item-actions">
+                        <a th:if="${@projectContextService.canManage()}" th:href="@{/agentic/edit/{id}(id=${a.id})}" class="agentic-sidebar-item-icon" title="Edit Agent" aria-label="Edit Agent"><i class="fa fa-pencil"></i></a>
+                    </span>
+                </div>
+</th:block>
 </body>
 </html>

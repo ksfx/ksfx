@@ -18,6 +18,7 @@ public class Agent
     private Long id;
     private Project project;
     private AgenticAccess agenticAccess;
+    private AgentUnit agentUnit;
 
     @NotNull
     @Size(min = 2, max = 200)
@@ -72,6 +73,22 @@ public class Agent
     public void setAgenticAccess(AgenticAccess agenticAccess)
     {
         this.agenticAccess = agenticAccess;
+    }
+
+    /**
+     * The unit this agent is shown in (sidebar group); null = none, listed on top. A unit of
+     * another project (left over after a move) counts as none - see AgentUnitService.
+     */
+    @ManyToOne
+    @JoinColumn(name = "agent_unit_id")
+    public AgentUnit getAgentUnit()
+    {
+        return agentUnit;
+    }
+
+    public void setAgentUnit(AgentUnit agentUnit)
+    {
+        this.agentUnit = agentUnit;
     }
 
     public String getName()

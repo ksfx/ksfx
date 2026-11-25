@@ -281,6 +281,64 @@ th[data-grid-property="observationTime"]
     margin: 0;
 }
 
+/* Units on the project's Agentic Settings page (agentic_project_settings.html) */
+.ksfx-units {
+    margin-bottom: 1.5rem;
+}
+
+.ksfx-units .text-muted {
+    margin: 0;
+}
+
+.ksfx-unit-row,
+.ksfx-unit-add {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(128, 128, 128, .22);
+    border-radius: 8px;
+}
+
+.ksfx-unit-add {
+    border-style: dashed;
+}
+
+.ksfx-unit-rename {
+    flex: 0 1 480px;
+    display: flex;
+    gap: 6px;
+}
+
+.ksfx-unit-add input {
+    max-width: 430px;
+}
+
+.ksfx-unit-row .btn,
+.ksfx-unit-add .btn {
+    white-space: nowrap;
+}
+
+.ksfx-unit-row .ksfx-unit-rename {
+    margin: 0;
+}
+
+.ksfx-unit-count {
+    flex: 0 0 auto;
+    font-size: .85rem;
+}
+
+.ksfx-unit-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.ksfx-unit-actions form {
+    margin: 0;
+}
+
 .ksfx-access-card {
     padding: 12px 16px;
     margin-bottom: 10px;

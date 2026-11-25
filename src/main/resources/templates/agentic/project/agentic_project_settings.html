@@ -70,6 +70,42 @@
         <small class="text-muted">Each agent names its access on its edit page - there is no default, and an access agents still run on cannot be deleted. An agent's own model / permission mode wins over the access defaults. OAuth uses the host's one <code>claude login</code> - every OAuth access is that same account. The status shows what the last turn on that access reported - it is not live.</small>
     </div>
 
+    <!-- Units (AgentUnitController): optional groups of the project's agents, shown as collapsible
+         groups in the agent sidebar in this order. Agents pick their unit on their edit page. -->
+    <div class="ksfx-units" id="units">
+        <div class="ksfx-accesses-head">
+            <h5><i class="fa fa-folder-o"></i> Units</h5>
+        </div>
+        <div class="alert alert-danger" th:if="${unitError}" th:text="${unitError}">Error</div>
+        <p class="text-muted" th:if="${#lists.isEmpty(units)}">No units yet - all agents are listed side by side. Add one here or right on an agent's edit page.</p>
+        <div class="ksfx-unit-row" th:each="u, st : ${units}">
+            <form method="post" class="ksfx-unit-rename" th:action="@{/agentic/projects/{p}/units/{u}/rename(p=${project.id},u=${u.id})}">
+                <input type="text" class="form-control form-control-sm" name="name" th:value="${u.name}" maxlength="128" required="required" aria-label="Unit name" />
+                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Rename"><i class="fa fa-check"></i></button>
+            </form>
+            <span class="ksfx-unit-count text-muted" th:with="n=${unitAgentCounts.get(u.id)}" th:text="${n == null ? 'no agents' : (n == 1 ? '1 agent' : n + ' agents')}">2 agents</span>
+            <span class="ksfx-unit-actions">
+                <form method="post" th:action="@{/agentic/projects/{p}/units/{u}/move(p=${project.id},u=${u.id})}">
+                    <input type="hidden" name="direction" value="up" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" th:disabled="${st.first}" title="Move up"><i class="fa fa-arrow-up"></i></button>
+                </form>
+                <form method="post" th:action="@{/agentic/projects/{p}/units/{u}/move(p=${project.id},u=${u.id})}">
+                    <input type="hidden" name="direction" value="down" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" th:disabled="${st.last}" title="Move down"><i class="fa fa-arrow-down"></i></button>
+                </form>
+                <form method="post" th:action="@{/agentic/projects/{p}/units/{u}/delete(p=${project.id},u=${u.id})}"
+                      onsubmit="return confirm('Delete this unit? Its agents stay - they are just listed without a unit.');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete unit"><i class="fa fa-trash-o"></i></button>
+                </form>
+            </span>
+        </div>
+        <form method="post" class="ksfx-unit-add" th:action="@{/agentic/projects/{p}/units/add(p=${project.id})}">
+            <input type="text" class="form-control form-control-sm" name="name" placeholder="New unit, e.g. Marketing" maxlength="128" required="required" aria-label="New unit" />
+            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fa fa-plus"></i> Add unit</button>
+        </form>
+        <small class="text-muted">Units group the agents in the agent sidebar - agents without a unit are listed on top, each unit below as a group you can collapse. Deleting a unit never deletes its agents.</small>
+    </div>
+
     <div class="list-group">
         <div class="list-group-item" th:unless="${#lists.isEmpty(mails)}">
             <h5>Mails <small class="text-muted">(sent by this project's agents, latest 30)</small></h5>

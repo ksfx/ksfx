@@ -188,6 +188,93 @@ body:has(> .agentic-layout) {
     opacity: 0.55;
 }
 
+/* Units: collapsible groups of agents (agent_chat.html, agentic-chat.js) */
+.agentic-sidebar-unit {
+    margin-top: 8px;
+}
+
+.agentic-sidebar-unit-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #666;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: left;
+    cursor: pointer;
+}
+
+.agentic-sidebar-unit-head:hover {
+    background: #eeeef3;
+}
+
+.agentic-sidebar-unit-chevron {
+    flex: 0 0 auto;
+    width: 10px;
+    font-size: 0.62rem;
+    transition: transform 0.15s ease;
+}
+
+.agentic-sidebar-unit--collapsed .agentic-sidebar-unit-chevron {
+    transform: rotate(-90deg);
+}
+
+.agentic-sidebar-unit-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agentic-sidebar-unit-count {
+    flex: 0 0 auto;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: rgba(128, 128, 128, 0.15);
+    font-size: 0.66rem;
+    letter-spacing: 0;
+}
+
+/* Running agents inside a collapsed unit: pulsing dot + "2 running" on the head. */
+.agentic-sidebar-unit-running {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    color: #16a34a;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.agentic-sidebar-unit--collapsed.agentic-sidebar-unit--running .agentic-sidebar-unit-running {
+    display: inline-flex;
+}
+
+.agentic-sidebar-unit-running-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: agentic-status-pulse 1.4s infinite ease-in-out;
+}
+
+.agentic-sidebar-unit-body {
+    padding-left: 8px;
+}
+
+.agentic-sidebar-unit--collapsed .agentic-sidebar-unit-body {
+    display: none;
+}
+
 .agentic-sidebar-item {
     display: flex;
     align-items: center;
@@ -887,6 +974,18 @@ a.agentic-attachment-chip:hover {
 
 .agentic-dark .agentic-sidebar-project-name {
     color: #b0b0bc;
+}
+
+.agentic-dark .agentic-sidebar-unit-head {
+    color: #b0b0bc;
+}
+
+.agentic-dark .agentic-sidebar-unit-head:hover {
+    background: #2b2b33;
+}
+
+.agentic-dark .agentic-sidebar-unit-running {
+    color: #4ade80;
 }
 
 .agentic-dark .agentic-sidebar-item {

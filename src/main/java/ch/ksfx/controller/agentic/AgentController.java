@@ -4,6 +4,9 @@ import ch.ksfx.services.agentic.EffectiveModelService;
 import ch.ksfx.services.agentic.AgenticAccessService;
 import ch.ksfx.services.agentic.AgenticUsageStatsService;
 import ch.ksfx.dao.AgenticAccessDAO;
+import ch.ksfx.dao.AgentUnitDAO;
+import ch.ksfx.model.AgentUnit;
+import ch.ksfx.services.agentic.AgentUnitService;
 import ch.ksfx.model.AgenticAccess;
 import org.springframework.beans.factory.annotation.Autowired;
 import ch.ksfx.services.project.UserScope;
@@ -63,6 +66,12 @@ public class AgentController
 
     @Autowired
     private AgenticAccessDAO agenticAccessDAO;
+
+    @Autowired
+    private AgentUnitService agentUnitService;
+
+    @Autowired
+    private AgentUnitDAO agentUnitDAO;
 
     @Autowired
     private AgenticUsageStatsService agenticUsageStatsService;
@@ -155,7 +164,10 @@ public class AgentController
 
     @PostMapping({"/edit", "/edit/{id}"})
     public String submit(@PathVariable(value = "id", required = false) Long agentId, @Valid @ModelAttribute Agent agent, BindingResult bindingResult,
-                         @RequestParam(value = "agenticAccessId", required = false) Long agenticAccessId, Model model, RedirectAttributes redirectAttributes)
+                         @RequestParam(value = "agenticAccessId", required = false) Long agenticAccessId,
+                         @RequestParam(value = "agentUnitId", required = false) String agentUnitId,
+                         @RequestParam(value = "newUnitName", required = false) String newUnitName,
+                         Model model, RedirectAttributes redirectAttributes)
     {
         if (bindingResult.hasErrors()) {
             model.addAttribute("autoAppendedSystemPrompt", claudeCliSessionService.buildAutoAppendedSystemPrompt(agent));
@@ -210,6 +222,7 @@ public class AgentController
         }
 
         agent.setAgenticAccess(chosenAccess);
+        agent.setAgentUnit(chosenUnit(agent, agentUnitId, newUnitName));
 
         if (isNew) {
             agent.setCreatedAt(new Date());
@@ -253,9 +266,33 @@ public class AgentController
         return "redirect:/agentic/edit/" + agent.getId();
     }
 
-    /** The access part of the edit form: the project's accesses, the agent's effective access and its usage. */
+    /**
+     * The unit picked on the edit form: "" = none, "new" = the typed name (found or created in the
+     * agent's project), else the id of one of the project's units. Anything else counts as none.
+     */
+    private AgentUnit chosenUnit(Agent agent, String agentUnitId, String newUnitName)
+    {
+        if (agent.getProject() == null || agentUnitId == null || agentUnitId.isEmpty()) {
+            return null;
+        }
+
+        if ("new".equals(agentUnitId)) {
+            return newUnitName != null && !newUnitName.trim().isEmpty() ? agentUnitService.findOrCreate(agent.getProject(), newUnitName) : null;
+        }
+
+        try {
+            AgentUnit unit = agentUnitDAO.getAgentUnitForId(Long.valueOf(agentUnitId));
+
+            return unit != null && unit.getProject().getId().equals(agent.getProject().getId()) ? unit : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** The access part of the edit form: the project's accesses, the agent's effective access and its usage - plus the unit choices. */
     private void addAccessChoices(Agent agent, Model model)
     {
+        model.addAttribute("units", agentUnitService.unitsFor(agent != null ? agent.getProject() : null));
         List<AgenticAccess> accesses = agenticAccessService.accessesFor(agent != null ? agent.getProject() : null);
         model.addAttribute("accesses", accesses);
         model.addAttribute("effectiveAccess", agenticAccessService.effectiveAccessFor(agent));
@@ -343,6 +380,7 @@ public class AgentController
         model.addAttribute("partialText", partialTurn != null ? partialTurn.getText() : null);
         model.addAttribute("partialToolActivity", partialTurn != null ? partialTurn.getToolActivityJson() : null);
         model.addAttribute("sidebarAgents", sidebarAgents);
+        model.addAttribute("sidebar", agentUnitService.sidebarFor(sidebarAgents));
 
         return "agentic/agent/agent_chat";
     }
