@@ -1,7 +1,13 @@
 package ch.ksfx.services;
 
 import ch.ksfx.services.security.EbeanPersistentTokenRepository;
+import org.springframework.security.web.authentication.rememberme.CookieTheftException;
+import org.springframework.security.web.authentication.rememberme.InvalidCookieException;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
+import org.springframework.security.core.userdetails.UserDetails;
+import javax.servlet.DispatcherType;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
@@ -56,6 +62,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
         http
                 .authorizeRequests()
                 .antMatchers("/", "/home","/toggledisplaymode", "/images/**", "/styles/**", "/script/**", "/publishing/publicationviewer/**", "/agentic/api/**", "/ports/ask").permitAll()
+                // Spring Boot's error page: the container forwards every failed request here, and
+                // that forward runs through this chain again - protected, an anonymous visitor's
+                // error became "please log in" with /error as the post-login target (status 999).
+                .antMatchers("/error").permitAll()
                 // Project-level admin pages (code libs, dashboard) stay open to every
                 // member - the controllers apply the membership level; the personal pages (profile,
                 // password) live under /user/** outside /admin. Everything else under the
@@ -160,10 +170,36 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
         return "GET".equalsIgnoreCase(request.getMethod()) && accept != null && accept.contains("text/html");
     };
 
+    /**
+     * Pages worth returning to after the login: navigations, but never the error page - neither
+     * the container's error forward nor /error itself, which without a pending error renders as
+     * status 999.
+     */
+    private static final RequestMatcher LOGIN_TARGET = request -> HTML_NAVIGATION.matches(request)
+            && request.getDispatcherType() != DispatcherType.ERROR
+            && !"/error".equals(request.getServletPath());
+
     @Bean
     public PersistentTokenBasedRememberMeServices rememberMeServices()
     {
-        PersistentTokenBasedRememberMeServices services = new PersistentTokenBasedRememberMeServices(REMEMBER_ME_KEY, ksfxUserDetailsService, persistentTokenRepository);
+        PersistentTokenBasedRememberMeServices services = new PersistentTokenBasedRememberMeServices(REMEMBER_ME_KEY, ksfxUserDetailsService, persistentTokenRepository) {
+            /**
+             * A cookie with an outdated token (Spring calls that "theft" - in practice mostly two
+             * requests racing with the same cookie) is rethrown by autoLogin and escaped the filter
+             * chain as a 500. As an InvalidCookieException it is handled like any other bad cookie:
+             * cookie cancelled, request continues anonymously -> the normal login redirect. Spring
+             * has already removed the user's tokens at this point, as before.
+             */
+            @Override
+            protected UserDetails processAutoLoginCookie(String[] cookieTokens, HttpServletRequest request, HttpServletResponse response)
+            {
+                try {
+                    return super.processAutoLoginCookie(cookieTokens, request, response);
+                } catch (CookieTheftException e) {
+                    throw new InvalidCookieException(e.getMessage());
+                }
+            }
+        };
         services.setTokenValiditySeconds(REMEMBER_ME_SECONDS);
         services.setCookieName(sessionCookieName + "_REMEMBER");
         services.setParameter("remember-me");
@@ -175,7 +211,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
     public HttpSessionRequestCache htmlNavigationRequestCache()
     {
         HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
-        requestCache.setRequestMatcher(HTML_NAVIGATION);
+        requestCache.setRequestMatcher(LOGIN_TARGET);
 
         return requestCache;
     }
