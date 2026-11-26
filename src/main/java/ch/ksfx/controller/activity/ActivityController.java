@@ -177,7 +177,8 @@ public class ActivityController
     }
 
     @PostMapping({"/activityedit", "/activityedit/{id}"})
-    public String activitySubmit(@PathVariable(value = "id", required = false) Long activityId, @Valid @ModelAttribute Activity activity, BindingResult bindingResult, Model model)
+    public String activitySubmit(@PathVariable(value = "id", required = false) Long activityId, @Valid @ModelAttribute Activity activity, BindingResult bindingResult,
+                                 @RequestParam(value = "run", defaultValue = "false") boolean run, Model model)
     {
         activityValidate(activity, bindingResult);
 
@@ -236,6 +237,16 @@ public class ActivityController
 
         activityDAO.saveOrUpdateActivity(activity);
 
+        // "Save & Run" on the edit page: runs exactly what was just saved (a plain run link would
+        // run the stored code and silently ignore unsaved edits), then shows its instances.
+        // Reloaded: the form-bound activity carries its approval strategy as a bare id without a
+        // name, which ActivityInstanceRunner would read as "approval required" and never start.
+        if (run) {
+            startInstance(activityDAO.getActivityForId(activity.getId()));
+
+            return "redirect:/activity/activityinstances/" + activity.getId();
+        }
+
         return "redirect:/activity/activityedit/" + activity.getId();
     }
 
@@ -263,15 +274,22 @@ public class ActivityController
     @GetMapping({"/activityrun/{id}"})
     public String activityRun(@PathVariable(value = "id", required = true) Long activityId)
     {
+        Activity activity = activityDAO.getActivityForId(activityId);
+        userScope.requireWrite(activity.getProject());
+        startInstance(activity);
+
+        return "redirect:/activity/";
+    }
+
+    /** Starts one run of the activity (no parameters) - the list's play icon and the edit page's "Save & Run". */
+    private void startInstance(Activity activity)
+    {
         ActivityInstance activityInstance = new ActivityInstance();
-        activityInstance.setActivity(activityDAO.getActivityForId(activityId));
-        userScope.requireWrite(activityInstance.getActivity().getProject());
+        activityInstance.setActivity(activity);
 
         activityInstanceDAO.saveOrUpdateActivityInstance(activityInstance);
 
         activityInstanceRunner.runActivity(activityInstance);
-
-        return "redirect:/activity/";
     }
 
     @GetMapping({"/activityschedule/{id}"})
