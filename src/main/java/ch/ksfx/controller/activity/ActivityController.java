@@ -261,7 +261,9 @@ public class ActivityController
         userScope.requireWrite(activity.getProject());
         startInstance(activity);
 
-        return "redirect:/activity/";
+        // Straight to the activity's instances, where the new run and its console appear - not
+        // back to page 1 of the list.
+        return "redirect:/activity/activityinstances/" + activityId;
     }
 
     /** Starts one run of the activity (no parameters) - the list's play icon and the edit page's "Save & Run". */
