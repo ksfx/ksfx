@@ -1,5 +1,7 @@
 package ch.ksfx.controller.api;
 
+import ch.ksfx.services.publishing.PublishingStrategyConstructors;
+
 import ch.ksfx.model.Project;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.dao.PublishingConfigurationDAO;
@@ -356,11 +358,9 @@ public class PublishingConfigurationApiController
 
     /**
      * Same two checks as the MVC form's PublishingController#validatePublishingConfiguration, ported
-     * to a plain error-message-or-null return - including that check's existing narrowness (only the
-     * single-arg {@code (ServiceProvider)} constructor is checked, not the
-     * {@code (ServiceProvider, List)} overload {@code PublicationViewerController} actually falls
-     * back to at run time) - kept identical on purpose so the API never accepts a script the MVC form
-     * would reject, or vice versa. publishingStrategy may be null (update endpoint, script not being
+     * to a plain error-message-or-null return - both accept exactly the constructors that run
+     * (PublishingStrategyConstructors), kept identical on purpose so the API never accepts a script
+     * the MVC form would reject, or vice versa. publishingStrategy may be null (update endpoint, script not being
      * changed) - only cron is checked then.
      */
     private String validate(String publishingStrategy, String cronSchedule)
@@ -368,7 +368,7 @@ public class PublishingConfigurationApiController
         if (publishingStrategy != null) {
             try {
                 Class<?> clazz = new GroovyClassLoader().parseClass(publishingStrategy);
-                clazz.getDeclaredConstructor(ServiceProvider.class);
+                PublishingStrategyConstructors.requireSupported(clazz);
             } catch (Exception e) {
                 return "publishingStrategy does not compile: " + e.getMessage();
             }

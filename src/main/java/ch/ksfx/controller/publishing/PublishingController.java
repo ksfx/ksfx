@@ -1,5 +1,7 @@
 package ch.ksfx.controller.publishing;
 
+import ch.ksfx.services.publishing.PublishingStrategyConstructors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
@@ -242,8 +244,7 @@ public class PublishingController
             GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
             Class clazz = groovyClassLoader.parseClass(publishingConfiguration.getPublishingStrategy());
 
-            Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
-            //cons.newInstance(serviceProvider);
+            PublishingStrategyConstructors.requireSupported(clazz); // the constructors that actually run
         } catch (Exception e) {
             bindingResult.rejectValue("publishingStrategy", "publishingConfiguration.publishingStrategy", e.getMessage() + StacktraceUtil.getStackTrace(e));
         }
@@ -406,8 +407,7 @@ public class PublishingController
             GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
             Class clazz = groovyClassLoader.parseClass(publishingResource.getPublishingStrategy());
 
-            Constructor cons = clazz.getDeclaredConstructor(ServiceProvider.class);
-            //cons.newInstance(serviceProvider);
+            PublishingStrategyConstructors.requireSupported(clazz); // the constructors that actually run
         } catch (Exception e) {
             bindingResult.rejectValue("publishingStrategy", "publishingResource.publishingStrategy", e.getMessage() + StacktraceUtil.getStackTrace(e));
         }
