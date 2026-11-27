@@ -15,6 +15,16 @@
 
 <div class="container">
     <div th:if="${resultMessage}" th:classappend="${resultError} ? 'alert-danger' : 'alert-success'" class="alert" th:text="${resultMessage}"></div>
+    <!-- First agent of a project without an access: say so up front, with the one thing to do
+         next - the form below cannot be saved without an access (there is no default). The
+         access form comes back here afterwards (returnTo=newAgent). -->
+    <div class="alert alert-info ksfx-first-access" th:if="${agent.id == null and #lists.isEmpty(accesses) and agent.project != null}">
+        <div>
+            <strong>One step before the first agent:</strong> <span th:text="${agent.project.name}">Project</span> has no access yet - the Anthropic account its agents run on (API key, setup token or the host's OAuth login). Add one, then come back here and create the agent.
+        </div>
+        <a th:if="${@projectContextService.canManage()}" class="btn btn-primary" th:href="@{/agentic/projects/{id}/accesses/new(id=${agent.project.id},returnTo='newAgent')}"><i class="fa fa-key"></i> Add access</a>
+        <span th:unless="${@projectContextService.canManage()}" class="text-muted">Only the project's owners can add one - ask them.</span>
+    </div>
  <div class="list-group">
  <div class="list-group-item">
         <form id="agentForm" action="#" th:action="@{/agentic/edit}" th:object="${agent}" method="post">
@@ -77,13 +87,16 @@
             <div class="form-group">
                 <label for="agenticAccessId">Access</label>
                 <select class="form-control" id="agenticAccessId" name="agenticAccessId" required="required" th:classappend="${accessError} ? 'is-invalid' : ''">
-                    <option value="" disabled="disabled" th:selected="${agent.agenticAccess == null}">– choose the access this agent runs on –</option>
+                    <!-- A new agent in a project with exactly one access gets it preselected - the only possible choice. -->
+                    <option value="" disabled="disabled" th:selected="${agent.agenticAccess == null and #lists.size(accesses) != 1}">– choose the access this agent runs on –</option>
                     <option th:each="x : ${accesses}" th:value="${x.id}"
-                            th:selected="${agent.agenticAccess != null and agent.agenticAccess.id == x.id}"
+                            th:selected="${(agent.agenticAccess != null and agent.agenticAccess.id == x.id) or (agent.agenticAccess == null and #lists.size(accesses) == 1)}"
                             th:text="|${x.name} · ${T(ch.ksfx.services.agentic.AgenticAccessService).statusLabel(x)}|">Access</option>
                 </select>
                 <div class="invalid-feedback" th:if="${accessError}" th:text="${accessError}"></div>
-                <small class="form-text text-muted" th:if="${#lists.isEmpty(accesses)}">This project has no access yet - add one on the project's Agentic Settings page first.</small>
+                <small class="form-text text-muted" th:if="${#lists.isEmpty(accesses)}">This project has no access yet.
+                    <a th:if="${@projectContextService.canManage() and agent.project != null}" th:href="@{/agentic/projects/{id}/accesses/new(id=${agent.project.id},returnTo='newAgent')}"><i class="fa fa-key"></i> Add access</a><th:block th:unless="${@projectContextService.canManage()}"> Only the project's owners can add one.</th:block>
+                </small>
                 <small class="form-text text-muted">The account this agent runs on - required, there is no default. Accesses are managed on the project's Agentic Settings page; the status is what the last turn on that access reported.</small>
             </div>
             <!-- What this agent has used (AgenticUsageStatsService.usageForAgent) - per period, and

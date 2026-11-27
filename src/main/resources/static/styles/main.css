@@ -752,3 +752,19 @@ th[data-grid-property="observationTime"]
 .ksfx-list-search-empty {
     margin-top: 10px;
 }
+
+/* "One step before the first agent" callout on the new-agent form (agent_edit.html) */
+.ksfx-first-access {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.ksfx-first-access > div {
+    flex: 1 1 320px;
+}
+
+.ksfx-first-access .btn {
+    white-space: nowrap;
+}
