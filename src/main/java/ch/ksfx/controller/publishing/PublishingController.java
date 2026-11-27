@@ -2,6 +2,10 @@ package ch.ksfx.controller.publishing;
 
 import ch.ksfx.services.publishing.PublishingStrategyConstructors;
 
+import ch.ksfx.web.ListSearch;
+
+import javax.servlet.http.HttpServletRequest;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import ch.ksfx.services.project.UserScope;
 import ch.ksfx.services.project.ProjectContextService;
@@ -79,14 +83,21 @@ public class PublishingController
         return activityGitRepositoryService.isActive(projectContextService.current());
     }
 
+    /**
+     * The current project's publishing configurations - searchable by name and URI (optionally also
+     * in the publishing strategy code), the category as one part of the search (see ListSearch).
+     */
     @GetMapping("/")
-    public String publishingIndex(Pageable pageable, Model model)
+    public String publishingIndex(Pageable pageable, Model model, HttpServletRequest request)
     {
-        // The current project's reports only (phase 3 of the project concept).
-        Page<PublishingConfiguration> publishingConfigurationsPage = publishingConfigurationDAO.getPublishingConfigurationsForPageableAndPublishingCategoryAndProject(pageable, null, projectContextService.current().getId());
+        Long projectId = projectContextService.current().getId();
+        ListSearch search = ListSearch.resolve(request, "publishing", projectId);
+        Page<PublishingConfiguration> publishingConfigurationsPage = publishingConfigurationDAO.searchPublishingConfigurations(pageable, projectId, search.getCategoryId(), search.getQuery(), search.isInCode());
 
         model.addAttribute("publicationLoaderRunner", publicationLoaderRunner);
         model.addAttribute("publishingConfigurationsPage", publishingConfigurationsPage);
+        model.addAttribute("publishingCategories", publishingConfigurationDAO.getAllPublishingCategoriesForProject(projectId));
+        model.addAttribute("search", search);
 
         return "publishing/publishing";
     }

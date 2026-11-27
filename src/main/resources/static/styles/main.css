@@ -699,3 +699,56 @@ th[data-grid-property="observationTime"]
     padding: 4px 8px;
     font-size: 0.85em;
 }
+
+/* Search bar of the activity and publishing lists (components/list_search.html) */
+.ksfx-list-search {
+    margin: 4px 0 18px;
+}
+
+.ksfx-list-search-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.ksfx-list-search-query {
+    position: relative;
+    flex: 1 1 260px;
+}
+
+.ksfx-list-search-query .fa-search {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #8a8f98;
+    pointer-events: none;
+}
+
+.ksfx-list-search-query input {
+    padding-left: 34px;
+}
+
+.ksfx-list-search-category {
+    flex: 0 1 220px;
+    width: auto;
+}
+
+.ksfx-list-search-code {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 4px;
+    font-size: .9rem;
+    white-space: nowrap;
+}
+
+.ksfx-list-search-result {
+    display: block;
+    margin-top: 6px;
+}
+
+.ksfx-list-search-empty {
+    margin-top: 10px;
+}

@@ -25,6 +25,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import ch.ksfx.web.ListSearch;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.servlet.http.HttpServletRequest;
@@ -76,42 +77,24 @@ public class ActivityController
         return activityGitRepositoryService.isActive(projectContextService.current());
     }
 
+    /**
+     * The current project's activities - searchable by name (optionally also in the Groovy code),
+     * the category is one part of that search (ListSearch: kept per project in the session, so the
+     * pagination and sort links keep it).
+     */
     @GetMapping("/")
     public String activityIndex(Pageable pageable, Model model, HttpServletRequest request)
     {
-        String selectedActivityCategory = null;
-        ActivityCategory activityCategory = null;
-
-        if (request.getSession().getAttribute("selectedActivityCategory") != null) {
-            selectedActivityCategory = (String) request.getSession().getAttribute("selectedActivityCategory");
-        }
-
-        if (selectedActivityCategory != null && selectedActivityCategory.equals("0")) {
-            selectedActivityCategory = null;
-        }
-
-        if (selectedActivityCategory != null) {
-            activityCategory = activityDAO.getActivityCategoryForId(Long.parseLong(selectedActivityCategory));
-        }
-
-        // The current project's activities and categories only (phase 3 of the project concept).
         Long projectId = projectContextService.current().getId();
-        Page<Activity> activitiesPage = activityDAO.getActivitiesForPageableAndActivityCategoryAndProject(pageable, activityCategory, projectId);
+        ListSearch search = ListSearch.resolve(request, "activities", projectId);
+        Page<Activity> activitiesPage = activityDAO.searchActivities(pageable, projectId, search.getCategoryId(), search.getQuery(), search.isInCode());
 
         model.addAttribute("activitiesPage", activitiesPage);
         model.addAttribute("activityCategories", activityDAO.getAllActivityCategoriesForProject(projectId));
-        model.addAttribute("selectedActivityCategory", selectedActivityCategory);
+        model.addAttribute("search", search);
         model.addAttribute("activityInstanceRunner",activityInstanceRunner);
 
         return "activity/activity";
-    }
-
-    @PostMapping("/selectactivitycategory")
-    public String selectTag(@RequestParam(name = "selectedActivityCategory") String selectedActivityCategory, HttpServletRequest request)
-    {
-        request.getSession().setAttribute("selectedActivityCategory", selectedActivityCategory);
-
-        return "redirect:/activity/";
     }
 
     @GetMapping("/activityinstances/{activityid}")

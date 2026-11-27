@@ -21,6 +21,7 @@ import ch.ksfx.dao.activity.ActivityDAO;
 import ch.ksfx.model.activity.*;
 import ch.ksfx.model.note.NoteActivity;
 import io.ebean.Ebean;
+import ch.ksfx.dao.ebean.EbeanPaging;
 import io.ebean.ExpressionList;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -96,6 +97,26 @@ public class EbeanActivityDAO implements ActivityDAO
     public List<ActivityCategory> getAllActivityCategoriesForProject(Long projectId)
     {
         return Ebean.find(ActivityCategory.class).where().eq("project.id", projectId).findList();
+    }
+
+    @Override
+    public Page<Activity> searchActivities(Pageable pageable, Long projectId, Long activityCategoryId, String query, boolean inCode)
+    {
+        ExpressionList<Activity> expressionList = Ebean.find(Activity.class).where().eq("project.id", projectId);
+
+        if (activityCategoryId != null) {
+            expressionList.eq("activityCategory.id", activityCategoryId);
+        }
+
+        if (query != null) {
+            if (inCode) {
+                expressionList.or().icontains("name", query).icontains("groovyCode", query).endOr();
+            } else {
+                expressionList.icontains("name", query);
+            }
+        }
+
+        return EbeanPaging.page(expressionList, pageable, "id");
     }
 
     @Override

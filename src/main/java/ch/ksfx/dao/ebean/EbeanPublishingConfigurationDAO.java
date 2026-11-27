@@ -79,6 +79,26 @@ public class EbeanPublishingConfigurationDAO implements PublishingConfigurationD
     }
 
     @Override
+    public Page<PublishingConfiguration> searchPublishingConfigurations(Pageable pageable, Long projectId, Long publishingCategoryId, String query, boolean inCode)
+    {
+        ExpressionList<PublishingConfiguration> expressionList = Ebean.find(PublishingConfiguration.class).where().eq("project.id", projectId);
+
+        if (publishingCategoryId != null) {
+            expressionList.eq("publishingCategory.id", publishingCategoryId);
+        }
+
+        if (query != null) {
+            if (inCode) {
+                expressionList.or().icontains("name", query).icontains("uri", query).icontains("publishingStrategy", query).endOr();
+            } else {
+                expressionList.or().icontains("name", query).icontains("uri", query).endOr();
+            }
+        }
+
+        return EbeanPaging.page(expressionList, pageable, "id");
+    }
+
+    @Override
     public Page<PublishingConfiguration> getPublishingConfigurationsForPageableAndPublishingCategoryAndProject(Pageable pageable, PublishingCategory publishingCategory, Long projectId)
     {
         ExpressionList expressionList = Ebean.find(PublishingConfiguration.class).where();
