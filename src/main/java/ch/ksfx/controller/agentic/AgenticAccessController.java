@@ -45,8 +45,12 @@ public class AgenticAccessController
         this.agenticAccessService = agenticAccessService;
     }
 
+    /**
+     * {@code returnTo=newAgent}: opened from the new-agent form of a project without an access -
+     * after saving, back to that form instead of the settings page.
+     */
     @GetMapping("/new")
-    public String create(@PathVariable Long projectId, Model model)
+    public String create(@PathVariable Long projectId, @RequestParam(value = "returnTo", required = false) String returnTo, Model model)
     {
         Project project = requireProject(projectId);
         AgenticAccess access = new AgenticAccess();
@@ -54,6 +58,7 @@ public class AgenticAccessController
 
         model.addAttribute("project", project);
         model.addAttribute("access", access);
+        model.addAttribute("returnTo", returnTo);
 
         return "agentic/project/agentic_access_edit";
     }
@@ -78,6 +83,7 @@ public class AgenticAccessController
                        @RequestParam(value = "defaultModel", required = false) String defaultModel,
                        @RequestParam(value = "defaultPermissionMode", required = false) String defaultPermissionMode,
                        @RequestParam(value = "enabled", defaultValue = "false") boolean enabled,
+                       @RequestParam(value = "returnTo", required = false) String returnTo,
                        Model model, RedirectAttributes redirectAttributes)
     {
         Project project = requireProject(projectId);
@@ -94,6 +100,7 @@ public class AgenticAccessController
             model.addAttribute("project", project);
             model.addAttribute("access", access);
             model.addAttribute("nameError", "Please give the access a name, e.g. \"Company API key\".");
+            model.addAttribute("returnTo", returnTo);
 
             return "agentic/project/agentic_access_edit";
         }
@@ -104,6 +111,13 @@ public class AgenticAccessController
         }
 
         agenticAccessDAO.saveOrUpdateAgenticAccess(access);
+
+        if ("newAgent".equals(returnTo)) {
+            redirectAttributes.addFlashAttribute("resultMessage", "Access '" + access.getName() + "' saved - step 2 of 2: create the first agent, it runs on that access.");
+
+            return "redirect:/agentic/edit";
+        }
+
         redirectAttributes.addFlashAttribute("message", "Access '" + access.getName() + "' saved.");
 
         return redirectToSettings(projectId);

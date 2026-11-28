@@ -1,6 +1,7 @@
 /*
  * Issues UI: renders markdown read-only (issue descriptions + comments via Toast UI's viewer
- * factory), drives the WYSIWYG editors (issue description, comment composer), the tracker
+ * factory), drives the editors (issue description, comment composer - the general Markdown editor,
+ * ksfx-markdown-editor.js, the same one as in the wiki), the tracker
  * switcher/delete, attachment auto-upload and the narrow-screen sidebar - all the same patterns as
  * wiki.js (see that file), just against the /issues endpoints and .issues-* DOM.
  */
@@ -30,27 +31,16 @@
         return toastuiReady;
     }
 
-    function imageUploadHooks(mountEl) {
-        var assetUploadEndpoint = mountEl.dataset.assetUploadEndpoint;
-        var csrfHeader = mountEl.dataset.csrfHeader;
-        var csrfToken = mountEl.dataset.csrfToken;
-
-        return {
-            addImageBlobHook: function (blob, callback) {
-                var formData = new FormData();
-                formData.append('file', blob, blob.name || 'pasted-image.png');
-
-                var options = { method: 'POST', headers: {}, body: formData };
-                options.headers[csrfHeader] = csrfToken;
-
-                fetch(assetUploadEndpoint, options)
-                    .then(function (response) { return response.json(); })
-                    .then(function (result) { callback(result.url, blob.name || 'image'); })
-                    .catch(function (error) { alert('Image upload failed: ' + error.message); });
-
-                return false;
-            }
-        };
+    // The general Markdown editor (ksfx-markdown-editor.js - same editor as the wiki), with image
+    // upload through the issues' own asset endpoint.
+    function markdownEditor(mountEl, initialMarkdown, minHeight) {
+        return KsfxMarkdownEditor.create(mountEl, {
+            initialMarkdown: initialMarkdown,
+            uploadEndpoint: mountEl.dataset.assetUploadEndpoint,
+            csrfHeader: mountEl.dataset.csrfHeader,
+            csrfToken: mountEl.dataset.csrfToken,
+            minHeight: minHeight
+        });
     }
 
     // --- Read-only markdown viewers (description + every comment) --------------------------------
@@ -91,15 +81,8 @@
         var saveBtn = document.getElementById('issuesEditSaveBtn');
         var editor = null;
 
-        loadToastUiAssets(editorMount.dataset.toastuiJs, editorMount.dataset.toastuiCss).then(function () {
-            editor = new toastui.Editor({
-                el: editorMount,
-                height: '360px',
-                initialEditType: 'wysiwyg',
-                previewStyle: 'tab',
-                initialValue: contentField.value,
-                hooks: imageUploadHooks(editorMount)
-            });
+        markdownEditor(editorMount, contentField.value, 300).then(function (created) {
+            editor = created;
         }).catch(function (error) {
             editorMount.textContent = 'Could not load the editor: ' + error.message;
         });
@@ -123,14 +106,8 @@
         var commentBtn = document.getElementById('issuesCommentSubmitBtn');
         var commentEditor = null;
 
-        loadToastUiAssets(commentMount.dataset.toastuiJs, commentMount.dataset.toastuiCss).then(function () {
-            commentEditor = new toastui.Editor({
-                el: commentMount,
-                height: '200px',
-                initialEditType: 'wysiwyg',
-                previewStyle: 'tab',
-                hooks: imageUploadHooks(commentMount)
-            });
+        markdownEditor(commentMount, '', 140).then(function (created) {
+            commentEditor = created;
         }).catch(function (error) {
             commentMount.textContent = 'Could not load the editor: ' + error.message;
         });

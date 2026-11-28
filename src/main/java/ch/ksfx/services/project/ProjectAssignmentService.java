@@ -258,8 +258,13 @@ public class ProjectAssignmentService
             item.notes.add("its access '" + agent.getAgenticAccess().getName() + "' stays behind - choose an access of the target project on the agent's edit page before it can run again");
         }
 
+        if (agent.getAgentUnit() != null) {
+            item.notes.add("it leaves its unit '" + agent.getAgentUnit().getName() + "' - units are project-bound");
+        }
+
         if (execute) {
             agent.setAgenticAccess(null); // accesses are project-bound
+            agent.setAgentUnit(null); // so are units
 
             if (config != null) {
                 Path oldWorkspace = agentWorkspaceService.resolveWorkspace(agent, config);

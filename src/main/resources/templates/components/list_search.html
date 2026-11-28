@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+Search bar of a list page (ListSearch): free text, category as one part of the search, optionally
+also in the code. GET, always with search=1 - the controller stores it per project, so pagination
+and sort links keep it.
+action (String):          the list's URL, e.g. '/activity/'
+categories (List):        the project's categories (id, name)
+search (ListSearch):      the current search
+placeholder (String):     what the text field searches
+codeLabel (String):       label of the "also in the code" checkbox
+total (long):             number of hits
+-->
+<form th:fragment="listSearch(action, categories, search, placeholder, codeLabel, total)" class="ksfx-list-search" th:action="@{${action}}" method="get" role="search">
+    <input type="hidden" name="search" value="1" />
+    <div class="ksfx-list-search-row">
+        <div class="ksfx-list-search-query">
+            <i class="fa fa-search" aria-hidden="true"></i>
+            <input type="search" class="form-control" name="q" th:value="${search.query}" th:placeholder="${placeholder}" aria-label="Search" autocomplete="off" />
+        </div>
+        <select class="form-control ksfx-list-search-category" name="category" aria-label="Category" onchange="this.form.submit()">
+            <option value="">All categories</option>
+            <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}" th:selected="${search.categoryId != null and search.categoryId == c.id}">Category</option>
+        </select>
+        <label class="ksfx-list-search-code">
+            <input type="checkbox" name="code" th:checked="${search.inCode}" onchange="this.form.submit()" /> <span th:text="${codeLabel}">also in the code</span>
+        </label>
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a th:if="${search.active}" class="btn btn-outline-secondary" th:href="@{${action}(search=1)}">Reset</a>
+    </div>
+    <small class="ksfx-list-search-result text-muted" th:if="${search.active}" th:text="${total == 1 ? '1 match' : total + ' matches'}">3 matches</small>
+</form>
+</body>
+</html>

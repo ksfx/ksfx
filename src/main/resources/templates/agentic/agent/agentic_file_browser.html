@@ -10,8 +10,8 @@
      th:data-files-endpoint="@{/agentic/files/{id}(id=${agent.id})}"
      th:data-csrf-header="${_csrf.headerName}"
      th:data-csrf-token="${_csrf.token}"
-     th:data-toastui-js="@{/vendor/toastui-editor/toastui-editor.min.js}"
-     th:data-toastui-css="@{/vendor/toastui-editor/toastui-editor.css}">
+     th:data-editor-js="@{/vendor/collab-editor/collab-editor.min.js}"
+     th:data-editor-css="@{/vendor/collab-editor/collab-editor.min.css}">
     <div class="agentic-filebrowser" role="dialog" aria-label="Agent files">
         <div class="agentic-filebrowser-header">
             <span class="agentic-filebrowser-title"><i class="fa fa-folder-open-o"></i> Files</span>

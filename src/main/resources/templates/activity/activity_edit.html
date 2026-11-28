@@ -84,6 +84,8 @@
             -->
 
             <button th:if="${@projectContextService.canWrite()}" type="submit" class="btn btn-primary">Submit</button>
+            <!-- Saves first, then starts one run and shows the activity's instances (ActivityController). -->
+            <button th:if="${@projectContextService.canWrite()}" type="submit" name="run" value="true" class="btn btn-success" title="Save and start the activity right away"><i class="fa fa-play"></i> Save &amp; Run</button>
             <a th:href="@{/activity/}" id="cancel" name="cancel" class="btn btn-danger">Cancel</a>
             <!--  <div class="box-foot form-foot">
                 <button type="submit">Save</button>

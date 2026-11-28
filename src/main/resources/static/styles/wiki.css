@@ -5,11 +5,30 @@
 
 .wiki-layout {
     display: flex;
-    min-height: calc(100vh - 160px);
-    border: 1px solid #e4e4e9;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-top: 10px;
+    /* Same frame as the agent page: no card, the wiki sidebar a strip flush with the left
+       edge from the breadcrumb bar (negative margin over its 1rem bottom margin) down to the
+       footer. The page is a column - header, this, footer - and this fills the room between, so
+       on a short page the footer sits at the bottom of the window and the strip reaches it. */
+    flex: 1 0 auto;
+    margin-top: -1rem;
+}
+
+body:has(> .wiki-layout) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin-bottom: 0;
+}
+
+/* The site footer follows the content here (it is an absolutely positioned "sticky footer" on
+   other pages, see main.css) - and without the <br> spacers in front of it. */
+.wiki-layout ~ br {
+    display: none;
+}
+
+.wiki-layout ~ #footer {
+    position: static;
+    flex: none;
 }
 
 .wiki-sidebar {
@@ -903,3 +922,250 @@
     }
 }
 
+
+/* ---- Live editing (wiki-collab.js, branch multiwiki) ----------------------------------------- */
+.wiki-collab-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin: 6px 0 8px;
+    font-size: .85em;
+}
+
+.wiki-collab-status {
+    padding: 1px 9px;
+    border-radius: 10px;
+    background: rgba(128, 128, 128, .14);
+}
+
+.wiki-collab-status--ok { background: rgba(40, 167, 69, .15); color: #28a745; }
+.wiki-collab-status--warn { background: rgba(224, 168, 0, .18); color: #b38600; }
+.wiki-collab-status--error { background: rgba(220, 53, 69, .14); color: #dc3545; }
+
+.wiki-collab-people {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.wiki-collab-person {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 9px 0 6px;
+    border: 1px solid;
+    border-radius: 12px;
+}
+
+.wiki-collab-person--me {
+    opacity: .7;
+}
+
+.wiki-collab-person-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.wiki-collab-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 6px;
+    border: 1px solid rgba(128, 128, 128, .3);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    background: rgba(128, 128, 128, .06);
+}
+
+.wiki-collab-toolbar button {
+    min-width: 30px;
+    height: 28px;
+    padding: 0 7px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font-size: .85em;
+    font-weight: 600;
+}
+
+.wiki-collab-toolbar button:hover {
+    border-color: rgba(128, 128, 128, .35);
+    background: rgba(128, 128, 128, .12);
+}
+
+.wiki-collab-toolbar .wiki-collab-save {
+    margin-left: auto;
+    padding: 0 12px;
+    border-color: #2e77d0;
+    background: #2e77d0;
+    color: #fff;
+}
+
+.wiki-collab-toolbar .wiki-collab-save:hover {
+    border-color: #1f5fae;
+    background: #1f5fae;
+}
+
+.wiki-edit-shortcut {
+    opacity: .55;
+    font-size: .8em;
+}
+
+.wiki-collab-toolbar .sep {
+    width: 1px;
+    height: 18px;
+    margin: 0 4px;
+    background: rgba(128, 128, 128, .35);
+}
+
+.wiki-collab-mount {
+    min-height: 420px;
+    padding: 14px 20px;
+    border: 1px solid rgba(128, 128, 128, .3);
+    border-radius: 0 0 6px 6px;
+    overflow-wrap: anywhere;
+}
+
+.wiki-collab-mount .ksfx-collab-prose {
+    min-height: 390px;
+    outline: none;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.wiki-collab-mount .ksfx-collab-prose h1 { font-size: 1.8em; margin: .6em 0 .4em; }
+.wiki-collab-mount .ksfx-collab-prose h2 { font-size: 1.45em; margin: 1em 0 .4em; }
+.wiki-collab-mount .ksfx-collab-prose h3 { font-size: 1.2em; margin: 1em 0 .3em; }
+.wiki-collab-mount .ksfx-collab-prose p { margin: 0 0 .7em; }
+.wiki-collab-mount .ksfx-collab-prose li > p { margin: 0; }
+.wiki-collab-mount .ksfx-collab-prose ul,
+.wiki-collab-mount .ksfx-collab-prose ol { margin: 0 0 .7em; padding-left: 1.6em; }
+
+.wiki-collab-mount .ksfx-collab-prose table {
+    border-collapse: collapse;
+    margin: 8px 0;
+}
+
+.wiki-collab-mount .ksfx-collab-prose th,
+.wiki-collab-mount .ksfx-collab-prose td {
+    border: 1px solid rgba(128, 128, 128, .4);
+    padding: 4px 10px;
+}
+
+.wiki-collab-mount .ksfx-collab-prose pre {
+    padding: 10px;
+    border-radius: 4px;
+    background: rgba(128, 128, 128, .12);
+}
+
+.wiki-collab-mount .ksfx-collab-prose img {
+    max-width: 100%;
+    height: auto;
+}
+
+.wiki-collab-mount .ksfx-collab-prose img.ProseMirror-selectednode {
+    outline: 2px solid #1971c2;
+}
+
+.wiki-collab-mount .ksfx-collab-prose blockquote {
+    margin-left: 0;
+    padding-left: 12px;
+    border-left: 3px solid rgba(128, 128, 128, .4);
+    opacity: .85;
+}
+
+/* Remote cursors from y-prosemirror (class names are y-prosemirror's own). */
+.ProseMirror-yjs-cursor {
+    position: relative;
+    margin-left: -1px;
+    margin-right: -1px;
+    border-left: 1px solid;
+    border-right: 1px solid;
+    word-break: normal;
+    pointer-events: none;
+}
+
+.ProseMirror-yjs-cursor > div {
+    position: absolute;
+    top: -1.15em;
+    left: -1px;
+    padding: 0 4px;
+    border-radius: 3px 3px 3px 0;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: normal;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.wiki-collab-note {
+    margin: 0 0 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(25, 113, 194, .12);
+    font-size: .88em;
+}
+
+.wiki-live-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 10px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(40, 167, 69, .1);
+    font-size: .9em;
+}
+
+.wiki-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #28a745;
+    animation: wiki-live-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes wiki-live-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, .5); }
+    50% { box-shadow: 0 0 0 4px rgba(40, 167, 69, 0); }
+}
+
+/* Dark mode for the live editor - same colours as the Toast UI viewer's dark overrides above. */
+.wiki-dark .wiki-collab-mount .ksfx-collab-prose,
+.wiki-dark .wiki-collab-mount .ksfx-collab-prose * {
+    color: #d8d8e0;
+}
+
+.wiki-dark .wiki-collab-mount .ksfx-collab-prose a {
+    color: #5ea1ee;
+}
+
+.wiki-dark .ProseMirror-yjs-cursor > div,
+.wiki-dark .ProseMirror-yjs-cursor > div * {
+    color: #fff;
+}
+
+/* Editor toolbar stays at the top of the window while scrolling through a long page - otherwise the
+   formatting buttons and Save are out of reach. The layout's own overflow (hidden / auto) would make
+   it a scroll container and keep the toolbar from sticking to the window, so on the editor page it
+   only clips. Opaque background (the page colour, slightly tinted) so text does not show through. */
+.wiki-layout:has(.wiki-collab-toolbar),
+.wiki-layout:has(.wiki-collab-toolbar) .wiki-main {
+    overflow: clip;
+}
+
+.wiki-collab-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #f6f6f8;
+}
+
+.wiki-dark .wiki-collab-toolbar {
+    background: #30343a;
+}

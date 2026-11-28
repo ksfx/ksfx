@@ -1,9 +1,13 @@
 package ch.ksfx.controller.agentic;
 
+import ch.ksfx.dao.AgentDAO;
 import ch.ksfx.dao.MailDAO;
+import ch.ksfx.model.Agent;
+import ch.ksfx.model.AgentUnit;
 import ch.ksfx.dao.ProjectDAO;
 import ch.ksfx.model.Project;
 import ch.ksfx.services.agentic.AgenticAccessService;
+import ch.ksfx.services.agentic.AgentUnitService;
 import ch.ksfx.services.agentic.AgenticUsageStatsService;
 import ch.ksfx.services.project.UserScope;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -15,6 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A project's Agentic settings page: its accesses (accounts with their defaults, enabled switch
@@ -36,6 +43,12 @@ public class ProjectAgenticSettingsController
     @org.springframework.beans.factory.annotation.Autowired
     private MailDAO mailDAO;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private AgentUnitService agentUnitService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private AgentDAO agentDAO;
+
     public ProjectAgenticSettingsController(ProjectDAO projectDAO,
                                             AgenticUsageStatsService usageStatsService, AgenticAccessService agenticAccessService,
                                             UserScope userScope)
@@ -55,9 +68,28 @@ public class ProjectAgenticSettingsController
         model.addAttribute("project", project);
         model.addAttribute("accessCards", agenticAccessService.cardsFor(project));
         model.addAttribute("mails", mailDAO.getRecentEntries(projectId, 30)); // what the project's agents sent
+        addUnits(project, model);
         usageStatsService.addUsageStats(model, statsDate != null ? statsDate : LocalDate.now(), projectId);
 
         return "agentic/project/agentic_project_settings";
+    }
+
+    /** The project's units (AgentUnitController) with the number of agents in each. */
+    private void addUnits(Project project, Model model)
+    {
+        List<AgentUnit> units = agentUnitService.unitsFor(project);
+        Map<Long, Integer> agentCounts = new HashMap<>();
+
+        for (Agent agent : agentDAO.getAgentsForProject(project.getId())) {
+            AgentUnit unit = AgentUnitService.effectiveUnitOf(agent);
+
+            if (unit != null) {
+                agentCounts.merge(unit.getId(), 1, Integer::sum);
+            }
+        }
+
+        model.addAttribute("units", units);
+        model.addAttribute("unitAgentCounts", agentCounts);
     }
 
     private Project requireProject(Long projectId)

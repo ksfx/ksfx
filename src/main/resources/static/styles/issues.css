@@ -4,11 +4,30 @@
 
 .issues-layout {
     display: flex;
-    min-height: calc(100vh - 160px);
-    border: 1px solid #e4e4e9;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-top: 10px;
+    /* Same frame as the agent page: no card, the issues sidebar a strip flush with the left
+       edge from the breadcrumb bar (negative margin over its 1rem bottom margin) down to the
+       footer. The page is a column - header, this, footer - and this fills the room between, so
+       on a short page the footer sits at the bottom of the window and the strip reaches it. */
+    flex: 1 0 auto;
+    margin-top: -1rem;
+}
+
+body:has(> .issues-layout) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin-bottom: 0;
+}
+
+/* The site footer follows the content here (it is an absolutely positioned "sticky footer" on
+   other pages, see main.css) - and without the <br> spacers in front of it. */
+.issues-layout ~ br {
+    display: none;
+}
+
+.issues-layout ~ #footer {
+    position: static;
+    flex: none;
 }
 
 .issues-sidebar {
@@ -785,4 +804,22 @@
 
 .issues-dark .issues-md-viewer .toastui-editor-contents a {
     color: #5ea1ee !important;
+}
+
+/* Same as in the wiki: the editor toolbar sticks to the top of the window while scrolling through a
+   long description or comment (see wiki.css). */
+.issues-layout:has(.ksfx-md-editor),
+.issues-layout:has(.ksfx-md-editor) .issues-main {
+    overflow: clip;
+}
+
+.issues-layout .ksfx-md-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #f6f6f8;
+}
+
+.issues-dark .ksfx-md-toolbar {
+    background: #30343a;
 }

@@ -25,6 +25,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import ch.ksfx.web.ListSearch;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.servlet.http.HttpServletRequest;
@@ -76,42 +77,24 @@ public class ActivityController
         return activityGitRepositoryService.isActive(projectContextService.current());
     }
 
+    /**
+     * The current project's activities - searchable by name (optionally also in the Groovy code),
+     * the category is one part of that search (ListSearch: kept per project in the session, so the
+     * pagination and sort links keep it).
+     */
     @GetMapping("/")
     public String activityIndex(Pageable pageable, Model model, HttpServletRequest request)
     {
-        String selectedActivityCategory = null;
-        ActivityCategory activityCategory = null;
-
-        if (request.getSession().getAttribute("selectedActivityCategory") != null) {
-            selectedActivityCategory = (String) request.getSession().getAttribute("selectedActivityCategory");
-        }
-
-        if (selectedActivityCategory != null && selectedActivityCategory.equals("0")) {
-            selectedActivityCategory = null;
-        }
-
-        if (selectedActivityCategory != null) {
-            activityCategory = activityDAO.getActivityCategoryForId(Long.parseLong(selectedActivityCategory));
-        }
-
-        // The current project's activities and categories only (phase 3 of the project concept).
         Long projectId = projectContextService.current().getId();
-        Page<Activity> activitiesPage = activityDAO.getActivitiesForPageableAndActivityCategoryAndProject(pageable, activityCategory, projectId);
+        ListSearch search = ListSearch.resolve(request, "activities", projectId);
+        Page<Activity> activitiesPage = activityDAO.searchActivities(pageable, projectId, search.getCategoryId(), search.getQuery(), search.isInCode());
 
         model.addAttribute("activitiesPage", activitiesPage);
         model.addAttribute("activityCategories", activityDAO.getAllActivityCategoriesForProject(projectId));
-        model.addAttribute("selectedActivityCategory", selectedActivityCategory);
+        model.addAttribute("search", search);
         model.addAttribute("activityInstanceRunner",activityInstanceRunner);
 
         return "activity/activity";
-    }
-
-    @PostMapping("/selectactivitycategory")
-    public String selectTag(@RequestParam(name = "selectedActivityCategory") String selectedActivityCategory, HttpServletRequest request)
-    {
-        request.getSession().setAttribute("selectedActivityCategory", selectedActivityCategory);
-
-        return "redirect:/activity/";
     }
 
     @GetMapping("/activityinstances/{activityid}")
@@ -177,7 +160,8 @@ public class ActivityController
     }
 
     @PostMapping({"/activityedit", "/activityedit/{id}"})
-    public String activitySubmit(@PathVariable(value = "id", required = false) Long activityId, @Valid @ModelAttribute Activity activity, BindingResult bindingResult, Model model)
+    public String activitySubmit(@PathVariable(value = "id", required = false) Long activityId, @Valid @ModelAttribute Activity activity, BindingResult bindingResult,
+                                 @RequestParam(value = "run", defaultValue = "false") boolean run, Model model)
     {
         activityValidate(activity, bindingResult);
 
@@ -236,6 +220,16 @@ public class ActivityController
 
         activityDAO.saveOrUpdateActivity(activity);
 
+        // "Save & Run" on the edit page: runs exactly what was just saved (a plain run link would
+        // run the stored code and silently ignore unsaved edits), then shows its instances.
+        // Reloaded: the form-bound activity carries its approval strategy as a bare id without a
+        // name, which ActivityInstanceRunner would read as "approval required" and never start.
+        if (run) {
+            startInstance(activityDAO.getActivityForId(activity.getId()));
+
+            return "redirect:/activity/activityinstances/" + activity.getId();
+        }
+
         return "redirect:/activity/activityedit/" + activity.getId();
     }
 
@@ -263,15 +257,24 @@ public class ActivityController
     @GetMapping({"/activityrun/{id}"})
     public String activityRun(@PathVariable(value = "id", required = true) Long activityId)
     {
+        Activity activity = activityDAO.getActivityForId(activityId);
+        userScope.requireWrite(activity.getProject());
+        startInstance(activity);
+
+        // Straight to the activity's instances, where the new run and its console appear - not
+        // back to page 1 of the list.
+        return "redirect:/activity/activityinstances/" + activityId;
+    }
+
+    /** Starts one run of the activity (no parameters) - the list's play icon and the edit page's "Save & Run". */
+    private void startInstance(Activity activity)
+    {
         ActivityInstance activityInstance = new ActivityInstance();
-        activityInstance.setActivity(activityDAO.getActivityForId(activityId));
-        userScope.requireWrite(activityInstance.getActivity().getProject());
+        activityInstance.setActivity(activity);
 
         activityInstanceDAO.saveOrUpdateActivityInstance(activityInstance);
 
         activityInstanceRunner.runActivity(activityInstance);
-
-        return "redirect:/activity/";
     }
 
     @GetMapping({"/activityschedule/{id}"})

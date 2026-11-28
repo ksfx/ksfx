@@ -2,6 +2,10 @@ package ch.ksfx.services;
 
 import ch.ksfx.services.project.NoProjectInterceptor;
 import ch.ksfx.services.agentic.AgenticApiAccessInterceptor;
+import org.springframework.boot.web.server.MimeMappings;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
+import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
@@ -18,6 +22,17 @@ public class MvcConfig implements WebMvcConfigurer
     {
         this.agenticApiAccessInterceptor = agenticApiAccessInterceptor;
         this.noProjectInterceptor = noProjectInterceptor;
+    }
+
+    /** The web app manifest (static/images/site.webmanifest) with its proper type - Tomcat does not know the extension. */
+    @Bean
+    public WebServerFactoryCustomizer<ConfigurableServletWebServerFactory> webManifestMimeType()
+    {
+        return factory -> {
+            MimeMappings mappings = new MimeMappings(MimeMappings.DEFAULT);
+            mappings.add("webmanifest", "application/manifest+json");
+            factory.setMimeMappings(mappings);
+        };
     }
 
     @Override

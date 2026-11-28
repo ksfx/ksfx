@@ -12,9 +12,13 @@
     </ol>
 </nav>
 
+<div class="container">
 <div th:if="${gitSyncActive != null and !gitSyncActive}" class="alert alert-secondary">Git-Sync ist nicht aktiv - Änderungen werden nur in der Datenbank gespeichert.</div>
 <div th:if="${gitSyncWarning}" class="alert alert-warning" th:text="${gitSyncWarning}"></div>
+<form th:replace="components/list_search :: listSearch(action='/publishing/', categories=${publishingCategories}, search=${search}, placeholder='Search by name or URI', codeLabel='also in the publishing strategy', total=${publishingConfigurationsPage.totalElements})"></form>
+</div>
 <div style="float:right"><a th:if="${@projectContextService.canWrite()}" th:href="@{/publishing/publishingconfigurationedit}" class="fa fa-plus fa-2x" title="Add Publishing Configuration" alt="Add Publishing Configuration"></a>&nbsp;&nbsp;&nbsp;</div>
+<div class="container ksfx-list-search-empty text-muted" th:if="${publishingConfigurationsPage.totalPages == 0 and search.active}">No publishing configuration matches this search.</div>
 <div th:if="${publishingConfigurationsPage.totalPages  > 0}">
     <div th:replace="components/pagination :: pagination(path='/publishing', page=${publishingConfigurationsPage})"></div>
 

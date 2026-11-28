@@ -6,7 +6,13 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <meta name="author" content="Kejo Starosta" />
-        <link rel="icon" type="image/svg+xml" th:href="@{/images/ksfx-logo.svg}" />
+        <!-- Icons from the KSFX logo package (X-Icon, the rocket in the X), white on the CI Deep Navy -
+             same navy as the header logo. SVG for modern browsers, ICO (16/32/48) as fallback, the PNGs
+             for home screens. -->
+        <link rel="icon" type="image/svg+xml" th:href="@{/images/favicon.svg}" />
+        <link rel="icon" sizes="any" th:href="@{/images/favicon.ico}" />
+        <link rel="apple-touch-icon" th:href="@{/images/apple-touch-icon.png}" />
+        <link rel="manifest" th:href="@{/images/site.webmanifest}" />
         <meta name="description" content="KSFX Data Analysis: Information Retrieval, Sentiment Analysis, Data-Science" />
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
         <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" /> -->
@@ -184,23 +190,18 @@
             <br />
             <div id="footer">
                 <div class="container">
-                    <div class="text-muted" style="float:left;"><a target="_blank" href="http://www.github.com/ksfx" style="color:inherit">Version 2.0.0-DEVELOPMENT</a> &copy; Kejo Starosta <a th:href="@{/publishing/publicationviewer/0/contact}" class="fa fa-envelope-o" title="Contact"></a></div>
-                    <div class="text-muted" style="float:right;text-align:right">
-
-                        <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
-                            <th:block th:if="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                                <a th:href="@{/toggledisplaymode}" style="color:inherit;text-decoration: none;" class="fa fa-toggle-on"></a> Dark mode
-                            </th:block>
-                        </th:block>
-                        <th:block th:if="${#session?.getAttribute('ksfxdisplaymode')}">
-                            <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode') == 'dark'}">
-                                <a th:href="@{/toggledisplaymode}" style="color:inherit;text-decoration: none;" class="fa fa-toggle-off"></a> Dark mode
-                            </th:block>
-                        </th:block>
-                        <th:block th:unless="${#session?.getAttribute('ksfxdisplaymode')}" >
-                                <a th:href="@{/toggledisplaymode}" style="color:inherit;text-decoration: none;" class="fa fa-toggle-off"></a> Dark mode
-                        </th:block>
+                    <!-- One slim line, never wrapping: the right part (dark mode) keeps its room, the
+                         left part is cut with an ellipsis when it gets tight (see #footer in main.css). -->
+                    <div class="ksfx-footer-left">
+                        <span class="ksfx-footer-brand">KSFX</span>
+                        <a class="ksfx-footer-version" target="_blank" href="http://www.github.com/ksfx" title="KSFX on GitHub">v2.0.0-DEVELOPMENT</a>
+                        <span class="ksfx-footer-sep">&middot;</span>
+                        <span>&copy; Kejo Starosta</span>
+                        <a class="ksfx-footer-mail fa fa-envelope-o" th:href="@{/publishing/publicationviewer/0/contact}" title="Contact" aria-label="Contact"></a>
                     </div>
+                    <a class="ksfx-footer-right" th:href="@{/toggledisplaymode}" title="Switch light / dark">
+                        <i class="fa" th:classappend="${#session?.getAttribute('ksfxdisplaymode') == 'dark'} ? 'fa-toggle-on' : 'fa-toggle-off'"></i> Dark mode
+                    </a>
                 </div>
             </div>
 
@@ -282,7 +283,7 @@
                      dark mode too (bootstrap-dark only darkens the page body), so one variant serves
                      both themes. Replaces the badge mark + "KSFX" text. -->
                 <a th:href="@{/}" class="navbar-brand ksfx-brand-logo" style="margin-right:14px">
-                    <img th:src="@{/images/ksfx-logo-header.svg}" alt="KSFX - Humans · Agents · One Platform" style="height:56px" />
+                    <img th:src="@{/images/ksfx-logo-header.svg}" alt="KSFX - human. agents. autonomous enterprise." style="height:56px" />
                 </a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample03" aria-controls="navbarsExample03" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>

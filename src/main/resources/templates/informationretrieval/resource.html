@@ -8,7 +8,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li th:replace="layout :: project-crumb"></li>
-        <li class="breadcrumb-item"><a th:href="@{/informationretrieval}">Information Retrieval</a></li>
+        <li class="breadcrumb-item"><a th:href="@{/informationretrieval/}">Information Retrieval</a></li>
         <li class="breadcrumb-item"><a th:href="@{/informationretrieval/spideringsviewer/{spideringConfigurationId}(spideringConfigurationId=${spidering.spideringConfiguration.id})}" th:inline="text">Spiderings for: [[${spidering.spideringConfiguration.name}]]</a></li>
         <li class="breadcrumb-item active" th:inline="text">Resources for Spidering [[${spidering.id}]]</li>
     </ol>

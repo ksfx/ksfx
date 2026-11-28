@@ -53,6 +53,12 @@
                 </form>
             </span>
         </div>
+        <!-- Live session (WikiCollabService): who is editing right now - joining is just "Edit". -->
+        <div class="wiki-live-banner" th:if="${!#lists.isEmpty(liveEditors)}">
+            <span class="wiki-live-dot"></span>
+            <span th:text="|${#strings.listJoin(liveEditors, ', ')} ${liveEditors.size() == 1 ? 'is' : 'are'} editing this page right now|">Kejo is editing</span>
+            <a th:if="${@projectContextService.canWrite()}" th:href="@{/wiki/{wikiId}/page/{pageId}/edit(wikiId=${currentWiki.id},pageId=${page.id})}">join</a>
+        </div>
         <div class="wiki-page-meta">
             <span th:if="${version != null and version.editedByAgent != null}">Last edited by agent <strong th:text="${version.editedByAgent.name}"></strong></span>
             <span th:if="${version != null and version.editedByUser != null}">Last edited by <strong th:text="${version.editedByUser.username}"></strong></span>

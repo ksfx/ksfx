@@ -42,24 +42,42 @@
     // forcing the whole page to scroll just to reach the composer. Capped at maxHeight so a very
     // tall monitor doesn't turn this into a mostly-empty giant panel either.
     function sizeAgenticPanes() {
-        var bottomBreathingRoom = 24;
-        var minHeight = 420;
-        var maxHeight = 820;
+        var minHeight = window.innerWidth < 768 ? 240 : 360; // phones: header and footer take a larger share
+        var maxHeight = 900;
+        var chat = document.querySelector('.agentic-chat-wrapper');
+        var sidebar = document.querySelector('.agentic-sidebar');
+        var layout = document.querySelector('.agentic-layout');
 
-        document.querySelectorAll('.agentic-sidebar, .agentic-chat-wrapper').forEach(function (el) {
-            // Below the mobile breakpoint .agentic-sidebar becomes a fixed-position slide-in overlay
-            // sized by CSS (top:0/bottom:0, see agentic-chat.css) - leave it alone here, an inline
-            // height clamped to [420,820]px would either fight that or (on a short phone screen)
-            // just be wrong, since this clamp is tuned for the two-pane desktop layout.
-            if (getComputedStyle(el).position === 'fixed') {
-                return;
+        if (!chat) {
+            return;
+        }
+
+        // First guess for the chat: from its top to the bottom of the window...
+        var top = chat.getBoundingClientRect().top + window.pageYOffset;
+        chat.style.height = Math.floor(Math.min(maxHeight, Math.max(minHeight, window.innerHeight - top))) + 'px';
+
+        // ...then take off exactly what the page still sticks out below the window - the footer and
+        // all the margins, whatever their size right now - so header, chat and footer fit together
+        // and the page itself never scrolls. A few rounds: fractional pixels (zoom, high-DPI) can
+        // leave a 1px rest - and a page that scrolls by one pixel still wobbles.
+        for (var round = 0; round < 3; round++) {
+            var overflow = Math.ceil(document.documentElement.scrollHeight - window.innerHeight);
+
+            if (overflow <= 0) {
+                break;
             }
 
-            var top = el.getBoundingClientRect().top;
-            var height = Math.min(maxHeight, Math.max(minHeight, window.innerHeight - top - bottomBreathingRoom));
+            chat.style.height = Math.floor(Math.max(minHeight, parseFloat(chat.style.height) - overflow)) + 'px';
+        }
 
-            el.style.height = height + 'px';
-        });
+        // The sidebar is a strip from the breadcrumb bar to the footer: from its own top (pulled up
+        // over the breadcrumb's margin) down to the chat's bottom plus the layout's margin. Below the
+        // mobile breakpoint it is a fixed slide-in overlay sized by CSS - left alone.
+        if (sidebar && getComputedStyle(sidebar).position !== 'fixed') {
+            var chatBottom = chat.getBoundingClientRect().bottom;
+            var layoutMargin = layout ? parseFloat(getComputedStyle(layout).marginBottom) || 0 : 0;
+            sidebar.style.height = Math.ceil(chatBottom + layoutMargin - sidebar.getBoundingClientRect().top) + 'px';
+        }
     }
 
     sizeAgenticPanes();
@@ -1376,6 +1394,56 @@
         });
     }
 
+    // Units: every unit group can be collapsed; open by default. The collapsed units are remembered
+    // per browser (localStorage, unit ids), the open agent's unit always starts open so the active
+    // entry is never hidden.
+    var UNITS_KEY = 'ksfx-agent-units-collapsed';
+
+    function collapsedUnits() {
+        try {
+            return JSON.parse(localStorage.getItem(UNITS_KEY)) || [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function setUnitCollapsed(unit, collapsed) {
+        unit.classList.toggle('agentic-sidebar-unit--collapsed', collapsed);
+        unit.querySelector('.agentic-sidebar-unit-head').setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+
+    var initiallyCollapsed = collapsedUnits();
+
+    sidebar.querySelectorAll('.agentic-sidebar-unit').forEach(function (unit) {
+        if (initiallyCollapsed.indexOf(unit.dataset.unitId) >= 0 && !unit.classList.contains('agentic-sidebar-unit--current')) {
+            setUnitCollapsed(unit, true);
+        }
+    });
+
+    sidebar.addEventListener('click', function (e) {
+        var head = e.target.closest('.agentic-sidebar-unit-head');
+
+        if (!head) {
+            return;
+        }
+
+        var unit = head.closest('.agentic-sidebar-unit');
+        var collapse = !unit.classList.contains('agentic-sidebar-unit--collapsed');
+        var stored = collapsedUnits().filter(function (id) { return id !== unit.dataset.unitId; });
+
+        if (collapse) {
+            stored.push(unit.dataset.unitId);
+        }
+
+        setUnitCollapsed(unit, collapse);
+
+        try {
+            localStorage.setItem(UNITS_KEY, JSON.stringify(stored));
+        } catch (err) {
+            // private mode / storage full - the unit just won't stay collapsed across pages
+        }
+    });
+
     var statusEndpoint = sidebar.dataset.statusEndpoint;
     var csrfHeader = sidebar.dataset.csrfHeader;
     var csrfToken = sidebar.dataset.csrfToken;
@@ -1395,6 +1463,14 @@
                 item.classList.remove('agentic-sidebar-item--running');
                 statusEl.title = '';
             }
+        });
+
+        // A collapsed unit still shows that something runs in it (CSS shows this only while collapsed).
+        sidebar.querySelectorAll('.agentic-sidebar-unit').forEach(function (unit) {
+            var running = unit.querySelectorAll('.agentic-sidebar-item--running').length;
+
+            unit.classList.toggle('agentic-sidebar-unit--running', running > 0);
+            unit.querySelector('.agentic-sidebar-unit-running-text').textContent = running > 0 ? running + ' running' : '';
         });
     }
 

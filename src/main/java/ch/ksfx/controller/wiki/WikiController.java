@@ -73,6 +73,9 @@ public class WikiController
     private final WikiAssetDAO wikiAssetDAO;
     private final WikiService wikiService;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private ch.ksfx.services.wiki.WikiCollabService wikiCollabService;
+
     public WikiController(WikiDAO wikiDAO, WikiFolderDAO wikiFolderDAO, WikiPageDAO wikiPageDAO,
                            WikiPageVersionDAO wikiPageVersionDAO, WikiAssetDAO wikiAssetDAO, WikiService wikiService, ProjectDAO projectDAO, ProjectContextService projectContextService)
     {
@@ -193,6 +196,7 @@ public class WikiController
         // is why the edit view keeps using the raw version content.
         model.addAttribute("renderedContent", version != null ? wikiService.renderWikilinks(wiki, version.getContent()) : "");
         model.addAttribute("attachments", wikiAssetDAO.getAssetsForPage(pageId));
+        model.addAttribute("liveEditors", wikiCollabService.editorsOf(pageId)); // "Kejo and Lexi are editing" banner
         // Root-first ancestor chain for the breadcrumb - always same-folder by construction (see
         // WikiService#validateParentPage), so unlike the folder path this never needs to be
         // reconciled against anything else.
@@ -324,6 +328,10 @@ public class WikiController
                 ? wikiService.updatePage(existing, folder, parentPage, title.trim(), content, currentUser(), null)
                 : wikiService.createPage(wiki, folder, parentPage, title.trim(), content, currentUser(), null);
 
+        if (existing != null) {
+            wikiCollabService.markSaved(page.getId(), content); // the live session (if any) now counts this as saved
+        }
+
         return "redirect:/wiki/" + wikiId + "/page/" + page.getId();
     }
 
@@ -431,7 +439,7 @@ public class WikiController
     }
 
     /**
-     * Called by the Toast UI Editor's image-upload hook (see wiki.js) while editing a page - not
+     * Called by the wiki editor when an image is pasted, dropped or picked (see wiki-collab.js) - not
      * tied to any WikiPage or Wiki at upload time (the page itself might still be unsaved), so the
      * asset is a standalone row referenced only by the URL embedded into the markdown, same as
      * pasting an external image URL would be.

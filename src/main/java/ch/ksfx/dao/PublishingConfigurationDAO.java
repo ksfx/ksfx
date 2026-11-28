@@ -33,6 +33,9 @@ public interface PublishingConfigurationDAO
     public List<PublishingConfiguration> getPublishingConfigurationsForPublishingCategory(PublishingCategory publishingCategory);
     public Page<PublishingConfiguration> getPublishingConfigutationsForPageableAndPublishingCategory(Pageable pageable, PublishingCategory publishingCategory);
     /** Project-scoped variants (phase 3 of the project concept): null projectId = all projects. */
+    /** A project's publishing configurations matching the search: name or URI (with inCode also the publishing strategy) contains the query; category optional. */
+    public Page<PublishingConfiguration> searchPublishingConfigurations(Pageable pageable, Long projectId, Long publishingCategoryId, String query, boolean inCode);
+
     public Page<PublishingConfiguration> getPublishingConfigurationsForPageableAndPublishingCategoryAndProject(Pageable pageable, PublishingCategory publishingCategory, Long projectId);
     public List<PublishingConfiguration> getAllPublishingConfigurationsForProject(Long projectId);
     public List<PublishingCategory> getAllPublishingCategoriesForProject(Long projectId);

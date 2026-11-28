@@ -61,6 +61,9 @@ public class AgentWikiApiController
     private final WikiAssetDAO wikiAssetDAO;
     private final WikiService wikiService;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private ch.ksfx.services.wiki.WikiCollabService wikiCollabService;
+
     public AgentWikiApiController(AgentDAO agentDAO, WikiDAO wikiDAO, WikiFolderDAO wikiFolderDAO, WikiPageDAO wikiPageDAO,
                                    WikiPageVersionDAO wikiPageVersionDAO, WikiAssetDAO wikiAssetDAO, WikiService wikiService)
     {
@@ -146,7 +149,7 @@ public class AgentWikiApiController
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No page with that id in this wiki."));
         }
 
-        return ResponseEntity.ok(toDtoWithContent(page));
+        return ResponseEntity.ok(toDtoWithContent(page, agent));
     }
 
     @GetMapping("/{wikiId}/page")
@@ -176,7 +179,7 @@ public class AgentWikiApiController
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody("No page at that location."));
         }
 
-        return ResponseEntity.ok(toDtoWithContent(page));
+        return ResponseEntity.ok(toDtoWithContent(page, agent));
     }
 
     /**
@@ -249,6 +252,17 @@ public class AgentWikiApiController
 
         if (parentError != null) {
             return ResponseEntity.badRequest().body(errorBody(parentError));
+        }
+
+        // Being edited live right now: the content goes into the session and is merged there (the
+        // humans' typing is not overwritten); only title / folder / parent are written directly.
+        if (existing != null && wikiCollabService.submitAgentWrite(existing.getId(), agent, body.content)) {
+            WikiPage page = wikiService.updatePageMeta(existing, folder, parentPage, body.title);
+            WikiPageDto dto = toDto(page);
+            dto.note = "The page is being edited live right now - your content is merged into the live session "
+                    + "(conflicting passages keep the live text; your full version is in the page history if it could not be merged).";
+
+            return ResponseEntity.ok(dto);
         }
 
         WikiPage page = existing != null
@@ -395,11 +409,14 @@ public class AgentWikiApiController
         return dto;
     }
 
-    private WikiPageDto toDtoWithContent(WikiPage page)
+    private WikiPageDto toDtoWithContent(WikiPage page, Agent agent)
     {
         WikiPageDto dto = toDto(page);
-        WikiPageVersion latest = wikiPageVersionDAO.getLatestVersionForPage(page.getId());
-        dto.content = latest != null ? latest.getContent() : "";
+        // While people edit the page live, the agent reads the live state (fresher than the saved
+        // version) - and that is remembered as the base its next write is merged against.
+        String live = wikiCollabService.liveContentForAgent(page.getId(), agent);
+        WikiPageVersion latest = live == null ? wikiPageVersionDAO.getLatestVersionForPage(page.getId()) : null;
+        dto.content = live != null ? live : latest != null ? latest.getContent() : "";
         dto.attachments = new ArrayList<>();
 
         // Only on the single-page reads, not on list - same split as the issue API (comments/
@@ -480,6 +497,8 @@ public class AgentWikiApiController
         public String content;
         /** Only populated on single-page reads (not on {@link #list}) - see toDtoWithContent. */
         public List<AttachmentDto> attachments;
+        /** Set on a write into a page that is being edited live (see WikiCollabService). */
+        public String note;
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
